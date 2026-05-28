@@ -1,13 +1,9 @@
 import { useState, useEffect } from "react";
+import Logo from "../components/Logo.jsx";
+import Nav from "../components/Nav.jsx";
 import { obtenerTecnico, obtenerTrabajosDelTecnico } from "../lib/firebase.js";
 
-const ESTADO_LABEL = {
-  pendiente: "Pendiente",
-  aceptado: "Aceptado",
-  proceso: "En proceso",
-  terminado: "Terminado",
-  validado: "Validado ✓",
-};
+const initials = n => ((n||"").trim().charAt(0).toUpperCase()) || "T";
 
 export default function Perfil({ nav, params, user }) {
   const [tecnico,  setTecnico]  = useState(null);
@@ -19,197 +15,202 @@ export default function Perfil({ nav, params, user }) {
 
   useEffect(() => {
     if (!tecnicoId) { setNotFound(true); setLoading(false); return; }
-    const cargar = async () => {
+    (async () => {
       try {
         const t = await obtenerTecnico(tecnicoId);
         if (!t) { setNotFound(true); setLoading(false); return; }
         setTecnico(t);
         const tr = await obtenerTrabajosDelTecnico(tecnicoId).catch(() => []);
-        setTrabajos(tr.filter(t => t.estado === "terminado" || t.estado === "validado"));
-      } catch (err) {
-        console.error("Error al cargar perfil:", err);
-        setNotFound(true);
-      } finally {
-        setLoading(false);
-      }
-    };
-    cargar();
+        setTrabajos(tr.filter(t => ["terminado","validado"].includes(t.estado)));
+      } catch { setNotFound(true); }
+      finally { setLoading(false); }
+    })();
   }, [tecnicoId]);
 
-  const s = {
-    page:   { minHeight:"100vh", background:"#F4F5F7" },
-    header: { background:"#1E2A3B", color:"#fff", padding:"0 20px", height:"56px", display:"flex", gap:"14px", alignItems:"center" },
-    logo:   { background:"#D97706", color:"#fff", fontWeight:900, fontSize:"15px", padding:"4px 12px", borderRadius:"8px", letterSpacing:"0.05em" },
-    wrap:   { maxWidth:"680px", margin:"0 auto", padding:"20px" },
-    card:   { background:"#fff", border:"1px solid #E5E7EB", borderRadius:"16px", padding:"22px", marginBottom:"14px" },
-    btn:    { background:"#D97706", color:"#fff", border:"none", borderRadius:"10px", padding:"11px 20px", fontSize:"14px", fontWeight:700, cursor:"pointer" },
-  };
+  const CARD = { background:"#fff", border:"1px solid #E2E8F0", borderRadius:"16px",
+                 padding:"22px", marginBottom:"14px", boxShadow:"0 1px 3px rgba(0,0,0,0.06)" };
+  const BTN  = { background:"#F97316", color:"#fff", border:"none", borderRadius:"10px",
+                 padding:"11px 20px", fontSize:"14px", fontWeight:700, cursor:"pointer" };
 
-  if (loading) return (
-    <div style={s.page}>
-      <div style={s.header}><span style={s.logo}>HABILIS</span></div>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"center", padding:"80px 20px", gap:"12px" }}>
-        <div style={{ width:"28px", height:"28px", border:"3px solid #D97706", borderTopColor:"transparent", borderRadius:"50%", animation:"spin 0.8s linear infinite" }} />
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-        <p style={{ color:"#6B7280" }}>Cargando perfil...</p>
-      </div>
+  const Shell = ({ children }) => (
+    <div style={{ background:"#F1F5F9", minHeight:"100vh" }}>
+      <div style={{ background:"#0F172A" }}><Nav nav={nav} user={user} /></div>
+      {children}
     </div>
   );
 
+  if (loading) return (
+    <Shell>
+      <div style={{ textAlign:"center", padding:"100px 20px" }}>
+        <div style={{ width:"36px", height:"36px", border:"3px solid #F97316", borderTopColor:"transparent",
+                      borderRadius:"50%", animation:"spin 0.8s linear infinite", margin:"0 auto 14px" }} />
+        <p style={{ color:"#64748B" }}>Cargando perfil...</p>
+      </div>
+    </Shell>
+  );
+
   if (notFound) return (
-    <div style={s.page}>
-      <div style={s.header}>
-        <button onClick={() => nav("buscar")} style={{ background:"none", border:"none", color:"rgba(255,255,255,0.6)", fontSize:"13px", fontWeight:600, cursor:"pointer" }}>← Buscar</button>
-        <span style={s.logo}>HABILIS</span>
+    <Shell>
+      <div style={{ textAlign:"center", padding:"100px 20px" }}>
+        <div style={{ fontSize:"52px", marginBottom:"14px" }}>🔍</div>
+        <p style={{ fontWeight:800, fontSize:"20px", color:"#0F172A", marginBottom:"8px" }}>Perfil no encontrado</p>
+        <p style={{ color:"#64748B", marginBottom:"24px" }}>Este técnico no está disponible.</p>
+        <button style={BTN} onClick={() => nav("buscar")}>Ver otros técnicos</button>
       </div>
-      <div style={{ textAlign:"center", padding:"80px 20px" }}>
-        <div style={{ fontSize:"48px", marginBottom:"12px" }}>🔍</div>
-        <p style={{ fontWeight:700, marginBottom:"6px" }}>Perfil no encontrado</p>
-        <p style={{ color:"#6B7280", marginBottom:"20px" }}>Este técnico no está disponible.</p>
-        <button style={s.btn} onClick={() => nav("buscar")}>Ver otros técnicos</button>
-      </div>
-    </div>
+    </Shell>
   );
 
   const esOwner = user?.uid === tecnicoId;
 
   return (
-    <div style={s.page}>
-      <div style={s.header}>
-        <button onClick={() => nav("buscar")} style={{ background:"none", border:"none", color:"rgba(255,255,255,0.6)", fontSize:"13px", fontWeight:600, cursor:"pointer" }}>← Buscar</button>
-        <span style={s.logo}>HABILIS</span>
-        {esOwner && <span style={{ color:"rgba(255,255,255,0.4)", fontSize:"12px" }}>Tu perfil público</span>}
-      </div>
+    <Shell>
+      {/* HERO BANNER */}
+      <div style={{ background:"#0F172A", padding:"36px 20px 32px", position:"relative", overflow:"hidden" }}>
+        <div style={{ position:"absolute", top:"-40%", right:"-5%", width:"400px", height:"400px",
+                      background:"radial-gradient(circle,rgba(249,115,22,0.14) 0%,transparent 65%)", pointerEvents:"none" }} />
+        <div style={{ maxWidth:"680px", margin:"0 auto", position:"relative", zIndex:1 }}>
+          <button onClick={() => nav("buscar")}
+            style={{ background:"none", border:"none", color:"rgba(255,255,255,0.45)", fontSize:"13px",
+                     fontWeight:600, cursor:"pointer", marginBottom:"10px", padding:0 }}>
+            ← Buscar técnicos
+          </button>
 
-      <div style={s.wrap}>
-        {/* Tarjeta principal */}
-        <div style={s.card}>
-          <div style={{ display:"flex", gap:"16px", alignItems:"flex-start", marginBottom:"18px" }}>
-            <div style={{
-              width:"68px", height:"68px",
-              background:"linear-gradient(135deg,#1E2A3B,#2D3F55)",
-              borderRadius:"16px", display:"flex", alignItems:"center", justifyContent:"center",
-              fontWeight:900, fontSize:"24px", color:"#fff", flexShrink:0,
-              border: tecnico.plan === "pro" ? "3px solid #D97706" : "3px solid transparent"
-            }}>
-              {tecnico.nombre?.charAt(0)?.toUpperCase()}
+          <div style={{ display:"flex", gap:"18px", alignItems:"flex-start" }}>
+            <div style={{ width:"68px", height:"68px", background:"linear-gradient(135deg,#1E293B,#334155)",
+                          borderRadius:"18px", display:"flex", alignItems:"center", justifyContent:"center",
+                          fontWeight:900, fontSize:"26px", color:"#fff", flexShrink:0,
+                          border: tecnico.plan==="pro" ? "3px solid #F97316" : "3px solid rgba(255,255,255,0.1)" }}>
+              {initials(tecnico.nombre)}
             </div>
-            <div style={{ flex:1 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:"8px", flexWrap:"wrap", marginBottom:"3px" }}>
-                <h1 style={{ fontSize:"20px", fontWeight:800 }}>{tecnico.nombre}</h1>
-                {tecnico.plan === "pro" && <span style={{ background:"#FEF3C7", color:"#92400E", fontSize:"11px", fontWeight:700, padding:"2px 8px", borderRadius:"6px" }}>⚡ PRO</span>}
+            <div>
+              <div style={{ display:"flex", alignItems:"center", gap:"8px", flexWrap:"wrap", marginBottom:"4px" }}>
+                <h1 style={{ fontSize:"clamp(20px,3.5vw,28px)", fontWeight:900, color:"#fff" }}>{tecnico.nombre}</h1>
+                {tecnico.plan==="pro" && <span style={{ background:"rgba(249,115,22,0.2)", border:"1px solid rgba(249,115,22,0.4)", color:"#F97316", fontSize:"11px", fontWeight:800, padding:"2px 8px", borderRadius:"6px" }}>⚡ PRO</span>}
+                {tecnico.verificado && <span style={{ background:"rgba(16,185,129,0.15)", border:"1px solid rgba(16,185,129,0.3)", color:"#10B981", fontSize:"11px", fontWeight:800, padding:"2px 8px", borderRadius:"6px" }}>✅ Verificado</span>}
               </div>
-              <p style={{ color:"#D97706", fontWeight:600, fontSize:"14px" }}>{tecnico.oficio}</p>
-              <p style={{ color:"#9CA3AF", fontSize:"13px", marginTop:"2px" }}>
+              <p style={{ color:"#F97316", fontWeight:600, fontSize:"15px" }}>{tecnico.oficio}</p>
+              <p style={{ color:"rgba(255,255,255,0.45)", fontSize:"13px", marginTop:"3px" }}>
                 📍 {tecnico.ciudad}
-                {tecnico.experiencia ? ` · ${tecnico.experiencia} años exp.` : ""}
-                {tecnico.rating > 0 ? ` · ⭐ ${tecnico.rating}` : ""}
+                {tecnico.experiencia ? ` · ${tecnico.experiencia} años de experiencia` : ""}
               </p>
-              {tecnico.verificado && (
-                <span style={{ background:"#D1FAE5", color:"#059669", fontSize:"11px", fontWeight:700, padding:"3px 8px", borderRadius:"6px", display:"inline-block", marginTop:"6px" }}>
-                  ✅ Técnico Verificado
-                </span>
-              )}
             </div>
           </div>
+        </div>
+      </div>
 
+      <div style={{ maxWidth:"680px", margin:"0 auto", padding:"24px 20px" }}>
+
+        {/* Acciones */}
+        <div style={CARD}>
           {tecnico.bio && (
-            <p style={{ color:"#4B5563", fontSize:"14px", lineHeight:1.65, marginBottom:"18px", background:"#F9FAFB", borderRadius:"10px", padding:"12px" }}>
+            <p style={{ color:"#475569", fontSize:"14px", lineHeight:1.7, marginBottom:"18px",
+                        background:"#F8FAFC", borderRadius:"10px", padding:"14px" }}>
               {tecnico.bio}
             </p>
           )}
-
-          {tecnico.disponibilidad && (
-            <p style={{ color:"#6B7280", fontSize:"13px", marginBottom:"16px" }}>
-              🕐 Disponibilidad: {tecnico.disponibilidad}
-            </p>
-          )}
-
-          {tecnico.herramientas && (
-            <p style={{ color:"#6B7280", fontSize:"13px", marginBottom:"16px" }}>🧰 Cuenta con herramienta propia</p>
-          )}
-
-          <div style={{ display:"flex", gap:"8px" }}>
-            {esOwner
-              ? <button style={{ ...s.btn, flex:1 }} onClick={() => nav("panel")}>Ir a mi Panel</button>
-              : <>
-                  <button style={{ ...s.btn, flex:2 }} onClick={() => alert("Función de contacto próximamente")}>💬 Contactar</button>
-                  <button style={{ ...s.btn, flex:1, background:"#fff", color:"#374151", border:"1px solid #D1D5DB" }} onClick={() => alert("Guardado próximamente")}>Guardar</button>
-                </>
-            }
+          <div style={{ display:"flex", gap:"12px", flexWrap:"wrap" }}>
+            {tecnico.disponibilidad && (
+              <p style={{ color:"#64748B", fontSize:"13px", marginBottom:"14px", width:"100%" }}>
+                🕐 <b>Disponibilidad:</b> {tecnico.disponibilidad}
+              </p>
+            )}
+            {tecnico.herramientas && (
+              <p style={{ color:"#64748B", fontSize:"13px", marginBottom:"14px", width:"100%" }}>
+                🧰 Cuenta con herramienta propia
+              </p>
+            )}
+          </div>
+          <div style={{ display:"flex", gap:"10px" }}>
+            {esOwner ? (
+              <button style={{ ...BTN, flex:1 }} onClick={() => nav("panel")}>Ir a mi Panel</button>
+            ) : (
+              <>
+                <button style={{ ...BTN, flex:2 }} onClick={() => alert("Función de contacto próximamente")}>
+                  💬 Contactar
+                </button>
+                <button style={{ flex:1, background:"#F1F5F9", color:"#374151", border:"1px solid #E2E8F0",
+                                 borderRadius:"10px", padding:"11px", fontSize:"14px", fontWeight:600, cursor:"pointer" }}
+                  onClick={() => alert("Guardado próximamente")}>
+                  Guardar
+                </button>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Estadísticas */}
-        <div style={s.card}>
-          <h2 style={{ fontWeight:700, fontSize:"15px", marginBottom:"14px" }}>Estadísticas</h2>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"12px", textAlign:"center" }}>
+        {/* Stats */}
+        <div style={CARD}>
+          <h2 style={{ fontWeight:800, fontSize:"15px", color:"#0F172A", marginBottom:"16px" }}>Estadísticas</h2>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"12px" }}>
             {[
-              ["🔧", trabajos.length, "Trabajos documentados"],
-              ["⭐", tecnico.rating || "—", "Calificación"],
-              ["📅", tecnico.experiencia ? `${tecnico.experiencia} años` : "—", "Experiencia"],
-            ].map(([icon, val, label]) => (
-              <div key={label} style={{ background:"#F9FAFB", borderRadius:"12px", padding:"14px" }}>
+              ["🔧", trabajos.length,  "Trabajos"],
+              ["⭐", tecnico.rating > 0 ? tecnico.rating : "—", "Calificación"],
+              ["📅", tecnico.experiencia ? `${tecnico.experiencia}a` : "—", "Experiencia"],
+            ].map(([icon, val, lbl]) => (
+              <div key={lbl} style={{ background:"#F8FAFC", borderRadius:"12px", padding:"14px", textAlign:"center",
+                                      border:"1px solid #E2E8F0" }}>
                 <div style={{ fontSize:"20px", marginBottom:"4px" }}>{icon}</div>
-                <div style={{ fontSize:"18px", fontWeight:800, color:"#D97706" }}>{val}</div>
-                <div style={{ fontSize:"11px", color:"#6B7280", marginTop:"2px" }}>{label}</div>
+                <div style={{ fontSize:"20px", fontWeight:900, color:"#F97316" }}>{val}</div>
+                <div style={{ fontSize:"11px", color:"#94A3B8", marginTop:"2px" }}>{lbl}</div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Trabajos realizados */}
-        {trabajos.length > 0 && (
-          <div style={s.card}>
-            <h2 style={{ fontWeight:700, fontSize:"15px", marginBottom:"14px" }}>Trabajos realizados ({trabajos.length})</h2>
-            <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
+        {/* Trabajos */}
+        {trabajos.length > 0 ? (
+          <div style={CARD}>
+            <h2 style={{ fontWeight:800, fontSize:"15px", color:"#0F172A", marginBottom:"16px" }}>
+              Trabajos realizados ({trabajos.length})
+            </h2>
+            <div style={{ display:"flex", flexDirection:"column", gap:"12px" }}>
               {trabajos.map(t => (
-                <div key={t.id} style={{ padding:"14px", background:"#F9FAFB", borderRadius:"12px", border:"1px solid #E5E7EB" }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"4px" }}>
-                    <p style={{ fontWeight:700, fontSize:"14px" }}>{t.titulo}</p>
-                    <span style={{ background:"#D1FAE5", color:"#059669", fontSize:"10px", fontWeight:700, padding:"2px 7px", borderRadius:"5px" }}>
-                      {ESTADO_LABEL[t.estado] || t.estado}
+                <div key={t.id} style={{ padding:"14px", background:"#F8FAFC", borderRadius:"12px",
+                                         border:"1px solid #E2E8F0" }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"6px" }}>
+                    <p style={{ fontWeight:700, fontSize:"14px", color:"#0F172A" }}>{t.titulo}</p>
+                    <span style={{ background:"#F0FDF4", color:"#059669", fontSize:"10px", fontWeight:700,
+                                   padding:"2px 7px", borderRadius:"5px", flexShrink:0, marginLeft:"8px" }}>
+                      {t.estado}
                     </span>
                   </div>
-                  <p style={{ color:"#6B7280", fontSize:"12px", marginBottom:"4px" }}>
-                    {t.tipo} · 📍 {t.ciudad} · ⏱ {t.tiempoHoras || 0}h
+                  <p style={{ color:"#94A3B8", fontSize:"12px", marginBottom:"6px" }}>
+                    {t.tipo} · 📍 {t.ciudad} · ⏱ {t.tiempoHoras||0}h
                   </p>
-                  {t.descripcion && <p style={{ color:"#4B5563", fontSize:"12px", lineHeight:1.5 }}>{t.descripcion.slice(0, 120)}{t.descripcion.length > 120 ? "..." : ""}</p>}
-
-                  {/* Fotos evidencia */}
+                  {t.descripcion && <p style={{ color:"#64748B", fontSize:"12px", lineHeight:1.5 }}>{t.descripcion.slice(0,140)}{t.descripcion.length>140?"...":""}</p>}
                   {t.evidencias?.length > 0 && (
                     <div style={{ display:"flex", gap:"8px", marginTop:"10px" }}>
-                      {t.evidencias.slice(0, 2).map((ev, i) => (
-                        <img key={i} src={ev} alt={i === 0 ? "Antes" : "Después"} style={{ width:"80px", height:"60px", objectFit:"cover", borderRadius:"8px", border:"1px solid #E5E7EB" }} />
-                      ))}
-                      {t.evidencias.length > 1 && (
-                        <div style={{ display:"flex", flexDirection:"column", gap:"2px", justifyContent:"center" }}>
-                          <span style={{ fontSize:"10px", color:"#9CA3AF" }}>Antes</span>
-                          <span style={{ fontSize:"10px", color:"#9CA3AF" }}>Después</span>
+                      {t.evidencias.slice(0,2).map((ev,i) => (
+                        <div key={i} style={{ position:"relative" }}>
+                          <img src={ev} alt="" style={{ width:"80px", height:"60px", objectFit:"cover",
+                                                         borderRadius:"8px", border:"1px solid #E2E8F0" }} />
+                          <span style={{ position:"absolute", bottom:"3px", left:"3px",
+                                         background:"rgba(0,0,0,0.55)", color:"#fff",
+                                         fontSize:"8px", fontWeight:700, padding:"1px 5px", borderRadius:"3px" }}>
+                            {i===0?"ANTES":"DESPUÉS"}
+                          </span>
                         </div>
-                      )}
+                      ))}
                     </div>
                   )}
                 </div>
               ))}
             </div>
           </div>
-        )}
-
-        {trabajos.length === 0 && (
-          <div style={{ ...s.card, textAlign:"center", padding:"36px" }}>
-            <div style={{ fontSize:"36px", marginBottom:"10px" }}>🔧</div>
-            <p style={{ fontWeight:600, marginBottom:"4px" }}>Sin trabajos documentados aún</p>
-            <p style={{ color:"#6B7280", fontSize:"13px" }}>Este técnico aún no ha registrado trabajos en Habilis.</p>
+        ) : (
+          <div style={{ ...CARD, textAlign:"center", padding:"40px" }}>
+            <div style={{ fontSize:"40px", marginBottom:"10px" }}>🔧</div>
+            <p style={{ fontWeight:600, color:"#374151", marginBottom:"4px" }}>Sin trabajos documentados aún</p>
+            <p style={{ color:"#94A3B8", fontSize:"13px" }}>Este técnico aún no ha registrado trabajos en Habilis.</p>
           </div>
         )}
 
-        <div style={{ ...s.card, background:"#FFFBEB", border:"1px solid #FDE68A" }}>
-          <p style={{ color:"#92400E", fontSize:"13px", lineHeight:1.5 }}>
+        <div style={{ ...CARD, background:"#FFF7ED", border:"1px solid rgba(249,115,22,0.25)" }}>
+          <p style={{ color:"#92400E", fontSize:"13px", lineHeight:1.6 }}>
             <b>Habilis conecta clientes con técnicos</b> pero no garantiza trabajos ni se hace responsable por acuerdos entre partes. Valida siempre el trabajo antes de pagar.
           </p>
         </div>
       </div>
-    </div>
+    </Shell>
   );
 }

@@ -1,82 +1,100 @@
 import { useState, useEffect } from "react";
+import Logo from "../components/Logo.jsx";
+import Nav from "../components/Nav.jsx";
 import { buscarTecnicos } from "../lib/firebase.js";
 
 const CATS = [
   "Electricista","Plomero","Técnico HVAC / Minisplits","Mecánico",
-  "Pintor","Instalador CCTV","Albañil","Tablaroquero","Soldador",
+  "Pintor","Instalador CCTV","Albañil","Tablaroquero","Soldador","Herrero",
 ];
 
-export default function Buscar({ nav, params }) {
+const initials = n => ((n||"").trim().charAt(0).toUpperCase()) || "T";
+
+export default function Buscar({ nav, user, params }) {
+  const [todos,    setTodos]    = useState([]);
   const [tecnicos, setTecnicos] = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [q,        setQ]        = useState(params?.oficio || "");
 
   useEffect(() => {
-    cargarTecnicos(params?.oficio || "");
+    buscarTecnicos({}).then(r => {
+      setTodos(r);
+      const init = params?.oficio || "";
+      setTecnicos(init ? filtrar(r, init) : r);
+    }).catch(() => { setTodos([]); setTecnicos([]); })
+      .finally(() => setLoading(false));
   }, []);
 
-  const cargarTecnicos = async (filtro = "") => {
-    setLoading(true);
-    try {
-      const results = await buscarTecnicos({ oficio: filtro || undefined });
-      setTecnicos(results);
-    } catch (err) {
-      console.error("Error al buscar:", err);
-      setTecnicos([]);
-    } finally {
-      setLoading(false);
-    }
+  const filtrar = (lista, f) => {
+    if (!f.trim()) return lista;
+    const l = f.toLowerCase();
+    return lista.filter(t =>
+      (t.oficio||"").toLowerCase().includes(l) ||
+      (t.nombre||"").toLowerCase().includes(l) ||
+      (t.ciudad||"").toLowerCase().includes(l)
+    );
   };
 
-  const handleBuscar = () => cargarTecnicos(q);
-  const handleKeyDown = e => { if (e.key === "Enter") handleBuscar(); };
-
-  const s = {
-    page:   { minHeight:"100vh", background:"#F4F5F7" },
-    header: { background:"#1E2A3B", color:"#fff", padding:"0 20px", height:"56px", display:"flex", alignItems:"center", gap:"14px", position:"sticky", top:0, zIndex:100 },
-    logo:   { background:"#D97706", color:"#fff", fontWeight:900, fontSize:"15px", padding:"4px 12px", borderRadius:"8px", letterSpacing:"0.05em", cursor:"pointer" },
-    inp:    { flex:1, border:"1px solid #D1D5DB", borderRadius:"10px", padding:"10px 14px", fontSize:"14px", outline:"none", background:"#F9FAFB" },
-    btn:    { background:"#D97706", color:"#fff", border:"none", borderRadius:"10px", padding:"10px 18px", fontSize:"14px", fontWeight:700, cursor:"pointer" },
-    card:   { background:"#fff", border:"1px solid #E5E7EB", borderRadius:"16px", padding:"18px", cursor:"pointer", transition:"box-shadow 0.15s" },
-  };
+  const buscar   = () => setTecnicos(filtrar(todos, q));
+  const onKey    = e => { if (e.key === "Enter") buscar(); };
+  const setChip  = cat => { setQ(cat); setTecnicos(filtrar(todos, cat)); };
+  const clearQ   = () => { setQ(""); setTecnicos(todos); };
 
   return (
-    <div style={s.page}>
-      {/* HEADER */}
-      <div style={s.header}>
-        <button onClick={() => nav("landing")} style={{ background:"none", border:"none", color:"rgba(255,255,255,0.6)", fontSize:"13px", fontWeight:600, cursor:"pointer" }}>← Inicio</button>
-        <span style={s.logo} onClick={() => nav("landing")}>HABILIS</span>
-        <span style={{ color:"rgba(255,255,255,0.4)", fontSize:"13px" }}>Buscar técnicos</span>
-      </div>
+    <div style={{ background:"#F1F5F9", minHeight:"100vh" }}>
+      <style>{`
+        .bc { transition:box-shadow 0.18s,transform 0.18s; }
+        .bc:hover { box-shadow:0 8px 24px rgba(0,0,0,0.1) !important; transform:translateY(-2px); }
+      `}</style>
 
-      {/* SEARCH BAR */}
-      <div style={{ background:"#fff", borderBottom:"1px solid #E5E7EB", padding:"14px 20px" }}>
-        <div style={{ display:"flex", gap:"8px", maxWidth:"960px", margin:"0 auto" }}>
-          <input
-            style={s.inp}
-            value={q}
-            onChange={e => setQ(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="¿Qué necesitas? (ej. Electricista, Plomero...)"
-          />
-          <button style={s.btn} onClick={handleBuscar}>Buscar</button>
+      {/* NAV */}
+      <div style={{ background:"#0F172A" }}><Nav nav={nav} user={user} /></div>
+
+      {/* HERO BANNER */}
+      <div style={{ background:"#0F172A", padding:"40px 20px 36px", position:"relative", overflow:"hidden" }}>
+        <div style={{ position:"absolute", top:"-40%", right:"-5%", width:"420px", height:"420px",
+                      background:"radial-gradient(circle,rgba(249,115,22,0.15) 0%,transparent 65%)", pointerEvents:"none" }} />
+        <div style={{ maxWidth:"960px", margin:"0 auto", position:"relative", zIndex:1 }}>
+          <p style={{ fontSize:"11px", fontWeight:700, color:"#F97316", textTransform:"uppercase",
+                      letterSpacing:"0.1em", marginBottom:"8px" }}>Directorio de técnicos</p>
+          <h1 style={{ fontSize:"clamp(24px,4vw,40px)", fontWeight:900, color:"#fff", marginBottom:"8px" }}>
+            Encuentra el técnico perfecto
+          </h1>
+          <p style={{ color:"rgba(255,255,255,0.5)", fontSize:"15px", marginBottom:"24px" }}>
+            Técnicos verificados con trabajos documentados cerca de ti
+          </p>
+
+          {/* Search */}
+          <div style={{ display:"flex", gap:"8px", maxWidth:"640px", flexWrap:"wrap" }}>
+            <input
+              style={{ flex:"2 1 200px", background:"rgba(255,255,255,0.09)", border:"1px solid rgba(255,255,255,0.12)",
+                       borderRadius:"10px", padding:"12px 16px", color:"#fff", fontSize:"14px", outline:"none" }}
+              value={q} onChange={e => setQ(e.target.value)} onKeyDown={onKey}
+              placeholder="Oficio, nombre o ciudad..."
+            />
+            <button onClick={buscar}
+              style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"10px",
+                       padding:"12px 22px", fontWeight:700, fontSize:"14px", cursor:"pointer", flexShrink:0 }}>
+              Buscar
+            </button>
+          </div>
         </div>
       </div>
 
       {/* CHIPS */}
-      <div style={{ background:"#fff", borderBottom:"1px solid #F3F4F6", padding:"10px 20px", overflowX:"auto" }}>
+      <div style={{ background:"#fff", borderBottom:"1px solid #E2E8F0", padding:"12px 20px", overflowX:"auto" }}>
         <div style={{ display:"flex", gap:"8px", maxWidth:"960px", margin:"0 auto", width:"max-content" }}>
-          <button
-            style={{ padding:"6px 14px", background: !q ? "#D97706" : "#F3F4F6", color: !q ? "#fff" : "#374151", border:"none", borderRadius:"20px", fontSize:"12px", fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}
-            onClick={() => { setQ(""); cargarTecnicos(""); }}
-          >
+          <button onClick={clearQ}
+            style={{ padding:"6px 16px", background: !q ? "#0F172A" : "#F1F5F9",
+                     color: !q ? "#fff" : "#374151", border:"none",
+                     borderRadius:"20px", fontSize:"12px", fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
             Todos
           </button>
           {CATS.map(cat => (
-            <button key={cat}
-              style={{ padding:"6px 14px", background: q === cat ? "#D97706" : "#F3F4F6", color: q === cat ? "#fff" : "#374151", border:"none", borderRadius:"20px", fontSize:"12px", fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}
-              onClick={() => { setQ(cat); cargarTecnicos(cat); }}
-            >
+            <button key={cat} onClick={() => setChip(cat)}
+              style={{ padding:"6px 16px", background: q === cat ? "#F97316" : "#F1F5F9",
+                       color: q === cat ? "#fff" : "#374151", border:"none",
+                       borderRadius:"20px", fontSize:"12px", fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
               {cat}
             </button>
           ))}
@@ -84,74 +102,83 @@ export default function Buscar({ nav, params }) {
       </div>
 
       {/* RESULTS */}
-      <div style={{ maxWidth:"960px", margin:"0 auto", padding:"20px" }}>
-        {loading && (
-          <div style={{ textAlign:"center", padding:"60px 20px" }}>
-            <div style={{ width:"32px", height:"32px", border:"3px solid #D97706", borderTopColor:"transparent", borderRadius:"50%", animation:"spin 0.8s linear infinite", margin:"0 auto 12px" }} />
-            <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-            <p style={{ color:"#6B7280", fontSize:"14px" }}>Buscando técnicos...</p>
+      <div style={{ maxWidth:"960px", margin:"0 auto", padding:"24px 20px" }}>
+        {loading ? (
+          <div style={{ textAlign:"center", padding:"72px 20px" }}>
+            <div style={{ width:"36px", height:"36px", border:"3px solid #F97316", borderTopColor:"transparent",
+                          borderRadius:"50%", animation:"spin 0.8s linear infinite", margin:"0 auto 14px" }} />
+            <p style={{ color:"#64748B" }}>Cargando técnicos...</p>
           </div>
-        )}
-
-        {!loading && tecnicos.length === 0 && (
-          <div style={{ textAlign:"center", padding:"60px 20px" }}>
-            <p style={{ fontSize:"40px", marginBottom:"12px" }}>🔍</p>
-            <p style={{ fontWeight:700, marginBottom:"6px", fontSize:"16px" }}>No hay técnicos registrados aún</p>
-            <p style={{ color:"#6B7280", fontSize:"14px", marginBottom:"20px" }}>Sé el primero en registrarte en Habilis</p>
-            <button style={{ ...s.btn, borderRadius:"12px", padding:"12px 24px" }} onClick={() => nav("registro")}>
-              Registrarme gratis →
-            </button>
-          </div>
-        )}
-
-        {!loading && tecnicos.length > 0 && (
-          <div style={{ display:"flex", flexDirection:"column", gap:"12px" }}>
-            <p style={{ color:"#6B7280", fontSize:"13px", marginBottom:"4px" }}>
-              {tecnicos.length} técnico{tecnicos.length !== 1 ? "s" : ""} encontrado{tecnicos.length !== 1 ? "s" : ""}
-              {q ? ` para "${q}"` : ""}
+        ) : tecnicos.length === 0 ? (
+          <div style={{ textAlign:"center", padding:"72px 20px", background:"#fff",
+                        borderRadius:"20px", border:"1px solid #E2E8F0" }}>
+            <div style={{ fontSize:"52px", marginBottom:"14px" }}>🔍</div>
+            <p style={{ fontWeight:800, fontSize:"18px", color:"#0F172A", marginBottom:"6px" }}>
+              {todos.length === 0 ? "Aún no hay técnicos registrados" : `Sin resultados para "${q}"`}
             </p>
-            {tecnicos.map(t => (
-              <div
-                key={t.id}
-                style={s.card}
-                onClick={() => nav("perfil", { tecnicoId: t.id })}
-                onMouseEnter={e => e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,0.08)"}
-                onMouseLeave={e => e.currentTarget.style.boxShadow="none"}
-              >
-                <div style={{ display:"flex", gap:"14px", alignItems:"flex-start" }}>
-                  <div style={{
-                    width:"52px", height:"52px",
-                    background:"linear-gradient(135deg,#1E2A3B,#2D3F55)",
-                    borderRadius:"12px", display:"flex", alignItems:"center", justifyContent:"center",
-                    fontWeight:900, fontSize:"18px", color:"#fff", flexShrink:0,
-                    border: t.plan === "pro" ? "2px solid #D97706" : "none"
-                  }}>
-                    {t.nombre?.charAt(0)?.toUpperCase() || "T"}
-                  </div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:"8px", flexWrap:"wrap", marginBottom:"2px" }}>
-                      <p style={{ fontWeight:700, fontSize:"15px" }}>{t.nombre}</p>
-                      {t.plan === "pro" && <span style={{ background:"#FEF3C7", color:"#92400E", fontSize:"10px", fontWeight:700, padding:"2px 7px", borderRadius:"6px" }}>⚡ PRO</span>}
-                      {t.verificado && <span style={{ background:"#D1FAE5", color:"#059669", fontSize:"10px", fontWeight:700, padding:"2px 7px", borderRadius:"6px" }}>✅ Verificado</span>}
-                    </div>
-                    <p style={{ color:"#D97706", fontSize:"13px", fontWeight:600 }}>{t.oficio}</p>
-                    <p style={{ color:"#9CA3AF", fontSize:"12px", marginTop:"2px" }}>
-                      📍 {t.ciudad}
-                      {t.experiencia ? ` · ${t.experiencia} años` : ""}
-                      {t.rating > 0 ? ` · ⭐ ${t.rating}` : " · Nuevo"}
-                    </p>
-                    {t.bio && <p style={{ color:"#6B7280", fontSize:"12px", marginTop:"5px", lineHeight:1.4 }}>{t.bio.slice(0, 90)}{t.bio.length > 90 ? "..." : ""}</p>}
-                  </div>
-                  <button
-                    style={{ ...s.btn, padding:"7px 14px", fontSize:"12px", flexShrink:0 }}
-                    onClick={e => { e.stopPropagation(); nav("perfil", { tecnicoId: t.id }); }}
-                  >
-                    Ver Perfil
-                  </button>
-                </div>
-              </div>
-            ))}
+            <p style={{ color:"#64748B", fontSize:"14px", marginBottom:"24px" }}>
+              {todos.length === 0 ? "Sé el primero en registrarte gratis" : "Prueba con otro término o ve todos"}
+            </p>
+            {todos.length === 0
+              ? <button onClick={() => nav("registro")}
+                  style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"10px",
+                           padding:"12px 24px", fontWeight:700, cursor:"pointer" }}>
+                  Registrarme gratis →
+                </button>
+              : <button onClick={clearQ}
+                  style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"10px",
+                           padding:"12px 24px", fontWeight:700, cursor:"pointer" }}>
+                  Ver todos los técnicos
+                </button>
+            }
           </div>
+        ) : (
+          <>
+            <p style={{ color:"#64748B", fontSize:"13px", marginBottom:"16px" }}>
+              <b style={{ color:"#0F172A" }}>{tecnicos.length}</b> técnico{tecnicos.length !== 1 ? "s" : ""}{q ? ` para "${q}"` : ""}
+            </p>
+            <div style={{ display:"flex", flexDirection:"column", gap:"12px" }}>
+              {tecnicos.map(t => (
+                <div key={t.id} className="bc"
+                  style={{ background:"#fff", border:"1px solid #E2E8F0", borderRadius:"16px",
+                           padding:"18px 20px", cursor:"pointer",
+                           boxShadow:"0 1px 3px rgba(0,0,0,0.06)" }}
+                  onClick={() => nav("perfil", { tecnicoId:t.id })}>
+                  <div style={{ display:"flex", gap:"16px", alignItems:"flex-start" }}>
+                    {/* Avatar */}
+                    <div style={{ width:"54px", height:"54px", flexShrink:0,
+                                  background:"linear-gradient(135deg,#0F172A,#1E3A5F)",
+                                  borderRadius:"14px", display:"flex", alignItems:"center",
+                                  justifyContent:"center", fontWeight:900, fontSize:"20px", color:"#fff",
+                                  border: t.plan==="pro" ? "2.5px solid #F97316" : "2.5px solid transparent" }}>
+                      {initials(t.nombre)}
+                    </div>
+                    {/* Info */}
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:"8px", flexWrap:"wrap", marginBottom:"3px" }}>
+                        <span style={{ fontWeight:800, fontSize:"15px", color:"#0F172A" }}>{t.nombre || "Técnico"}</span>
+                        {t.plan === "pro" && <span style={{ background:"#FFF7ED", color:"#EA580C", fontSize:"10px", fontWeight:700, padding:"2px 7px", borderRadius:"6px" }}>⚡ PRO</span>}
+                        {t.verificado && <span style={{ background:"#F0FDF4", color:"#059669", fontSize:"10px", fontWeight:700, padding:"2px 7px", borderRadius:"6px" }}>✅ Verificado</span>}
+                      </div>
+                      <p style={{ color:"#F97316", fontSize:"13px", fontWeight:600, marginBottom:"3px" }}>{t.oficio}</p>
+                      <p style={{ color:"#94A3B8", fontSize:"12px" }}>
+                        📍 {t.ciudad || "Sin ciudad"}
+                        {t.experiencia ? ` · ${t.experiencia} años exp.` : ""}
+                        {t.rating > 0 ? ` · ⭐ ${t.rating}` : ""}
+                      </p>
+                      {t.bio && <p style={{ color:"#64748B", fontSize:"12px", marginTop:"6px", lineHeight:1.5 }}>{t.bio.slice(0,100)}{t.bio.length > 100 ? "..." : ""}</p>}
+                    </div>
+                    {/* CTA */}
+                    <button onClick={e => { e.stopPropagation(); nav("perfil", { tecnicoId:t.id }); }}
+                      style={{ flexShrink:0, background:"#F97316", color:"#fff", border:"none",
+                               borderRadius:"9px", padding:"8px 16px", fontWeight:700, fontSize:"12px", cursor:"pointer" }}>
+                      Ver perfil
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>

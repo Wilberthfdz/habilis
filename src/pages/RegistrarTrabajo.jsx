@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import Logo from "../components/Logo.jsx";
+import Nav from "../components/Nav.jsx";
 import { db } from "../lib/firebase.js";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
@@ -10,21 +12,11 @@ const ESTADOS = [
   { id:"validado",  label:"Validado ✓" },
 ];
 
-const s = {
-  page:    { minHeight:"100vh", background:"#F4F5F7" },
-  header:  { background:"#1E2A3B", color:"#fff", padding:"0 20px", height:"56px", display:"flex", alignItems:"center", gap:"14px" },
-  logo:    { background:"#D97706", color:"#fff", fontWeight:900, fontSize:"15px", padding:"4px 12px", borderRadius:"8px", letterSpacing:"0.05em", cursor:"pointer" },
-  wrap:    { maxWidth:"680px", margin:"0 auto", padding:"24px 20px" },
-  card:    { background:"#fff", border:"1px solid #E5E7EB", borderRadius:"16px", padding:"22px", marginBottom:"14px" },
-  label:   { display:"block", fontSize:"11px", fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:"5px" },
-  inp:     { width:"100%", border:"1px solid #D1D5DB", borderRadius:"10px", padding:"10px 14px", fontSize:"14px", outline:"none", background:"#F9FAFB", boxSizing:"border-box" },
-  btn:     { background:"#D97706", color:"#fff", border:"none", borderRadius:"10px", padding:"12px 20px", fontSize:"14px", fontWeight:700, cursor:"pointer" },
-  btnFull: { background:"#D97706", color:"#fff", border:"none", borderRadius:"12px", padding:"14px", fontSize:"15px", fontWeight:700, width:"100%", cursor:"pointer" },
-  grid2:   { display:"grid", gridTemplateColumns:"1fr 1fr", gap:"14px" },
-  chip:    ok => ({ background: ok ? "#D97706" : "#fff", color: ok ? "#fff" : "#374151", border:`1px solid ${ok ? "#D97706" : "#D1D5DB"}`, borderRadius:"20px", padding:"6px 14px", fontSize:"12px", fontWeight:600, cursor:"pointer" }),
-  photo:   { background:"#F9FAFB", border:"2px dashed #D1D5DB", borderRadius:"12px", height:"110px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", cursor:"pointer", gap:"6px", overflow:"hidden" },
-  err:     { background:"#FEE2E2", border:"1px solid #FECACA", borderRadius:"10px", padding:"10px 14px", fontSize:"13px", color:"#991B1B", marginBottom:"14px" },
-};
+const inp = { width:"100%", border:"1px solid #E2E8F0", borderRadius:"10px",
+              padding:"11px 14px", fontSize:"14px", outline:"none",
+              background:"#F8FAFC", color:"#0F172A", boxSizing:"border-box" };
+const label = { fontSize:"11px", fontWeight:700, color:"#64748B", textTransform:"uppercase",
+                letterSpacing:"0.06em", display:"block", marginBottom:"5px" };
 
 export default function RegistrarTrabajo({ nav, user }) {
   const [form, setForm] = useState({
@@ -37,15 +29,12 @@ export default function RegistrarTrabajo({ nav, user }) {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState("");
 
-  useEffect(() => {
-    if (!user) nav("login");
-  }, [user]);
-
+  useEffect(() => { if (!user) nav("login"); }, [user]);
   if (!user) return null;
 
-  const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
+  const set = k => e => setForm(f => ({ ...f, [k]:e.target.value }));
 
-  const processImage = file => new Promise(resolve => {
+  const processImg = file => new Promise(resolve => {
     const reader = new FileReader();
     reader.onload = e => {
       const img = new Image();
@@ -69,21 +58,18 @@ export default function RegistrarTrabajo({ nav, user }) {
   const handleFoto = tipo => async e => {
     const file = e.target.files[0];
     if (!file) return;
-    const b64 = await processImage(file);
+    setFotos(f => ({ ...f, [tipo]: "__loading__" }));
+    const b64 = await processImg(file);
     setFotos(f => ({ ...f, [tipo]: b64 }));
   };
 
   const guardar = async () => {
-    if (!form.titulo.trim()) { setError("El título del trabajo es obligatorio."); return; }
+    if (!form.titulo.trim())   { setError("El título del trabajo es obligatorio."); return; }
     if (!form.problema.trim()) { setError("Describe el problema detectado."); return; }
     if (!form.solucion.trim()) { setError("Describe la solución aplicada."); return; }
-    setError("");
-    setLoading(true);
+    setError(""); setLoading(true);
     try {
-      const evidencias = [];
-      if (fotos.antes)   evidencias.push(fotos.antes);
-      if (fotos.despues) evidencias.push(fotos.despues);
-
+      const evidencias = [fotos.antes, fotos.despues].filter(Boolean).filter(x => x !== "__loading__");
       await addDoc(collection(db, "trabajos"), {
         titulo:        form.titulo.trim(),
         tipo:          form.tipo,
@@ -104,101 +90,136 @@ export default function RegistrarTrabajo({ nav, user }) {
       nav("panel");
     } catch (e) {
       console.error(e);
-      if (e.message?.includes("permission-denied") || e.message?.includes("Missing or insufficient permissions")) {
-        setError("Error de permisos. Verifica tu sesión e intenta de nuevo.");
-      } else if (e.message?.includes("too large") || e.message?.includes("payload")) {
-        setError("Las imágenes son muy pesadas. Intenta con fotos más pequeñas o sin fotos.");
-      } else {
-        setError("Error al guardar el trabajo. Intenta de nuevo.");
-      }
-    } finally {
-      setLoading(false);
-    }
+      if (e.message?.includes("permission-denied") || e.message?.includes("Missing or insufficient"))
+        setError("Error de permisos. Verifica tu sesión.");
+      else if (e.message?.includes("too large") || e.message?.includes("payload"))
+        setError("Las imágenes son muy pesadas. Intenta sin fotos.");
+      else
+        setError("Error al guardar. Intenta de nuevo.");
+    } finally { setLoading(false); }
   };
 
+  const CARD = { background:"#fff", border:"1px solid #E2E8F0", borderRadius:"16px",
+                 padding:"22px", marginBottom:"14px", boxShadow:"0 1px 3px rgba(0,0,0,0.06)" };
+
   return (
-    <div style={s.page}>
-      {/* HEADER */}
-      <div style={s.header}>
-        <button onClick={() => nav("panel")} style={{ background:"none", border:"none", color:"rgba(255,255,255,0.6)", fontSize:"13px", fontWeight:600, cursor:"pointer" }}>← Mi panel</button>
-        <span style={s.logo} onClick={() => nav("landing")}>HABILIS</span>
-        <span style={{ color:"rgba(255,255,255,0.4)", fontSize:"13px" }}>Documentar trabajo</span>
+    <div style={{ background:"#F1F5F9", minHeight:"100vh" }}>
+      {/* NAV */}
+      <div style={{ background:"#0F172A" }}><Nav nav={nav} user={user} /></div>
+
+      {/* HERO BANNER */}
+      <div style={{ background:"#0F172A", padding:"36px 20px 32px", position:"relative", overflow:"hidden" }}>
+        <div style={{ position:"absolute", top:"-40%", right:"-5%", width:"400px", height:"400px",
+                      background:"radial-gradient(circle,rgba(249,115,22,0.14) 0%,transparent 65%)", pointerEvents:"none" }} />
+        <div style={{ maxWidth:"680px", margin:"0 auto", position:"relative", zIndex:1 }}>
+          <button onClick={() => nav("panel")}
+            style={{ background:"none", border:"none", color:"rgba(255,255,255,0.5)", fontSize:"13px",
+                     fontWeight:600, cursor:"pointer", marginBottom:"10px", padding:0 }}>
+            ← Mi panel
+          </button>
+          <h1 style={{ fontSize:"clamp(22px,4vw,36px)", fontWeight:900, color:"#fff", marginBottom:"6px" }}>
+            Documenta tu trabajo
+          </h1>
+          <p style={{ color:"rgba(255,255,255,0.5)", fontSize:"14px" }}>
+            Construye tu reputación con evidencia real. Fotos, tiempos, materiales.
+          </p>
+        </div>
       </div>
 
-      <div style={s.wrap}>
-        {error && <div style={s.err}>{error}</div>}
+      <div style={{ maxWidth:"680px", margin:"0 auto", padding:"24px 20px" }}>
+        {error && (
+          <div style={{ background:"#FEF2F2", border:"1px solid #FECACA", borderRadius:"12px",
+                        padding:"12px 16px", fontSize:"13px", color:"#991B1B", marginBottom:"16px" }}>
+            {error}
+          </div>
+        )}
 
         {/* Datos básicos */}
-        <div style={s.card}>
-          <h3 style={{ fontWeight:700, fontSize:"15px", marginBottom:"16px" }}>📋 Datos del trabajo</h3>
+        <div style={CARD}>
+          <h3 style={{ fontWeight:800, fontSize:"15px", color:"#0F172A", marginBottom:"18px" }}>📋 Datos del trabajo</h3>
           <div style={{ display:"flex", flexDirection:"column", gap:"14px" }}>
             <div>
-              <label style={s.label}>Título del trabajo *</label>
-              <input style={s.inp} value={form.titulo} onChange={set("titulo")} placeholder="Ej: Instalación panel eléctrico 200A" />
+              <label style={label}>Título del trabajo *</label>
+              <input style={inp} value={form.titulo} onChange={set("titulo")} placeholder="Ej: Instalación panel eléctrico 200A" />
             </div>
             <div>
-              <label style={s.label}>Tipo de trabajo</label>
+              <label style={label}>Tipo de trabajo</label>
               <div style={{ display:"flex", gap:"6px", flexWrap:"wrap" }}>
                 {TIPOS.map(t => (
-                  <button key={t} style={s.chip(form.tipo === t)} onClick={() => setForm(f => ({ ...f, tipo: t }))}>{t}</button>
+                  <button key={t} onClick={() => setForm(f => ({ ...f, tipo:t }))}
+                    style={{ background: form.tipo===t ? "#F97316" : "#F1F5F9",
+                             color: form.tipo===t ? "#fff" : "#374151",
+                             border: `1px solid ${form.tipo===t ? "#F97316" : "#E2E8F0"}`,
+                             borderRadius:"20px", padding:"6px 14px", fontSize:"12px",
+                             fontWeight:600, cursor:"pointer" }}>
+                    {t}
+                  </button>
                 ))}
               </div>
             </div>
             <div>
-              <label style={s.label}>Descripción general</label>
-              <textarea style={{ ...s.inp, resize:"vertical", minHeight:"60px" }} value={form.descripcion} onChange={set("descripcion")} placeholder="Resumen del servicio realizado" />
+              <label style={label}>Descripción general</label>
+              <textarea style={{ ...inp, resize:"vertical", minHeight:"60px" }} value={form.descripcion} onChange={set("descripcion")} placeholder="Resumen del servicio" />
             </div>
-            <div style={s.grid2}>
-              <div><label style={s.label}>Ciudad</label><input style={s.inp} value={form.ciudad} onChange={set("ciudad")} placeholder="CDMX" /></div>
-              <div><label style={s.label}>Cliente (opcional)</label><input style={s.inp} value={form.clienteNombre} onChange={set("clienteNombre")} placeholder="Nombre del cliente" /></div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"12px" }}>
+              <div><label style={label}>Ciudad</label><input style={inp} value={form.ciudad} onChange={set("ciudad")} placeholder="CDMX" /></div>
+              <div><label style={label}>Cliente (opcional)</label><input style={inp} value={form.clienteNombre} onChange={set("clienteNombre")} placeholder="Nombre del cliente" /></div>
             </div>
-            <div style={s.grid2}>
-              <div><label style={s.label}>Tiempo (horas)</label><input style={s.inp} type="number" value={form.tiempoHoras} onChange={set("tiempoHoras")} placeholder="2.5" min="0" step="0.5" /></div>
-              <div><label style={s.label}>Costo total ($MXN)</label><input style={s.inp} type="number" value={form.costoTotal} onChange={set("costoTotal")} placeholder="0" min="0" /></div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"12px" }}>
+              <div><label style={label}>Tiempo (horas)</label><input style={inp} type="number" value={form.tiempoHoras} onChange={set("tiempoHoras")} placeholder="2.5" min="0" step="0.5" /></div>
+              <div><label style={label}>Costo total ($MXN)</label><input style={inp} type="number" value={form.costoTotal} onChange={set("costoTotal")} placeholder="0" min="0" /></div>
             </div>
           </div>
         </div>
 
         {/* Detalles técnicos */}
-        <div style={s.card}>
-          <h3 style={{ fontWeight:700, fontSize:"15px", marginBottom:"16px" }}>🔍 Detalles técnicos</h3>
+        <div style={CARD}>
+          <h3 style={{ fontWeight:800, fontSize:"15px", color:"#0F172A", marginBottom:"18px" }}>🔍 Detalles técnicos</h3>
           <div style={{ display:"flex", flexDirection:"column", gap:"14px" }}>
             <div>
-              <label style={s.label}>Problema detectado *</label>
-              <textarea style={{ ...s.inp, resize:"vertical", minHeight:"80px" }} value={form.problema} onChange={set("problema")} placeholder="¿Cuál era el problema o qué pidió el cliente?" />
+              <label style={label}>Problema detectado *</label>
+              <textarea style={{ ...inp, resize:"vertical", minHeight:"80px" }} value={form.problema} onChange={set("problema")} placeholder="¿Cuál era el problema o qué pidió el cliente?" />
             </div>
             <div>
-              <label style={s.label}>Solución aplicada *</label>
-              <textarea style={{ ...s.inp, resize:"vertical", minHeight:"80px" }} value={form.solucion} onChange={set("solucion")} placeholder="¿Qué hiciste exactamente? ¿Qué materiales usaste?" />
+              <label style={label}>Solución aplicada *</label>
+              <textarea style={{ ...inp, resize:"vertical", minHeight:"80px" }} value={form.solucion} onChange={set("solucion")} placeholder="¿Qué hiciste exactamente?" />
             </div>
             <div>
-              <label style={s.label}>Materiales usados</label>
-              <input style={s.inp} value={form.materiales} onChange={set("materiales")} placeholder="Panel Square D, breakers 15A, cable THW 10 AWG..." />
+              <label style={label}>Materiales usados</label>
+              <input style={inp} value={form.materiales} onChange={set("materiales")} placeholder="Panel Square D, breakers 15A, cable THW..." />
             </div>
           </div>
         </div>
 
-        {/* Evidencia fotográfica */}
-        <div style={s.card}>
-          <h3 style={{ fontWeight:700, fontSize:"15px", marginBottom:"6px" }}>📷 Evidencia fotográfica</h3>
-          <p style={{ color:"#6B7280", fontSize:"13px", marginBottom:"14px" }}>Las fotos antes/después hacen tu perfil más confiable para los clientes.</p>
-          <div style={s.grid2}>
-            {[["antes","Antes"],["despues","Después"]].map(([k, label]) => (
+        {/* Fotos */}
+        <div style={CARD}>
+          <h3 style={{ fontWeight:800, fontSize:"15px", color:"#0F172A", marginBottom:"6px" }}>📷 Evidencia fotográfica</h3>
+          <p style={{ color:"#64748B", fontSize:"13px", marginBottom:"16px" }}>
+            Las fotos antes/después aumentan la confianza de los clientes.
+          </p>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"12px" }}>
+            {[["antes","Antes"],["despues","Después"]].map(([k, lbl]) => (
               <div key={k}>
-                <label style={s.label}>{label}</label>
-                <label style={{ ...s.photo, border: fotos[k] ? "2px solid #D97706" : "2px dashed #D1D5DB", cursor:"pointer" }}>
-                  {fotos[k]
-                    ? <img src={fotos[k]} alt={label} style={{ width:"100%", height:"100%", objectFit:"cover", borderRadius:"10px" }} />
-                    : <>
-                        <span style={{ fontSize:"28px", opacity:0.3 }}>📷</span>
-                        <span style={{ fontSize:"11px", color:"#9CA3AF", textAlign:"center" }}>Toca para subir foto {label.toLowerCase()}</span>
-                      </>
-                  }
+                <label style={label}>{lbl}</label>
+                <label style={{ background: fotos[k] && fotos[k] !== "__loading__" ? "#fff" : "#F8FAFC",
+                                 border: `2px ${fotos[k] ? "solid #F97316" : "dashed #E2E8F0"}`,
+                                 borderRadius:"12px", height:"110px", cursor:"pointer", overflow:"hidden",
+                                 display:"flex", flexDirection:"column", alignItems:"center",
+                                 justifyContent:"center", gap:"6px" }}>
+                  {fotos[k] === "__loading__" && <div style={{ fontSize:"12px", color:"#94A3B8" }}>Procesando...</div>}
+                  {fotos[k] && fotos[k] !== "__loading__" && (
+                    <img src={fotos[k]} alt={lbl} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                  )}
+                  {!fotos[k] && <>
+                    <span style={{ fontSize:"28px", opacity:0.25 }}>📷</span>
+                    <span style={{ fontSize:"11px", color:"#94A3B8", textAlign:"center" }}>Toca para subir foto {lbl.toLowerCase()}</span>
+                  </>}
                   <input type="file" accept="image/*" style={{ display:"none" }} onChange={handleFoto(k)} />
                 </label>
-                {fotos[k] && (
-                  <button onClick={() => setFotos(f => ({ ...f, [k]: null }))} style={{ background:"none", border:"none", color:"#EF4444", fontSize:"11px", marginTop:"4px", cursor:"pointer", fontWeight:600 }}>
-                    Quitar foto
+                {fotos[k] && fotos[k] !== "__loading__" && (
+                  <button onClick={() => setFotos(f => ({ ...f, [k]:null }))}
+                    style={{ background:"none", border:"none", color:"#EF4444", fontSize:"11px", marginTop:"4px", cursor:"pointer", fontWeight:600 }}>
+                    ✕ Quitar foto
                   </button>
                 )}
               </div>
@@ -206,23 +227,31 @@ export default function RegistrarTrabajo({ nav, user }) {
           </div>
         </div>
 
-        {/* Estado del trabajo */}
-        <div style={s.card}>
-          <h3 style={{ fontWeight:700, fontSize:"15px", marginBottom:"12px" }}>Estado del trabajo</h3>
+        {/* Estado */}
+        <div style={CARD}>
+          <h3 style={{ fontWeight:800, fontSize:"15px", color:"#0F172A", marginBottom:"14px" }}>Estado del trabajo</h3>
           <div style={{ display:"flex", gap:"6px", flexWrap:"wrap" }}>
             {ESTADOS.map(e => (
-              <button key={e.id} style={s.chip(form.estado === e.id)} onClick={() => setForm(f => ({ ...f, estado: e.id }))}>
+              <button key={e.id} onClick={() => setForm(f => ({ ...f, estado:e.id }))}
+                style={{ background: form.estado===e.id ? "#F97316" : "#F1F5F9",
+                         color: form.estado===e.id ? "#fff" : "#374151",
+                         border: `1px solid ${form.estado===e.id ? "#F97316" : "#E2E8F0"}`,
+                         borderRadius:"20px", padding:"7px 16px", fontSize:"12px",
+                         fontWeight:600, cursor:"pointer" }}>
                 {e.label}
               </button>
             ))}
           </div>
         </div>
 
-        <button style={{ ...s.btnFull, opacity: loading ? 0.7 : 1 }} onClick={guardar} disabled={loading}>
+        <button onClick={guardar} disabled={loading}
+          style={{ width:"100%", background:"#F97316", color:"#fff", border:"none", borderRadius:"12px",
+                   padding:"15px", fontSize:"15px", fontWeight:800, cursor:"pointer",
+                   opacity: loading ? 0.75 : 1, boxShadow:"0 4px 14px rgba(249,115,22,0.35)" }}>
           {loading ? "Guardando..." : "✅ Guardar en mi historial"}
         </button>
-        <p style={{ fontSize:"11px", color:"#9CA3AF", textAlign:"center", marginTop:"10px" }}>
-          Este trabajo quedará en tu historial profesional y podrá ser visto por clientes potenciales.
+        <p style={{ fontSize:"12px", color:"#94A3B8", textAlign:"center", marginTop:"10px" }}>
+          Este trabajo quedará en tu historial profesional y podrá ser visto por clientes.
         </p>
       </div>
     </div>

@@ -50,16 +50,18 @@ export async function actualizarTecnico(uid, datos) {
   });
 }
 
-export async function buscarTecnicos({ oficio, ciudad, soloVerificados, soloPro, limite = 20 } = {}) {
-  let q = collection(db, "tecnicos");
-  const condiciones = [where("disponible", "==", true)];
-  if (oficio)          condiciones.push(where("oficio", "==", oficio));
-  if (ciudad)          condiciones.push(where("ciudad", "==", ciudad));
-  if (soloVerificados) condiciones.push(where("verificado", "==", true));
-  if (soloPro)         condiciones.push(where("plan", "==", "pro"));
-  q = query(q, ...condiciones, orderBy("rating", "desc"), limit(limite));
+export async function buscarTecnicos({ limite = 100 } = {}) {
+  // No oficio/ciudad filters here — they require composite indexes that may
+  // not exist. Buscar.jsx applies case-insensitive client-side filtering.
+  const q = query(collection(db, "tecnicos"), where("disponible", "==", true), limit(limite));
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  // Sort Pro first, then by rating descending, client-side
+  return docs.sort((a, b) => {
+    if (a.plan === "pro" && b.plan !== "pro") return -1;
+    if (b.plan === "pro" && a.plan !== "pro") return  1;
+    return (b.rating || 0) - (a.rating || 0);
+  });
 }
 
 // ── TRABAJOS (Expedientes) ───────────────────────────────────────────────

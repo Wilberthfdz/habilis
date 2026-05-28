@@ -12,11 +12,23 @@ import RegistrarTrabajo              from "./pages/RegistrarTrabajo.jsx";
 import Bienvenida                    from "./pages/Bienvenida.jsx";
 
 const globalCSS = `
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Inter', system-ui, sans-serif; background: #F4F5F7; color: #111827; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: #F1F5F9; color: #0F172A; -webkit-font-smoothing: antialiased; }
 input, select, textarea, button { font-family: inherit; }
 button { cursor: pointer; }
 a { text-decoration: none; color: inherit; }
+img { max-width: 100%; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes blob { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(30px,-20px) scale(1.06)} 66%{transform:translate(-20px,25px) scale(0.95)} }
+@keyframes blob2 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(-35px,15px) scale(1.08)} 66%{transform:translate(20px,-28px) scale(0.93)} }
+input::placeholder { color: rgba(148,163,184,0.7); }
+input:focus, textarea:focus, select:focus { outline: 2px solid #F97316; outline-offset: -1px; }
+.h-btn-orange { background:#F97316; color:#fff; border:none; border-radius:10px; font-weight:700; cursor:pointer; transition:background 0.15s,transform 0.1s; }
+.h-btn-orange:hover { background:#EA580C; }
+.h-btn-orange:active { transform:scale(0.98); }
+.h-card { background:#fff; border:1px solid #E2E8F0; border-radius:16px; box-shadow:0 1px 3px rgba(0,0,0,0.06); transition:box-shadow 0.2s,transform 0.2s; }
+.h-card:hover { box-shadow:0 8px 24px rgba(0,0,0,0.1); }
 `;
 
 class ErrorBoundary extends React.Component {
