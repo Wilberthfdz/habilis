@@ -25,6 +25,7 @@ export default function Landing({ nav }) {
         <span style={{ ...s.logo, marginBottom:0, fontSize:"15px", padding:"4px 10px" }}>OFICIO</span>
         <div style={{ display:"flex", gap:"8px" }}>
           <button onClick={() => nav("buscar")} style={{ ...s.btnOut, padding:"7px 14px", fontSize:"12px", border:"none" }}>Buscar</button>
+          <button onClick={() => nav("feed")} style={{ ...s.btnOut, padding:"7px 14px", fontSize:"12px", border:"none" }}>Feed</button>
           <button onClick={() => nav("precios")} style={{ ...s.btnOut, padding:"7px 14px", fontSize:"12px", border:"none" }}>Precios</button>
           <button onClick={() => nav("login")} style={{ ...s.btnOut, padding:"7px 14px", fontSize:"12px" }}>Entrar</button>
           <button onClick={() => nav("registro")} style={{ ...s.btn, padding:"7px 14px", fontSize:"12px" }}>Registrarme</button>
