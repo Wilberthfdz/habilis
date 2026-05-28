@@ -29,8 +29,22 @@ export default function PanelTecnico({ nav, user }) {
 
   useEffect(() => {
     if (!user) { nav("login"); return; }
-    obtenerTecnico(user.uid).then(setTecnico);
-    obtenerTrabajosDelTecnico(user.uid).then(setTrabajos);
+    const cargarDatos = async () => {
+      try {
+        const t = await obtenerTecnico(user.uid);
+        if (t) {
+          setTecnico(t);
+          const tr = await obtenerTrabajosDelTecnico(user.uid);
+          setTrabajos(tr);
+        } else {
+          console.error("No se encontró el perfil del técnico");
+          // Si no hay perfil, quizá deba ir a registro o mostrar error
+        }
+      } catch (err) {
+        console.error("Error al cargar datos del panel:", err);
+      }
+    };
+    cargarDatos();
   }, [user]);
 
   const generarRespuestaIA = async () => {

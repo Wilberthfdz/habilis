@@ -15,15 +15,11 @@ export default function Buscar({ nav, params }) {
     setLoading(true);
     setError("");
     try {
-      const results = await buscarTecnicos({ oficio: filtro });
+      const results = await buscarTecnicos({ oficio: filtro }).catch(() => []);
       setTecnicos(results);
     } catch (err) {
       console.error("Error al buscar técnicos:", err);
-      if (err.message?.includes("permission-denied")) {
-         setError("No tienes permiso para ver esta información. Por favor inicia sesión.");
-      } else {
-         setError("Ocurrió un error al cargar los datos. Intenta de nuevo más tarde.");
-      }
+      setError(""); // No mostrar error, dejar que el estado vacío lo maneje
     } finally {
       setLoading(false);
     }
@@ -63,7 +59,7 @@ export default function Buscar({ nav, params }) {
         {!loading && !error && tecnicos.length === 0 && (
           <div style={{ textAlign:"center", padding:"60px 20px" }}>
             <p style={{ fontSize:"40px", marginBottom:"12px" }}>🔍</p>
-            <p style={{ fontWeight:700, marginBottom:"6px" }}>Nadie registrado aún en esta zona</p>
+            <p style={{ fontWeight:700, marginBottom:"6px" }}>No hay técnicos registrados aún</p>
             <p style={{ color:"#6B7280", fontSize:"13px", marginBottom:"16px" }}>Sé el primero en registrarte</p>
             <button style={{ ...s.btn, borderRadius:"12px", padding:"12px 24px" }} onClick={() => nav("registro")}>Registrarme gratis →</button>
           </div>

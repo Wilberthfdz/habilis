@@ -59,8 +59,8 @@ export default function Feed({ nav }) {
       const qSolicitudes = query(collection(db, "solicitudes"), orderBy("createdAt", "desc"), limit(20));
       
       const [snapTrabajos, snapSolicitudes] = await Promise.all([
-        getDocs(qTrabajos),
-        getDocs(qSolicitudes)
+        getDocs(qTrabajos).catch(() => ({ docs: [] })),
+        getDocs(qSolicitudes).catch(() => ({ docs: [] }))
       ]);
 
       const tList = snapTrabajos.docs.map(d => ({ id: d.id, ...d.data(), feedType: 'trabajo' }));
@@ -75,11 +75,7 @@ export default function Feed({ nav }) {
       setPosts(combined);
     } catch (err) {
       console.error("Error al cargar feed:", err);
-      if (err.message?.includes("permission-denied")) {
-         setError("No tienes permiso para ver esta información. Inicia sesión.");
-      } else {
-         setError("Ocurrió un error al cargar el feed. Verifica tus permisos o conexión.");
-      }
+      setError(""); 
     } finally {
       setLoading(false);
     }
@@ -173,7 +169,9 @@ export default function Feed({ nav }) {
         {!loading && !error && filtered.length === 0 && (
           <div style={{ textAlign: "center", padding: "60px 20px", color: "#6B7280" }}>
             <div style={{ fontSize: "40px", marginBottom: "10px" }}>🔍</div>
-            <p>No se encontraron publicaciones con estos filtros.</p>
+            <p style={{ fontWeight: 700, marginBottom: "6px", color: "#374151" }}>Aún no hay publicaciones</p>
+            <p style={{ fontSize: "13px", marginBottom: "16px" }}>Registra tu primer trabajo para aparecer aquí.</p>
+            <button style={{ ...s.btn, background: "#D97706" }} onClick={() => nav("registrarTrabajo")}>Registrar mi trabajo →</button>
           </div>
         )}
       </div>

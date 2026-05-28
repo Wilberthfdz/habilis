@@ -8,10 +8,19 @@ export default function Perfil({ nav, params }) {
 
   useEffect(() => {
     if (!params?.tecnicoId) return;
-    obtenerTecnico(params.tecnicoId).then(t => {
-      setTecnico(t);
-      if (t) obtenerTrabajosDelTecnico(t.uid).then(setTrabajos);
-    });
+    const cargarPerfil = async () => {
+      try {
+        const t = await obtenerTecnico(params.tecnicoId);
+        if (t) {
+          setTecnico(t);
+          const tr = await obtenerTrabajosDelTecnico(params.tecnicoId).catch(() => []);
+          setTrabajos(tr);
+        }
+      } catch (err) {
+        console.error("Error al cargar perfil:", err);
+      }
+    };
+    cargarPerfil();
   }, [params?.tecnicoId]);
 
   const s = {
