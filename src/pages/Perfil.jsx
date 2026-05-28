@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Logo from "../components/Logo.jsx";
 import Nav from "../components/Nav.jsx";
+import Avatar from "../components/Avatar.jsx";
 import { obtenerTecnico, obtenerTrabajosDelTecnico } from "../lib/firebase.js";
 
 const initials = n => ((n||"").trim().charAt(0).toUpperCase()) || "T";
@@ -76,12 +77,7 @@ export default function Perfil({ nav, params, user }) {
           </button>
 
           <div style={{ display:"flex", gap:"18px", alignItems:"flex-start" }}>
-            <div style={{ width:"68px", height:"68px", background:"linear-gradient(135deg,#1E293B,#334155)",
-                          borderRadius:"18px", display:"flex", alignItems:"center", justifyContent:"center",
-                          fontWeight:900, fontSize:"26px", color:"#fff", flexShrink:0,
-                          border: tecnico.plan==="pro" ? "3px solid #F97316" : "3px solid rgba(255,255,255,0.1)" }}>
-              {initials(tecnico.nombre)}
-            </div>
+            <Avatar size={68} nombre={tecnico.nombre} fotoUrl={tecnico.fotoUrl} plan={tecnico.plan} />
             <div>
               <div style={{ display:"flex", alignItems:"center", gap:"8px", flexWrap:"wrap", marginBottom:"4px" }}>
                 <h1 style={{ fontSize:"clamp(20px,3.5vw,28px)", fontWeight:900, color:"#fff" }}>{tecnico.nombre}</h1>

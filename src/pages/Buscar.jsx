@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Logo from "../components/Logo.jsx";
 import Nav from "../components/Nav.jsx";
+import Avatar from "../components/Avatar.jsx";
 import { buscarTecnicos } from "../lib/firebase.js";
 
 const CATS = [
@@ -146,13 +147,7 @@ export default function Buscar({ nav, user, params }) {
                   onClick={() => nav("perfil", { tecnicoId:t.id })}>
                   <div style={{ display:"flex", gap:"16px", alignItems:"flex-start" }}>
                     {/* Avatar */}
-                    <div style={{ width:"54px", height:"54px", flexShrink:0,
-                                  background:"linear-gradient(135deg,#0F172A,#1E3A5F)",
-                                  borderRadius:"14px", display:"flex", alignItems:"center",
-                                  justifyContent:"center", fontWeight:900, fontSize:"20px", color:"#fff",
-                                  border: t.plan==="pro" ? "2.5px solid #F97316" : "2.5px solid transparent" }}>
-                      {initials(t.nombre)}
-                    </div>
+                    <Avatar size={54} nombre={t.nombre} fotoUrl={t.fotoUrl} plan={t.plan} />
                     {/* Info */}
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ display:"flex", alignItems:"center", gap:"8px", flexWrap:"wrap", marginBottom:"3px" }}>

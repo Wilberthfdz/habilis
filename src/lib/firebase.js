@@ -125,6 +125,17 @@ export async function subirFoto(trabajoId, archivo, etiqueta = "evidencia") {
   return url;
 }
 
+// ── FOTO DE PERFIL ───────────────────────────────────────────────────────
+// Uploads the file to Storage, saves the URL in the technician's Firestore doc,
+// and returns the URL so the caller can update local state immediately.
+export async function subirFotoPerfil(uid, archivo) {
+  const storageRef = ref(storage, `perfiles/${uid}/foto`);
+  const snap = await uploadBytes(storageRef, archivo);
+  const url  = await getDownloadURL(snap.ref);
+  await updateDoc(doc(db, "tecnicos", uid), { fotoUrl: url, updatedAt: serverTimestamp() });
+  return url;
+}
+
 // ── SUSCRIPCIONES ────────────────────────────────────────────────────────
 export async function activarPlanPro(uid, datosConekta) {
   // Aquí va la integración con Conekta para cobrar $100 MXN/mes

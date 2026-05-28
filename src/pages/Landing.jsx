@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Logo from "../components/Logo.jsx";
 import Nav from "../components/Nav.jsx";
+import Avatar from "../components/Avatar.jsx";
 import { buscarTecnicos } from "../lib/firebase.js";
 
 const CATS = [
@@ -234,13 +235,7 @@ export default function Landing({ nav, user }) {
               {featured.map(t => (
                 <div key={t.id} className="lnd-tech" onClick={() => nav("perfil", { tecnicoId:t.id })}>
                   <div style={{ display:"flex", gap:"12px", alignItems:"flex-start", marginBottom:"14px" }}>
-                    <div style={{ width:"50px", height:"50px", flexShrink:0,
-                                  background:"linear-gradient(135deg,#0F172A,#1E3A5F)",
-                                  borderRadius:"13px", display:"flex", alignItems:"center",
-                                  justifyContent:"center", fontWeight:900, fontSize:"20px", color:"#fff",
-                                  border: t.plan==="pro" ? "2px solid #F97316" : "2px solid transparent" }}>
-                      {(t.nombre||"T").charAt(0).toUpperCase()}
-                    </div>
+                    <Avatar size={50} nombre={t.nombre} fotoUrl={t.fotoUrl} plan={t.plan} />
                     <div style={{ flex:1 }}>
                       <p style={{ fontWeight:700, fontSize:"15px", color:"#0F172A", marginBottom:"2px" }}>{t.nombre}</p>
                       <p style={{ color:"#F97316", fontSize:"13px", fontWeight:600 }}>{t.oficio}</p>

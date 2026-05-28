@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import Logo from "../components/Logo.jsx";
 import Nav from "../components/Nav.jsx";
-import { obtenerTecnico, obtenerTrabajosDelTecnico, cerrarSesion } from "../lib/firebase.js";
+import { obtenerTecnico, obtenerTrabajosDelTecnico, cerrarSesion, subirFotoPerfil } from "../lib/firebase.js";
+import Avatar from "../components/Avatar.jsx";
 import { sugerirRespuesta } from "../lib/gemini.js";
 
 const fmt = n => `$${(n||0).toLocaleString("es-MX")}`;
@@ -23,6 +24,8 @@ export default function PanelTecnico({ nav, user }) {
   const [aiResp,        setAiResp]        = useState("");
   const [aiLoading,     setAiLoading]     = useState(false);
   const [solicitudDemo, setSolicitudDemo] = useState("Necesito instalar un foco nuevo en la cocina, ¿puede venir mañana?");
+  const [uploadingPhoto,setUploadingPhoto]= useState(false);
+  const [photoError,    setPhotoError]    = useState("");
 
   useEffect(() => {
     if (!user) { nav("login"); return; }
@@ -39,6 +42,40 @@ export default function PanelTecnico({ nav, user }) {
   }, [user]);
 
   const logout = async () => { await cerrarSesion(); nav("landing"); };
+
+  const handleFotoChange = async e => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setPhotoError(""); setUploadingPhoto(true);
+    try {
+      // Compress to max 400px before uploading
+      const compressed = await new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const img = new Image();
+          img.onload = () => {
+            const MAX = 400;
+            let w = img.width, h = img.height;
+            if (w > MAX || h > MAX) {
+              if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+              else { w = Math.round(w * MAX / h); h = MAX; }
+            }
+            const canvas = document.createElement("canvas");
+            canvas.width = w; canvas.height = h;
+            canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+            canvas.toBlob(b => resolve(b), "image/jpeg", 0.85);
+          };
+          img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+      const url = await subirFotoPerfil(user.uid, compressed);
+      setTecnico(t => ({ ...t, fotoUrl: url }));
+    } catch (err) {
+      console.error(err);
+      setPhotoError("Error al subir la foto. Intenta de nuevo.");
+    } finally { setUploadingPhoto(false); }
+  };
 
   const genAI = async () => {
     if (!tecnico) return;
@@ -104,12 +141,7 @@ export default function PanelTecnico({ nav, user }) {
         <div style={{ maxWidth:"960px", margin:"0 auto", position:"relative", zIndex:1 }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", flexWrap:"wrap", gap:"16px" }}>
             <div style={{ display:"flex", alignItems:"center", gap:"14px" }}>
-              <div style={{ width:"52px", height:"52px", background:"linear-gradient(135deg,#1E293B,#334155)",
-                            border:"2.5px solid #F97316", borderRadius:"14px", display:"flex",
-                            alignItems:"center", justifyContent:"center", fontWeight:900,
-                            fontSize:"20px", color:"#fff", flexShrink:0 }}>
-                {initials(tecnico.nombre)}
-              </div>
+              <Avatar size={52} nombre={tecnico.nombre} fotoUrl={tecnico.fotoUrl} plan={tecnico.plan} uploading={uploadingPhoto} />
               <div>
                 <p style={{ color:"rgba(255,255,255,0.5)", fontSize:"12px", marginBottom:"3px" }}>Bienvenido de vuelta</p>
                 <h1 style={{ fontSize:"clamp(18px,3vw,26px)", fontWeight:900, color:"#fff" }}>
@@ -326,6 +358,46 @@ export default function PanelTecnico({ nav, user }) {
         {/* ── CONFIGURAR ── */}
         {tab === "config" && (
           <div style={{ display:"flex", flexDirection:"column", gap:"14px" }}>
+
+            {/* ── PHOTO UPLOAD ── */}
+            <div style={CARD}>
+              <h3 style={{ fontWeight:800, fontSize:"15px", color:"#0F172A", marginBottom:"16px" }}>Foto de perfil</h3>
+              <div style={{ display:"flex", alignItems:"center", gap:"20px" }}>
+                <div style={{ position:"relative", flexShrink:0 }}>
+                  <Avatar size={80} nombre={tecnico.nombre} fotoUrl={tecnico.fotoUrl} plan={tecnico.plan} uploading={uploadingPhoto} />
+                  {/* Camera badge */}
+                  <label style={{ position:"absolute", bottom:"0", right:"0",
+                                   background:"#F97316", border:"2.5px solid #fff", borderRadius:"50%",
+                                   width:"28px", height:"28px", display:"flex", alignItems:"center",
+                                   justifyContent:"center", cursor:"pointer", fontSize:"13px",
+                                   boxShadow:"0 2px 6px rgba(0,0,0,0.18)" }}>
+                    📷
+                    <input type="file" accept="image/*" capture="environment"
+                           style={{ display:"none" }} onChange={handleFotoChange}
+                           disabled={uploadingPhoto} />
+                  </label>
+                </div>
+                <div>
+                  <p style={{ fontWeight:700, fontSize:"14px", color:"#0F172A", marginBottom:"4px" }}>
+                    {tecnico.fotoUrl ? "Cambiar foto" : "Subir foto de perfil"}
+                  </p>
+                  <p style={{ fontSize:"12px", color:"#94A3B8", lineHeight:1.5, marginBottom:"10px" }}>
+                    {uploadingPhoto ? "Subiendo..." : "JPG o PNG · Máx. 400×400px · Se comprime automáticamente"}
+                  </p>
+                  <label style={{ background:"#F1F5F9", color:"#0F172A", border:"1px solid #E2E8F0",
+                                   borderRadius:"8px", padding:"7px 14px", fontSize:"13px",
+                                   fontWeight:600, cursor:"pointer", display:"inline-block" }}>
+                    {uploadingPhoto ? "Subiendo..." : "Seleccionar foto"}
+                    <input type="file" accept="image/*" style={{ display:"none" }}
+                           onChange={handleFotoChange} disabled={uploadingPhoto} />
+                  </label>
+                </div>
+              </div>
+              {photoError && (
+                <p style={{ color:"#DC2626", fontSize:"12px", marginTop:"10px" }}>{photoError}</p>
+              )}
+            </div>
+
             <div style={CARD}>
               <h3 style={{ fontWeight:800, fontSize:"15px", color:"#0F172A", marginBottom:"16px" }}>Mi información</h3>
               {[
