@@ -50,7 +50,8 @@ export default function Registro({ nav, user, params }) {
       setPerfilIA(mejorado);
       setForm(f => ({ ...f, perfilFinal: mejorado }));
     } catch (e) {
-      setError("Error con Gemini IA. Revisa tu API key.");
+      console.error("Gemini AI failed:", e);
+      // Optional: set a non-blocking UI hint that the AI enhancement didn't work
     } finally {
       setAiLoading(false);
     }
@@ -145,13 +146,13 @@ export default function Registro({ nav, user, params }) {
                   placeholder="Soy electricista con 10 años de experiencia, hago instalaciones en casas y negocios, tengo mis herramientas y garantizo mi trabajo..." />
                 <button style={{ ...s.aiBtn, marginTop:"8px" }} onClick={mejorarConIA} disabled={aiLoading || !form.textoRaw}>
                   {aiLoading && <span style={s.spinner} />}
-                  {aiLoading ? "Gemini mejorando..." : "✨ Mejorar con Gemini IA"}
+                  {aiLoading ? "Gemini mejorando..." : "✨ Mejorar con Gemini (Opcional)"}
                 </button>
               </div>
 
               {perfilIA && (
                 <div style={s.aiBox}>
-                  <p style={{ fontSize:"11px", fontWeight:700, color:"#92400E", marginBottom:"8px" }}>✅ VERSIÓN MEJORADA POR GEMINI</p>
+                  <p style={{ fontSize:"11px", fontWeight:700, color:"#92400E", marginBottom:"8px" }}>✅ VERSIÓN MEJORADA POR GEMINI (OPCIONAL)</p>
                   <textarea style={{ ...s.inp, resize:"vertical", minHeight:"120px", background:"transparent", border:"none", padding:"0", fontSize:"13px", lineHeight:"1.6" }}
                     value={form.perfilFinal} onChange={set("perfilFinal")} />
                   <p style={{ fontSize:"11px", color:"#92400E", marginTop:"6px" }}>Puedes editar el texto antes de publicar.</p>
