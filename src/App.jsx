@@ -89,7 +89,7 @@ export default function App() {
       case "precios": return <Precios {...screenProps} />;
       case "feed": return <Feed {...screenProps} />;
       case "buscar": return <Buscar {...screenProps} params={params} />;
-      case "perfil": return <Perfil {...screenProps} params={params} />;
+      case "perfil": return <Perfil {...screenProps} params={params} user={user} />;
       case "panel": return <PanelTecnico {...screenProps} />;
       case "registrarTrabajo": return <RegistrarTrabajo {...screenProps} params={params} />;
       case "bienvenida": return <Bienvenida {...screenProps} />;
