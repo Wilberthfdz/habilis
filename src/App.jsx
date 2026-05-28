@@ -10,6 +10,7 @@ import Buscar                        from "./pages/Buscar.jsx";
 import PanelTecnico                  from "./pages/PanelTecnico.jsx";
 import RegistrarTrabajo              from "./pages/RegistrarTrabajo.jsx";
 import Bienvenida                    from "./pages/Bienvenida.jsx";
+import CompletarPerfil               from "./pages/CompletarPerfil.jsx";
 
 const globalCSS = `
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -104,7 +105,8 @@ export default function App() {
       case "perfil": return <Perfil {...screenProps} params={params} user={user} />;
       case "panel": return <PanelTecnico {...screenProps} />;
       case "registrarTrabajo": return <RegistrarTrabajo {...screenProps} params={params} />;
-      case "bienvenida": return <Bienvenida {...screenProps} />;
+      case "bienvenida":      return <Bienvenida {...screenProps} />;
+      case "completarPerfil": return <CompletarPerfil {...screenProps} />;
       default: return <Landing {...screenProps} />;
     }
   };

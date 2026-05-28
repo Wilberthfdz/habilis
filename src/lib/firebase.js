@@ -1,6 +1,6 @@
 // ─── FIREBASE SERVICE — Base de datos, auth y storage ────────────────────
 import { initializeApp }                   from "firebase/app";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, where, orderBy, limit, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { firebaseConfig }                  from "./config.js";
@@ -21,6 +21,11 @@ export const iniciarSesion = (email, password) =>
 export const cerrarSesion = () => signOut(auth);
 
 export const onAuth = (callback) => onAuthStateChanged(auth, callback);
+
+// Google Sign-In — prompt:"select_account" forces account picker every time
+const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: "select_account" });
+export const loginConGoogle = () => signInWithPopup(auth, googleProvider);
 
 // ── TÉCNICOS ────────────────────────────────────────────────────────────
 export async function crearPerfilTecnico(uid, datos) {
