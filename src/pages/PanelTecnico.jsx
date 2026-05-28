@@ -28,7 +28,7 @@ export default function PanelTecnico({ nav, user }) {
   const [solicitudDemo, setSolicitudDemo] = useState("Necesito instalar un foco nuevo en la cocina, ¿puede venir mañana?");
 
   useEffect(() => {
-    if (!user) { nav("landing"); return; }
+    if (!user) { nav("login"); return; }
     obtenerTecnico(user.uid).then(setTecnico);
     obtenerTrabajosDelTecnico(user.uid).then(setTrabajos);
   }, [user]);

@@ -3,6 +3,8 @@ import { useState, useEffect }       from "react";
 import { onAuth }                    from "./lib/firebase.js";
 import Landing                       from "./pages/Landing.jsx";
 import Registro                      from "./pages/Registro.jsx";
+import Login                         from "./pages/Login.jsx";
+import Precios                       from "./pages/Precios.jsx";
 import Perfil                        from "./pages/Perfil.jsx";
 import Buscar                        from "./pages/Buscar.jsx";
 import PanelTecnico                  from "./pages/PanelTecnico.jsx";
@@ -52,6 +54,8 @@ export default function App() {
       <style>{globalCSS}</style>
       {screen === "landing"          && <Landing        {...screenProps} />}
       {screen === "registro"         && <Registro       {...screenProps} params={params} />}
+      {screen === "login"            && <Login          {...screenProps} />}
+      {screen === "precios"          && <Precios        {...screenProps} />}
       {screen === "buscar"           && <Buscar         {...screenProps} params={params} />}
       {screen === "perfil"           && <Perfil         {...screenProps} params={params} />}
       {screen === "panel"            && <PanelTecnico   {...screenProps} />}
