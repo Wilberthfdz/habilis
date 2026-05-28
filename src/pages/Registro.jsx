@@ -63,10 +63,13 @@ export default function Registro({ nav, user, params }) {
 
     // Timeout de seguridad: si tarda más de 12 segundos, cancelamos el loading visual
     const timeout = setTimeout(() => {
-      if (loading) {
-        setLoading(false);
-        setError("La operación está tardando demasiado. Revisa tu conexión.");
-      }
+      setLoading(curr => {
+        if (curr) {
+          setError("La operación está tardando demasiado. Revisa tu conexión o intenta de nuevo.");
+          return false;
+        }
+        return curr;
+      });
     }, 12000);
 
     try {
@@ -95,12 +98,12 @@ export default function Registro({ nav, user, params }) {
       
       let msg = "Error al registrar. Intenta de nuevo.";
       if (e.code === "auth/email-already-in-use") msg = "Ese correo ya está registrado.";
-      if (e.code === "auth/invalid-email") msg = "Correo electrónico no válido.";
-      if (e.code === "auth/weak-password") msg = "La contraseña es muy débil (mínimo 6 caracteres).";
-      if (e.message?.includes("permission-denied")) msg = "Error de permisos en la base de datos.";
+      else if (e.code === "auth/invalid-email") msg = "Correo electrónico no válido.";
+      else if (e.code === "auth/weak-password") msg = "La contraseña es muy débil (mínimo 6 caracteres).";
+      else if (e.message?.includes("permission-denied")) msg = "Error de permisos en la base de datos.";
+      else if (e.message) msg = e.message;
       
       setError(msg);
-    } finally {
       setLoading(false);
     }
   };
