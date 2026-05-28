@@ -60,24 +60,46 @@ export default function Registro({ nav, user, params }) {
   const handleSubmit = async () => {
     setError("");
     setLoading(true);
+
+    // Timeout de seguridad: si tarda más de 12 segundos, cancelamos el loading visual
+    const timeout = setTimeout(() => {
+      if (loading) {
+        setLoading(false);
+        setError("La operación está tardando demasiado. Revisa tu conexión.");
+      }
+    }, 12000);
+
     try {
+      console.log("Iniciando registro para:", form.email);
       const cred = await registrarUsuario(form.email, form.password);
+      console.log("Usuario creado en Auth, creando perfil en DB...");
+
       await crearPerfilTecnico(cred.user.uid, {
         nombre:        `${form.nombre} ${form.apellido}`.trim(),
         email:         form.email,
         oficio:        form.oficio,
         ciudad:        form.ciudad,
         experiencia:   parseInt(form.experiencia) || 0,
-        bio:           form.perfilFinal || form.textoRaw,
+        bio:           form.perfilFinal || form.textoRaw || "",
         herramientas:  form.herramientas,
-        disponibilidad:form.disponibilidad,
+        disponibilidad:form.disponibilidad || "",
         tipo:          "tecnico",
       });
+      
+      console.log("Perfil creado exitosamente.");
+      clearTimeout(timeout);
       nav("panel");
     } catch (e) {
-      setError(e.code === "auth/email-already-in-use"
-        ? "Ese correo ya está registrado."
-        : "Error al registrar. Intenta de nuevo.");
+      clearTimeout(timeout);
+      console.error("Error detallado en registro:", e);
+      
+      let msg = "Error al registrar. Intenta de nuevo.";
+      if (e.code === "auth/email-already-in-use") msg = "Ese correo ya está registrado.";
+      if (e.code === "auth/invalid-email") msg = "Correo electrónico no válido.";
+      if (e.code === "auth/weak-password") msg = "La contraseña es muy débil (mínimo 6 caracteres).";
+      if (e.message?.includes("permission-denied")) msg = "Error de permisos en la base de datos.";
+      
+      setError(msg);
     } finally {
       setLoading(false);
     }
