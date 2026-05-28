@@ -1,12 +1,10 @@
-// ─── REGISTRO — Con mejora de perfil por Gemini IA ───────────────────────
-import { useState }              from "react";
+import { useState } from "react";
 import { registrarUsuario, crearPerfilTecnico } from "../lib/firebase.js";
-import { mejorarPerfil }         from "../lib/gemini.js";
 
 const OFICIOS = ["Electricista","Plomero","Técnico HVAC / Minisplits","Albañil","Tablaroquero","Mecánico","Técnico en redes","Instalador CCTV","Pintor","Soldador","Refrigeración","Otro"];
 
 const s = {
-  page:    { minHeight:"100vh", background:"#F4F5F7" },
+  page:    { minHeight:"100vh", background:"#F4F5F7", fontFamily: "'Inter', sans-serif" },
   header:  { background:"#1E2A3B", color:"#fff", padding:"16px 20px", display:"flex", alignItems:"center", gap:"16px" },
   logo:    { background:"#D97706", color:"#fff", fontWeight:800, fontSize:"15px", padding:"4px 10px", borderRadius:"8px" },
   wrap:    { maxWidth:"560px", margin:"0 auto", padding:"32px 20px" },
@@ -15,53 +13,31 @@ const s = {
   sub:     { color:"#6B7280", fontSize:"14px", marginBottom:"24px" },
   label:   { display:"block", fontSize:"11px", fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:"5px" },
   inp:     { width:"100%", border:"1px solid #D1D5DB", borderRadius:"10px", padding:"10px 14px", fontSize:"13px", outline:"none", background:"#F9FAFB" },
-  btn:     { width:"100%", background:"#D97706", color:"#fff", border:"none", borderRadius:"10px", padding:"12px", fontSize:"14px", fontWeight:700 },
-  btnSec:  { width:"100%", background:"#fff", color:"#374151", border:"1px solid #D1D5DB", borderRadius:"10px", padding:"12px", fontSize:"14px", fontWeight:600 },
+  btn:     { width:"100%", background:"#D97706", color:"#fff", border:"none", borderRadius:"10px", padding:"12px", fontSize:"14px", fontWeight:700, cursor: "pointer" },
+  btnSec:  { width:"100%", background:"#fff", color:"#374151", border:"1px solid #D1D5DB", borderRadius:"10px", padding:"12px", fontSize:"14px", fontWeight:600, cursor: "pointer" },
   grid2:   { display:"grid", gridTemplateColumns:"1fr 1fr", gap:"14px" },
   err:     { background:"#FEE2E2", border:"1px solid #FECACA", borderRadius:"10px", padding:"10px 14px", fontSize:"13px", color:"#991B1B" },
-  aiBox:   { background:"#FFFBEB", border:"1px solid #FDE68A", borderRadius:"12px", padding:"16px", marginTop:"12px" },
-  aiBtn:   { background:"#D97706", color:"#fff", border:"none", borderRadius:"8px", padding:"8px 14px", fontSize:"12px", fontWeight:700 },
   spinner: { width:"16px", height:"16px", border:"2px solid rgba(255,255,255,0.4)", borderTopColor:"#fff", borderRadius:"50%", display:"inline-block", animation:"spin 0.8s linear infinite", marginRight:"6px" },
 };
 
-export default function Registro({ nav, user, params }) {
-  const modo = params?.modo || "tecnico"; // tecnico | cliente
-
+export default function Registro({ nav }) {
   const [step,       setStep]       = useState(1);
   const [loading,    setLoading]    = useState(false);
-  const [aiLoading,  setAiLoading]  = useState(false);
   const [error,      setError]      = useState("");
-  const [perfilIA,   setPerfilIA]   = useState("");
 
   const [form, setForm] = useState({
     nombre:"", apellido:"", email:"", password:"",
     oficio:"Electricista", ciudad:"", experiencia:"",
-    textoRaw:"", perfilFinal:"",
-    especialidades:[], herramientas:false, disponibilidad:"",
+    descripcion:"",
+    herramientas:false, disponibilidad:"",
   });
 
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
-
-  const mejorarConIA = async () => {
-    if (!form.textoRaw.trim()) return;
-    setAiLoading(true);
-    try {
-      const mejorado = await mejorarPerfil(form.textoRaw, form.oficio);
-      setPerfilIA(mejorado);
-      setForm(f => ({ ...f, perfilFinal: mejorado }));
-    } catch (e) {
-      console.error("Gemini AI failed:", e);
-      // Optional: set a non-blocking UI hint that the AI enhancement didn't work
-    } finally {
-      setAiLoading(false);
-    }
-  };
 
   const handleSubmit = async () => {
     setError("");
     setLoading(true);
 
-    // Timeout de seguridad: si tarda más de 12 segundos, cancelamos el loading visual
     const timeout = setTimeout(() => {
       setLoading(curr => {
         if (curr) {
@@ -73,28 +49,24 @@ export default function Registro({ nav, user, params }) {
     }, 12000);
 
     try {
-      console.log("Iniciando registro para:", form.email);
       const cred = await registrarUsuario(form.email, form.password);
-      console.log("Usuario creado en Auth, creando perfil en DB...");
-
       await crearPerfilTecnico(cred.user.uid, {
         nombre:        `${form.nombre} ${form.apellido}`.trim(),
         email:         form.email,
         oficio:        form.oficio,
         ciudad:        form.ciudad,
         experiencia:   parseInt(form.experiencia) || 0,
-        bio:           form.perfilFinal || form.textoRaw || "",
+        bio:           form.descripcion || "",
         herramientas:  form.herramientas,
         disponibilidad:form.disponibilidad || "",
         tipo:          "tecnico",
       });
       
-      console.log("Perfil creado exitosamente.");
       clearTimeout(timeout);
-      nav("panel");
+      nav("bienvenida");
     } catch (e) {
       clearTimeout(timeout);
-      console.error("Error detallado en registro:", e);
+      console.error("Error en registro:", e);
       
       let msg = "Error al registrar. Intenta de nuevo.";
       if (e.code === "auth/email-already-in-use") msg = "Ese correo ya está registrado.";
@@ -111,14 +83,14 @@ export default function Registro({ nav, user, params }) {
   return (
     <div style={s.page}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       <div style={s.header}>
-        <button onClick={() => nav("landing")} style={{ background:"none", border:"none", color:"rgba(255,255,255,0.6)", fontSize:"13px", fontWeight:600 }}>← Inicio</button>
+        <button onClick={() => nav("landing")} style={{ background:"none", border:"none", color:"rgba(255,255,255,0.6)", fontSize:"13px", fontWeight:600, cursor: "pointer" }}>← Inicio</button>
         <span style={s.logo}>OFICIO</span>
         <span style={{ color:"rgba(255,255,255,0.5)", fontSize:"13px" }}>Crear perfil técnico</span>
       </div>
 
       <div style={s.wrap}>
-        {/* Progress */}
         <div style={{ display:"flex", gap:"8px", marginBottom:"24px" }}>
           {[1,2,3].map(n => (
             <div key={n} style={{ flex:1, height:"4px", borderRadius:"2px", background: step >= n ? "#D97706" : "#E5E7EB" }} />
@@ -126,7 +98,6 @@ export default function Registro({ nav, user, params }) {
         </div>
 
         <div style={s.card}>
-          {/* STEP 1: Datos básicos */}
           {step === 1 && (
             <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
               <div>
@@ -156,33 +127,19 @@ export default function Registro({ nav, user, params }) {
             </div>
           )}
 
-          {/* STEP 2: Perfil con IA */}
           {step === 2 && (
             <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
               <div>
                 <h1 style={s.h1}>Cuéntanos sobre ti</h1>
-                <p style={s.sub}>Escribe como quieras — la IA de Gemini lo mejora.</p>
+                <p style={s.sub}>Escribe una descripción profesional para tu perfil.</p>
               </div>
 
               <div>
-                <label style={s.label}>Descríbete con tus propias palabras</label>
-                <textarea style={{ ...s.inp, resize:"vertical", minHeight:"100px" }}
-                  value={form.textoRaw} onChange={set("textoRaw")}
+                <label style={s.label}>Descripción</label>
+                <textarea style={{ ...s.inp, resize:"vertical", minHeight:"120px" }}
+                  value={form.descripcion} onChange={set("descripcion")}
                   placeholder="Soy electricista con 10 años de experiencia, hago instalaciones en casas y negocios, tengo mis herramientas y garantizo mi trabajo..." />
-                <button style={{ ...s.aiBtn, marginTop:"8px" }} onClick={mejorarConIA} disabled={aiLoading || !form.textoRaw}>
-                  {aiLoading && <span style={s.spinner} />}
-                  {aiLoading ? "Gemini mejorando..." : "✨ Mejorar con Gemini (Opcional)"}
-                </button>
               </div>
-
-              {perfilIA && (
-                <div style={s.aiBox}>
-                  <p style={{ fontSize:"11px", fontWeight:700, color:"#92400E", marginBottom:"8px" }}>✅ VERSIÓN MEJORADA POR GEMINI (OPCIONAL)</p>
-                  <textarea style={{ ...s.inp, resize:"vertical", minHeight:"120px", background:"transparent", border:"none", padding:"0", fontSize:"13px", lineHeight:"1.6" }}
-                    value={form.perfilFinal} onChange={set("perfilFinal")} />
-                  <p style={{ fontSize:"11px", color:"#92400E", marginTop:"6px" }}>Puedes editar el texto antes de publicar.</p>
-                </div>
-              )}
 
               <div>
                 <label style={s.label}>Disponibilidad</label>
@@ -201,7 +158,6 @@ export default function Registro({ nav, user, params }) {
             </div>
           )}
 
-          {/* STEP 3: Confirmar y crear cuenta */}
           {step === 3 && (
             <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
               <div>
@@ -215,18 +171,13 @@ export default function Registro({ nav, user, params }) {
                   ["Oficio",      form.oficio],
                   ["Ciudad",      form.ciudad],
                   ["Experiencia", `${form.experiencia} años`],
-                  ["Plan",        "Gratuito — puedes actualizar a Pro después"],
+                  ["Plan",        "Gratuito"],
                 ].map(([k, v]) => (
                   <div key={k} style={{ display:"flex", justifyContent:"space-between", fontSize:"13px" }}>
                     <span style={{ color:"#6B7280" }}>{k}</span>
                     <span style={{ fontWeight:600 }}>{v}</span>
                   </div>
                 ))}
-              </div>
-
-              <div style={{ background:"#FEF3C7", border:"1px solid #FDE68A", borderRadius:"10px", padding:"12px", fontSize:"13px", color:"#92400E" }}>
-                🔑 Tu perfil aparecerá en búsquedas en las próximas 24 horas después de revisión.
-                Para aparecer primero, actualiza a <b>Plan Pro por $100 MXN/mes</b>.
               </div>
 
               {error && <div style={s.err}>{error}</div>}
@@ -238,10 +189,6 @@ export default function Registro({ nav, user, params }) {
                   {loading ? "Creando cuenta..." : "Crear mi perfil gratis →"}
                 </button>
               </div>
-
-              <p style={{ fontSize:"11px", color:"#9CA3AF", textAlign:"center", lineHeight:"1.5" }}>
-                Al registrarte aceptas los términos. Oficio.mx conecta técnicos con clientes pero no garantiza trabajos ni se responsabiliza por acuerdos entre partes.
-              </p>
             </div>
           )}
         </div>
