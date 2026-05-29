@@ -21,6 +21,7 @@ export default function Nav({ nav, user, onLogout }) {
         {link("Buscar","buscar")}
         {link("Feed","feed")}
         {link("Precios","precios")}
+        {user && link("🛡️ Care","habilisCare")}
         <div style={{ width:"1px", height:"18px", background:"rgba(255,255,255,0.15)", margin:"0 8px" }} />
         {user ? (
           <>

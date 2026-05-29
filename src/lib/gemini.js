@@ -122,6 +122,33 @@ Responde SOLO con JSON: { "esSpam": true|false, "razon": "explicación o null", 
   }
 }
 
+// ── 5a. HABILIS CARE — TIPS DE MANTENIMIENTO ────────────────────────────────
+export async function generarTipsMantenimiento(tipo, marca, modelo) {
+  const prompt = `Eres experto en mantenimiento preventivo de equipos para el mercado mexicano.
+
+Equipo: ${tipo} marca "${marca || "desconocida"}" modelo "${modelo || "desconocido"}"
+
+Genera exactamente 3 consejos de mantenimiento preventivo específicos y prácticos en español.
+Incluye también 1 señal de alerta crítica a vigilar.
+
+Responde SOLO con JSON válido:
+{
+  "tips": ["consejo específico 1", "consejo específico 2", "consejo específico 3"],
+  "alerta": "señal de alerta principal",
+  "frecuencia": "resumen de frecuencia recomendada en una línea"
+}`;
+  try {
+    const raw = await callGemini(prompt, 0.4);
+    return JSON.parse(raw.replace(/```json|```/g, "").trim());
+  } catch {
+    return {
+      tips: ["Realiza limpieza y revisión visual periódica", "Verifica conexiones y sellos contra humedad", "Registra cada servicio con fecha y costo en Habilis Care"],
+      alerta: "Ruidos inusuales o caída de rendimiento indican servicio urgente",
+      frecuencia: "Consulta el manual del fabricante para intervalos exactos",
+    };
+  }
+}
+
 // ── 5. SUGERENCIA DE TÉCNICOS ────────────────────────────────────────────────
 export async function sugerirTecnicos(solicitud, tecnicos) {
   const lista = tecnicos.map(t =>

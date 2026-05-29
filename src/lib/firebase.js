@@ -141,6 +141,49 @@ export async function subirFotoPerfil(uid, blob) {
   return base64;
 }
 
+// ── HABILIS CARE — ACTIVOS ───────────────────────────────────────────────
+export async function crearActivo(userId, datos) {
+  const ref = await addDoc(collection(db, "activos"), {
+    ...datos,
+    userId,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function obtenerActivos(userId) {
+  // Simple single-field query — sorts client-side to avoid composite index
+  const q    = query(collection(db, "activos"), where("userId", "==", userId));
+  const snap = await getDocs(q);
+  const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return docs.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+}
+
+export async function actualizarActivo(activoId, datos) {
+  await updateDoc(doc(db, "activos", activoId), { ...datos, updatedAt: serverTimestamp() });
+}
+
+export async function eliminarActivo(activoId) {
+  await updateDoc(doc(db, "activos", activoId), { eliminado: true, updatedAt: serverTimestamp() });
+}
+
+// ── HABILIS CARE — SERVICIOS ─────────────────────────────────────────────
+export async function crearServicio(datos) {
+  const ref = await addDoc(collection(db, "servicios"), {
+    ...datos,
+    createdAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function obtenerServicios(activoId) {
+  const q    = query(collection(db, "servicios"), where("activoId", "==", activoId), limit(20));
+  const snap = await getDocs(q);
+  const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return docs.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+}
+
 // ── SUSCRIPCIONES ────────────────────────────────────────────────────────
 export async function activarPlanPro(uid, datosConekta) {
   // Aquí va la integración con Conekta para cobrar $100 MXN/mes

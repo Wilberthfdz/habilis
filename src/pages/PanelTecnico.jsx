@@ -195,6 +195,9 @@ export default function PanelTecnico({ nav, user }) {
           {[["inicio","Inicio"],["trabajos","Mis trabajos"],["ia","✨ IA"],["config","Configurar"]].map(([id,label]) => (
             <button key={id} style={TAB(id)} onClick={() => setTab(id)}>{label}</button>
           ))}
+          <button style={{ ...TAB(false), color:"#F97316", fontWeight:800 }} onClick={() => nav("habilisCare")}>
+            🛡️ Mis equipos
+          </button>
         </div>
 
         {/* ── INICIO ── */}
@@ -239,6 +242,26 @@ export default function PanelTecnico({ nav, user }) {
                   <button style={BTN_SM} onClick={() => setTab("ia")}>Responder</button>
                 </div>
               ))}
+            </div>
+
+            {/* CTRL+W Integration */}
+            <div style={{ background:"#0F172A", borderRadius:"16px", padding:"18px 20px",
+                          display:"flex", gap:"14px", alignItems:"center", flexWrap:"wrap",
+                          boxShadow:"0 4px 12px rgba(15,23,42,0.15)" }}>
+              <div style={{ flex:1 }}>
+                <p style={{ fontWeight:800, fontSize:"14px", color:"#fff", marginBottom:"3px" }}>
+                  💼 Cotizaciones CTRL+W
+                </p>
+                <p style={{ fontSize:"12px", color:"rgba(255,255,255,0.5)", lineHeight:1.5 }}>
+                  Crea cotizaciones profesionales con productos reales y envíalas por WhatsApp al cliente.
+                </p>
+              </div>
+              <button
+                onClick={() => window.open("https://ctrlw.mx/cotizacion?action=crear&from=habilis", "_blank", "noopener,noreferrer")}
+                style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"9px",
+                         padding:"9px 16px", fontWeight:700, fontSize:"13px", cursor:"pointer", flexShrink:0 }}>
+                Nueva cotización →
+              </button>
             </div>
 
             <div style={CARD}>

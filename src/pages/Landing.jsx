@@ -263,6 +263,71 @@ export default function Landing({ nav, user }) {
         </div>
       </section>
 
+      {/* ── HABILIS CARE ──────────────────────────────────────────────────── */}
+      <section style={{ padding:"68px 20px", background:"#fff", borderTop:"1px solid #E2E8F0" }}>
+        <div style={{ maxWidth:"1080px", margin:"0 auto" }}>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))", gap:"48px", alignItems:"center" }}>
+            <div>
+              <p style={{ fontSize:"11px", fontWeight:700, color:"#F97316", textTransform:"uppercase",
+                          letterSpacing:"0.12em", marginBottom:"10px" }}>
+                🛡️ Habilis Care — Nuevo
+              </p>
+              <h2 style={{ fontSize:"clamp(22px,4vw,38px)", fontWeight:900, color:"#0F172A", marginBottom:"14px", lineHeight:1.15 }}>
+                Mantenimiento preventivo para tus equipos
+              </h2>
+              <p style={{ color:"#64748B", fontSize:"15px", lineHeight:1.7, marginBottom:"24px" }}>
+                Registra tus aires acondicionados, refrigeradores, generadores y más. Habilis Care calcula cuándo necesitan servicio y te conecta con el técnico correcto.
+              </p>
+              <div style={{ display:"flex", flexDirection:"column", gap:"10px", marginBottom:"28px" }}>
+                {[
+                  ["❄️","AC · Refrigeración · Paneles solares"],
+                  ["🚗","Vehículos · Generadores · UPS"],
+                  ["📷","CCTV · Redes · Equipos industriales"],
+                ].map(([icon,text]) => (
+                  <div key={text} style={{ display:"flex", alignItems:"center", gap:"10px",
+                                           fontSize:"14px", color:"#374151" }}>
+                    <span style={{ fontSize:"20px" }}>{icon}</span>
+                    <span>{text}</span>
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => nav(user ? "habilisCare" : "registro")}
+                style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"12px",
+                         padding:"14px 28px", fontWeight:800, fontSize:"15px", cursor:"pointer" }}>
+                {user ? "Ver mis equipos →" : "Registra tu equipo gratis →"}
+              </button>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"12px" }}>
+              {[
+                { icon:"❄️", name:"Aire acondicionado", salud:82, dias:28 },
+                { icon:"☀️", name:"Panel solar",         salud:45, dias:-12 },
+                { icon:"🚗", name:"Vehículo",            salud:67, dias:14 },
+                { icon:"🔋", name:"UPS sala servidores", salud:91, dias:60 },
+              ].map(({ icon, name, salud, dias }) => {
+                const color = salud > 80 ? "#10B981" : salud > 50 ? "#F59E0B" : "#EF4444";
+                return (
+                  <div key={name} style={{ background:"#F8FAFC", border:`1px solid ${salud < 50 ? "rgba(239,68,68,0.3)" : "#E2E8F0"}`,
+                                            borderRadius:"14px", padding:"14px" }}>
+                    <div style={{ fontSize:"22px", marginBottom:"6px" }}>{icon}</div>
+                    <p style={{ fontWeight:700, fontSize:"12px", color:"#0F172A", marginBottom:"3px",
+                                overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{name}</p>
+                    <div style={{ display:"flex", alignItems:"center", gap:"6px" }}>
+                      <div style={{ flex:1, height:"4px", background:"#E2E8F0", borderRadius:"2px" }}>
+                        <div style={{ width:`${salud}%`, height:"4px", background:color, borderRadius:"2px" }} />
+                      </div>
+                      <span style={{ fontSize:"10px", fontWeight:700, color }}>{salud}%</span>
+                    </div>
+                    <p style={{ fontSize:"11px", color, marginTop:"4px", fontWeight:600 }}>
+                      {dias < 0 ? `Vencido ${Math.abs(dias)}d` : `En ${dias} días`}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── CTA TÉCNICOS ──────────────────────────────────────────────────── */}
       <section style={{ background:"#0F172A", padding:"84px 20px", position:"relative", overflow:"hidden" }}>
         <div style={{ position:"absolute", top:"-40%", right:"-8%", width:"560px", height:"560px",
