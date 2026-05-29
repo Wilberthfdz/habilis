@@ -184,6 +184,101 @@ export async function obtenerServicios(activoId) {
   return docs.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
 }
 
+// ── HABILIS CARE — PLANES ────────────────────────────────────────────────
+export async function crearPlanCare(datos) {
+  const r = await addDoc(collection(db, "planes_care"), {
+    ...datos, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+  });
+  return r.id;
+}
+export async function obtenerPlanesCare(clienteId) {
+  const q = query(collection(db, "planes_care"), where("clienteId", "==", clienteId));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+export async function actualizarPlanCare(planId, datos) {
+  await updateDoc(doc(db, "planes_care", planId), { ...datos, updatedAt: serverTimestamp() });
+}
+
+// ── COTIZACIONES ─────────────────────────────────────────────────────────
+export async function obtenerSiguienteFolio(tecnicoId) {
+  const year = new Date().getFullYear();
+  const ref  = doc(db, "cotizaciones_folio", tecnicoId);
+  const snap = await getDoc(ref);
+  let num = 1;
+  if (snap.exists()) {
+    const d = snap.data();
+    num = d.year === year ? (d.contador || 0) + 1 : 1;
+  }
+  await setDoc(ref, { contador: num, year });
+  return `HAB-${year}-${String(num).padStart(3, "0")}`;
+}
+
+export async function crearCotizacion(datos) {
+  const r = await addDoc(collection(db, "cotizaciones"), {
+    ...datos, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+  });
+  return r.id;
+}
+export async function obtenerCotizaciones(tecnicoId) {
+  const q = query(collection(db, "cotizaciones"), where("tecnicoId", "==", tecnicoId));
+  const snap = await getDocs(q);
+  const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return docs.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+}
+export async function obtenerCotizacion(cotId) {
+  const snap = await getDoc(doc(db, "cotizaciones", cotId));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+export async function actualizarCotizacion(cotId, datos) {
+  await updateDoc(doc(db, "cotizaciones", cotId), { ...datos, updatedAt: serverTimestamp() });
+}
+export async function eliminarCotizacion(cotId) {
+  await updateDoc(doc(db, "cotizaciones", cotId), { eliminada: true, updatedAt: serverTimestamp() });
+}
+
+// ── CLIENTES DEL TÉCNICO ─────────────────────────────────────────────────
+export async function guardarClienteTecnico(tecnicoId, datos) {
+  // Upsert by email
+  const q = query(collection(db, "clientes_tecnico"),
+    where("tecnicoId", "==", tecnicoId), where("email", "==", datos.email));
+  const snap = await getDocs(q);
+  if (!snap.empty) {
+    await updateDoc(snap.docs[0].ref, { ...datos, updatedAt: serverTimestamp() });
+    return snap.docs[0].id;
+  }
+  const r = await addDoc(collection(db, "clientes_tecnico"), {
+    ...datos, tecnicoId, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+  });
+  return r.id;
+}
+export async function obtenerClientesTecnico(tecnicoId) {
+  const q = query(collection(db, "clientes_tecnico"), where("tecnicoId", "==", tecnicoId));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+// ── CATÁLOGO DE PRODUCTOS ────────────────────────────────────────────────
+export async function guardarProductoTecnico(tecnicoId, datos) {
+  // Upsert by description
+  const q = query(collection(db, "productos_tecnico"),
+    where("tecnicoId", "==", tecnicoId), where("descripcion", "==", datos.descripcion));
+  const snap = await getDocs(q);
+  if (!snap.empty) {
+    await updateDoc(snap.docs[0].ref, { ...datos, updatedAt: serverTimestamp() });
+    return snap.docs[0].id;
+  }
+  const r = await addDoc(collection(db, "productos_tecnico"), {
+    ...datos, tecnicoId, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+  });
+  return r.id;
+}
+export async function obtenerProductosTecnico(tecnicoId) {
+  const q = query(collection(db, "productos_tecnico"), where("tecnicoId", "==", tecnicoId), limit(200));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
 // ── SUSCRIPCIONES ────────────────────────────────────────────────────────
 export async function activarPlanPro(uid, datosConekta) {
   // Aquí va la integración con Conekta para cobrar $100 MXN/mes

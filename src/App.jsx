@@ -13,6 +13,10 @@ import Bienvenida                    from "./pages/Bienvenida.jsx";
 import CompletarPerfil               from "./pages/CompletarPerfil.jsx";
 import HabilisCare                   from "./pages/HabilisCare.jsx";
 import DetalleActivo                 from "./pages/DetalleActivo.jsx";
+import PlanCare                      from "./pages/PlanCare.jsx";
+import Cotizaciones                  from "./pages/Cotizaciones.jsx";
+import EditorCotizacion              from "./pages/EditorCotizacion.jsx";
+import VistaCotizacion               from "./pages/VistaCotizacion.jsx";
 
 const globalCSS = `
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -109,8 +113,12 @@ export default function App() {
       case "registrarTrabajo": return <RegistrarTrabajo {...screenProps} params={params} />;
       case "bienvenida":      return <Bienvenida {...screenProps} />;
       case "completarPerfil": return <CompletarPerfil {...screenProps} />;
-      case "habilisCare":    return <HabilisCare    {...screenProps} />;
-      case "detalleActivo":  return <DetalleActivo  {...screenProps} params={params} />;
+      case "habilisCare":      return <HabilisCare      {...screenProps} />;
+      case "detalleActivo":   return <DetalleActivo   {...screenProps} params={params} />;
+      case "planCare":        return <PlanCare         {...screenProps} />;
+      case "cotizaciones":    return <Cotizaciones     {...screenProps} />;
+      case "editorCotizacion":return <EditorCotizacion {...screenProps} params={params} />;
+      case "vistaCotizacion": return <VistaCotizacion  {...screenProps} params={params} />;
       default: return <Landing {...screenProps} />;
     }
   };

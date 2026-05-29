@@ -203,6 +203,26 @@ export default function PanelTecnico({ nav, user }) {
         {/* ── INICIO ── */}
         {tab === "inicio" && (
           <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
+            {/* Quick-access module cards */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"12px" }}>
+              <div style={{ background:"linear-gradient(135deg,#0F172A,#1E293B)", borderRadius:"14px",
+                            padding:"16px 18px", cursor:"pointer", boxShadow:"0 4px 12px rgba(15,23,42,0.2)" }}
+                   onClick={() => nav("cotizaciones")}>
+                <p style={{ fontSize:"22px", marginBottom:"6px" }}>📋</p>
+                <p style={{ fontWeight:800, fontSize:"14px", color:"#fff", marginBottom:"2px" }}>Cotizaciones</p>
+                <p style={{ fontSize:"11px", color:"rgba(255,255,255,0.5)" }}>Crea cotizaciones profesionales</p>
+                <p style={{ fontSize:"12px", color:"#F97316", marginTop:"6px", fontWeight:700 }}>Nueva cotización →</p>
+              </div>
+              <div style={{ background:"linear-gradient(135deg,#0F172A,#1E293B)", borderRadius:"14px",
+                            padding:"16px 18px", cursor:"pointer", boxShadow:"0 4px 12px rgba(15,23,42,0.2)" }}
+                   onClick={() => nav("habilisCare")}>
+                <p style={{ fontSize:"22px", marginBottom:"6px" }}>🛡️</p>
+                <p style={{ fontWeight:800, fontSize:"14px", color:"#fff", marginBottom:"2px" }}>Habilis Care</p>
+                <p style={{ fontSize:"11px", color:"rgba(255,255,255,0.5)" }}>Mantenimiento de equipos</p>
+                <p style={{ fontSize:"12px", color:"#F97316", marginTop:"6px", fontWeight:700 }}>Ver mis equipos →</p>
+              </div>
+            </div>
+
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))", gap:"12px" }}>
               {[
                 { l:"Total trabajos",       v:stats.trabajos,               icon:"🔧" },

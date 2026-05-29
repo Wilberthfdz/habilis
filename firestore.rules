@@ -2,7 +2,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Technician profiles
     match /tecnicos/{uid} {
       allow read:   if true;
       allow create: if request.auth != null && request.auth.uid == uid;
@@ -10,16 +9,13 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Jobs/evidence records
     match /trabajos/{trabajoId} {
       allow read:   if true;
       allow create: if request.auth != null;
-      allow update: if request.auth != null
-                    && resource.data.tecnicoId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.tecnicoId == request.auth.uid;
       allow delete: if false;
     }
 
-    // Client service requests
     match /solicitudes/{solicitudId} {
       allow read:   if true;
       allow create: if request.auth != null;
@@ -27,7 +23,7 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Habilis Care — registered equipment (owned by the user)
+    // Habilis Care — equipment assets (owner only)
     match /activos/{activoId} {
       allow read:   if request.auth != null && resource.data.userId == request.auth.uid;
       allow create: if request.auth != null;
@@ -35,12 +31,50 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
-    // Habilis Care — service history records
+    // Service history records
     match /servicios/{servicioId} {
       allow read:   if request.auth != null;
       allow create: if request.auth != null;
       allow update: if request.auth != null;
       allow delete: if false;
+    }
+
+    // Care subscription plans
+    match /planes_care/{planId} {
+      allow read:   if request.auth != null && resource.data.clienteId == request.auth.uid;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && resource.data.clienteId == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // Cotizaciones — public read (cotizacionId is the "token"), owner write
+    match /cotizaciones/{cotId} {
+      allow read:   if true;
+      allow create: if request.auth != null;
+      allow update: if true;  // clients accept/reject without auth
+      allow delete: if false;
+    }
+
+    // Folio counters (owner only)
+    match /cotizaciones_folio/{tecnicoId} {
+      allow read:   if request.auth != null && request.auth.uid == tecnicoId;
+      allow write:  if request.auth != null && request.auth.uid == tecnicoId;
+    }
+
+    // Technician client directory
+    match /clientes_tecnico/{clienteId} {
+      allow read:   if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+
+    // Technician product catalog
+    match /productos_tecnico/{productoId} {
+      allow read:   if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+      allow delete: if request.auth != null;
     }
   }
 }

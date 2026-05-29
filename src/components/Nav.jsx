@@ -22,6 +22,7 @@ export default function Nav({ nav, user, onLogout }) {
         {link("Feed","feed")}
         {link("Precios","precios")}
         {user && link("🛡️ Care","habilisCare")}
+        {user && link("📋 Cotizaciones","cotizaciones")}
         <div style={{ width:"1px", height:"18px", background:"rgba(255,255,255,0.15)", margin:"0 8px" }} />
         {user ? (
           <>
