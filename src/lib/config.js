@@ -14,7 +14,7 @@ export const firebaseConfig = {
 
 // ── GEMINI API ──────────────────────────────────────────────────────────────
 // Obtén tu key GRATIS en: https://aistudio.google.com/apikey
-export const GEMINI_API_KEY = "PEGA_TU_GEMINI_API_KEY_AQUI";
+export const GEMINI_API_KEY = "AIzaSyAAw_l0_rBshf_9kc5yjvWtaFtB0ZdnNHc";
 export const GEMINI_MODEL   = "gemini-2.0-flash";
 
 // ── PRECIOS ─────────────────────────────────────────────────────────────────
