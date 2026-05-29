@@ -54,7 +54,8 @@ export default function PanelTecnico({ nav, user }) {
         reader.onload = ev => {
           const img = new Image();
           img.onload = () => {
-            const MAX = 400;
+            // 200×200 max + quality 0.65 keeps base64 well under Firestore's 1 MB doc limit
+            const MAX = 200;
             let w = img.width, h = img.height;
             if (w > MAX || h > MAX) {
               if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
@@ -63,7 +64,7 @@ export default function PanelTecnico({ nav, user }) {
             const canvas = document.createElement("canvas");
             canvas.width = w; canvas.height = h;
             canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-            canvas.toBlob(b => resolve(b), "image/jpeg", 0.85);
+            canvas.toBlob(b => resolve(b), "image/jpeg", 0.65);
           };
           img.src = ev.target.result;
         };
@@ -132,7 +133,7 @@ export default function PanelTecnico({ nav, user }) {
   return (
     <div style={{ background:"#F1F5F9", minHeight:"100vh" }}>
       {/* NAV */}
-      <div style={{ background:"#0F172A" }}><Nav nav={nav} user={user} /></div>
+      <div style={{ background:"#0F172A" }}><Nav nav={nav} user={user} onLogout={logout} /></div>
 
       {/* GREETING BANNER */}
       <div style={{ background:"#0F172A", padding:"32px 20px 28px", position:"relative", overflow:"hidden" }}>

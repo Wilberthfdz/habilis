@@ -2,14 +2,13 @@
 import { initializeApp }                   from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, where, orderBy, limit, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+// Storage SDK removed — profile photos use base64-in-Firestore (no Blaze plan needed)
 import { firebaseConfig }                  from "./config.js";
 
 // Inicializar Firebase (Google Cloud — satisface requisito de competencia)
 const app     = initializeApp(firebaseConfig);
 const auth    = getAuth(app);
 const db      = getFirestore(app);
-const storage = getStorage(app);
 
 // ── AUTH ────────────────────────────────────────────────────────────────
 export const registrarUsuario = (email, password) =>
@@ -122,23 +121,24 @@ export async function obtenerSolicitudesRecientes(ciudad) {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
-// ── STORAGE (fotos de evidencia) ─────────────────────────────────────────
-export async function subirFoto(trabajoId, archivo, etiqueta = "evidencia") {
-  const storageRef = ref(storage, `trabajos/${trabajoId}/${etiqueta}_${Date.now()}`);
-  const snap = await uploadBytes(storageRef, archivo);
-  const url  = await getDownloadURL(snap.ref);
-  return url;
-}
+// ── FOTO DE PERFIL (base64 → Firestore, no Storage needed) ──────────────
+// Accepts a Blob already compressed by the caller (canvas, max 200×200px).
+// Converts to base64 data-URL, validates size < 150 KB, then writes to Firestore.
+export async function subirFotoPerfil(uid, blob) {
+  const base64 = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = e => resolve(e.target.result);
+    reader.onerror = () => reject(new Error("No se pudo leer la imagen."));
+    reader.readAsDataURL(blob);
+  });
 
-// ── FOTO DE PERFIL ───────────────────────────────────────────────────────
-// Uploads the file to Storage, saves the URL in the technician's Firestore doc,
-// and returns the URL so the caller can update local state immediately.
-export async function subirFotoPerfil(uid, archivo) {
-  const storageRef = ref(storage, `perfiles/${uid}/foto`);
-  const snap = await uploadBytes(storageRef, archivo);
-  const url  = await getDownloadURL(snap.ref);
-  await updateDoc(doc(db, "tecnicos", uid), { fotoUrl: url, updatedAt: serverTimestamp() });
-  return url;
+  // base64 string length ≈ 1.37× raw bytes; 150 KB raw → ~205 KB string
+  if (base64.length > 205 * 1024) {
+    throw new Error("La foto sigue siendo muy grande. Usa una imagen más pequeña.");
+  }
+
+  await updateDoc(doc(db, "tecnicos", uid), { fotoUrl: base64, updatedAt: serverTimestamp() });
+  return base64;
 }
 
 // ── SUSCRIPCIONES ────────────────────────────────────────────────────────
@@ -153,4 +153,4 @@ export async function activarPlanPro(uid, datosConekta) {
   });
 }
 
-export { auth, db, storage };
+export { auth, db, app };

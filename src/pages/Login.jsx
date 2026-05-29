@@ -55,8 +55,20 @@ export default function Login({ nav, user }) {
       const cred = await loginConGoogle();
       await routeAfterLogin(cred.user.uid);
     } catch (err) {
-      if (err.code !== "auth/popup-closed-by-user" && err.code !== "auth/cancelled-popup-request")
-        setError("No se pudo iniciar sesión con Google. Intenta de nuevo.");
+      const code = err.code || "";
+      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+        // User dismissed — no message needed
+      } else if (code === "auth/popup-blocked") {
+        setError("El navegador bloqueó la ventana de Google. Permite ventanas emergentes para este sitio e intenta de nuevo.");
+      } else if (code === "auth/unauthorized-domain") {
+        setError("Este dominio no está autorizado en Firebase. Agrega habilis-eb89c.web.app en Firebase Console → Authentication → Authorized domains.");
+      } else if (code === "auth/operation-not-allowed") {
+        setError("Google Sign-In no está habilitado. Actívalo en Firebase Console → Authentication → Sign-in method → Google.");
+      } else if (code === "auth/network-request-failed") {
+        setError("Sin conexión. Verifica tu internet e intenta de nuevo.");
+      } else {
+        setError(`No se pudo iniciar sesión con Google. (${code || "error desconocido"})`);
+      }
     } finally { setLoadingGoogle(false); }
   };
 
