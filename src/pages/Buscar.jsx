@@ -26,14 +26,34 @@ export default function Buscar({ nav, user, params }) {
       .finally(() => setLoading(false));
   }, []);
 
+  const score = t =>
+    (t.totalTrabajos || 0) * 2 +
+    (t.validaciones  || 0) * 1.5 +
+    (t.experiencia   || 0) * 1 +
+    (t.verificado    ? 3 : 0) +
+    (t.plan === "pro"? 5 : 0);
+
   const filtrar = (lista, f) => {
-    if (!f.trim()) return lista;
-    const l = f.toLowerCase();
-    return lista.filter(t =>
-      (t.oficio||"").toLowerCase().includes(l) ||
-      (t.nombre||"").toLowerCase().includes(l) ||
-      (t.ciudad||"").toLowerCase().includes(l)
-    );
+    const l = f.trim().toLowerCase();
+    // Text filter
+    const matched = l
+      ? lista.filter(t =>
+          (t.oficio||"").toLowerCase().includes(l) ||
+          (t.nombre||"").toLowerCase().includes(l) ||
+          (t.ciudad||"").toLowerCase().includes(l)
+        )
+      : [...lista];
+    // Alcance filter: hide "estado"-only technicians when searching outside their city
+    const conAlcance = matched.filter(t => {
+      if (!t.alcance || t.alcance === "nacional" || t.alcance === "latam") return true;
+      if (t.alcance === "estado") {
+        if (!l) return true; // no filter active → show all
+        return (t.ciudad||"").toLowerCase().includes(l);
+      }
+      return true;
+    });
+    // Sort by score descending
+    return conAlcance.sort((a, b) => score(b) - score(a));
   };
 
   const buscar   = () => setTecnicos(filtrar(todos, q));

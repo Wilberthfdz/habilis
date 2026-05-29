@@ -162,3 +162,53 @@ export async function sugerirTecnicos(solicitud, tecnicos) {
     return { recomendados: tecnicos.slice(0, 3).map(t => t.id), razon: "Top calificados" };
   }
 }
+
+// ── 6. CLASIFICAR SOLICITUD DE SERVICIO ─────────────────────────────────
+export async function clasificarSolicitud(descripcion) {
+  const prompt = `Extrae del siguiente mensaje de solicitud de servicio técnico en México:
+descripcion='${descripcion.slice(0, 500)}'
+
+Responde SOLO con JSON válido:
+{
+  "tipoTrabajo": "descripción breve del trabajo en 5 palabras máx",
+  "urgenciaDetectada": "baja|media|alta",
+  "palabrasClave": ["keyword1", "keyword2"]
+}`;
+  try {
+    const raw = await callGemini(prompt, 0.1);
+    return JSON.parse(raw.replace(/```json|```/g, "").trim());
+  } catch {
+    return { tipoTrabajo:"Servicio técnico", urgenciaDetectada:"media", palabrasClave:[] };
+  }
+}
+
+// ── 7. RESUMEN DE CONVERSACIÓN AL COMPLETAR ──────────────────────────────
+export async function generarResumenChat(mensajes, descripcionOriginal) {
+  const chatText = mensajes
+    .filter(m => m.tipo !== "sistema")
+    .slice(-20)
+    .map(m => `${m.autorNombre}: ${m.texto}`)
+    .join("\n");
+  if (!chatText.trim()) return "Trabajo completado satisfactoriamente.";
+  const prompt = `Genera un resumen en 2 oraciones de lo acordado en esta conversación entre cliente y técnico.
+Solicitud original: "${descripcionOriginal}"
+Conversación:\n${chatText}
+Responde SOLO con el resumen en español.`;
+  try { return await callGemini(prompt, 0.4); }
+  catch { return "Trabajo completado satisfactoriamente."; }
+}
+
+// ── 8. SUGERIR COLABORADORES ─────────────────────────────────────────────
+export async function sugerirColaboradores(oficio, ciudad, tecnicos) {
+  if (!tecnicos?.length) return { sugeridos:[], razon:"Sin técnicos disponibles" };
+  const lista = tecnicos.slice(0,20).map(t => `${t.nombre} - ${t.oficio} - ${t.ciudad}`).join("\n");
+  const prompt = `Soy un ${oficio} en ${ciudad}. Sugiere los 3 técnicos más complementarios con los que podría colaborar:
+${lista}
+Responde SOLO JSON: {"sugeridos":["nombre1","nombre2","nombre3"],"razon":"explicación breve"}`;
+  try {
+    const raw = await callGemini(prompt, 0.3);
+    return JSON.parse(raw.replace(/```json|```/g,"").trim());
+  } catch {
+    return { sugeridos: tecnicos.slice(0,3).map(t => t.nombre), razon:"Técnicos complementarios" };
+  }
+}

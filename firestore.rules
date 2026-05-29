@@ -76,5 +76,34 @@ service cloud.firestore {
       allow update: if request.auth != null;
       allow delete: if request.auth != null;
     }
+
+    // Chat solicitudes — readable by both parties, writable by authenticated users
+    match /solicitudes_chat/{solicitudId} {
+      allow read:   if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+      allow delete: if false;
+
+      match /mensajes/{mensajeId} {
+        allow read:   if request.auth != null;
+        allow create: if request.auth != null;
+        allow update: if false;
+        allow delete: if false;
+      }
+    }
+
+    // Social validations — one per user-work-type combination
+    match /validaciones/{validacionId} {
+      allow read:   if true;
+      allow create: if request.auth != null;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Technician collaboration network (subcollection per user)
+    match /red_colaboradores/{userId}/lista/{tecnicoId} {
+      allow read:   if request.auth != null && request.auth.uid == userId;
+      allow write:  if request.auth != null && request.auth.uid == userId;
+    }
   }
 }

@@ -17,6 +17,9 @@ import PlanCare                      from "./pages/PlanCare.jsx";
 import Cotizaciones                  from "./pages/Cotizaciones.jsx";
 import EditorCotizacion              from "./pages/EditorCotizacion.jsx";
 import VistaCotizacion               from "./pages/VistaCotizacion.jsx";
+import SolicitarServicio             from "./pages/SolicitarServicio.jsx";
+import Chat                          from "./pages/Chat.jsx";
+import MiRed                         from "./pages/MiRed.jsx";
 
 const globalCSS = `
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -118,7 +121,10 @@ export default function App() {
       case "planCare":        return <PlanCare         {...screenProps} />;
       case "cotizaciones":    return <Cotizaciones     {...screenProps} />;
       case "editorCotizacion":return <EditorCotizacion {...screenProps} params={params} />;
-      case "vistaCotizacion": return <VistaCotizacion  {...screenProps} params={params} />;
+      case "vistaCotizacion":    return <VistaCotizacion    {...screenProps} params={params} />;
+      case "solicitarServicio":  return <SolicitarServicio  {...screenProps} params={params} />;
+      case "chat":               return <Chat               {...screenProps} params={params} />;
+      case "miRed":              return <MiRed              {...screenProps} />;
       default: return <Landing {...screenProps} />;
     }
   };

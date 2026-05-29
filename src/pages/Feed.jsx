@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import Logo from "../components/Logo.jsx";
 import Nav from "../components/Nav.jsx";
-import { db } from "../lib/firebase.js";
+import { db, validarTrabajo, obtenerValidaciones } from "../lib/firebase.js";
 import { collection, query, orderBy, limit, getDocs } from "firebase/firestore";
 
 export default function Feed({ nav, user }) {
-  const [filter,  setFilter]  = useState("todos");
-  const [posts,   setPosts]   = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [filter,      setFilter]      = useState("todos");
+  const [posts,       setPosts]       = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [validaciones,setValidaciones]= useState({}); // {trabajoId: {util, bienHecho, voted}}
 
   useEffect(() => {
     (async () => {
@@ -24,10 +25,44 @@ export default function Feed({ nav, user }) {
           return tB - tA;
         });
         setPosts(all);
+        // Load validaciones for trabajo posts
+        const trabajoIds = tList.map(t => t.id);
+        const valResults = await Promise.all(trabajoIds.map(id => obtenerValidaciones(id).catch(() => [])));
+        const valMap = {};
+        trabajoIds.forEach((id, i) => {
+          const vs = valResults[i];
+          valMap[id] = {
+            util:      vs.filter(v => v.tipo === "util").length,
+            bienHecho: vs.filter(v => v.tipo === "bien_hecho").length,
+            voted:     user ? {
+              util:      vs.some(v => v.validadorId === user.uid && v.tipo === "util"),
+              bienHecho: vs.some(v => v.validadorId === user.uid && v.tipo === "bien_hecho"),
+            } : { util:false, bienHecho:false },
+          };
+        });
+        setValidaciones(valMap);
       } catch (err) { console.error(err); }
       finally { setLoading(false); }
     })();
-  }, []);
+  }, [user]);
+
+  const handleValidar = async (trabajoId, tipo, tecnicoId) => {
+    if (!user) { nav("login"); return; }
+    if (user.uid === tecnicoId) return; // no self-validation
+    const key = tipo === "util" ? "util" : "bienHecho";
+    if (validaciones[trabajoId]?.voted?.[key]) return;
+    const ok = await validarTrabajo(trabajoId, user.uid, tipo);
+    if (ok) {
+      setValidaciones(prev => ({
+        ...prev,
+        [trabajoId]: {
+          ...prev[trabajoId],
+          [key]: (prev[trabajoId]?.[key] || 0) + 1,
+          voted: { ...(prev[trabajoId]?.voted || {}), [key]: true },
+        }
+      }));
+    }
+  };
 
   const filtered = filter === "todos" ? posts : posts.filter(p => p.feedType === filter);
 
@@ -152,8 +187,43 @@ export default function Feed({ nav, user }) {
                 </div>
               )}
 
+              {/* Social validation — only on trabajo posts, not own work */}
+              {esTrabajo && (
+                <div style={{ display:"flex", gap:"8px", paddingBottom:"12px",
+                              borderBottom:"1px solid #F1F5F9" }}>
+                  {[
+                    { tipo:"util",       key:"util",      label:"👍 Útil",       labelVoted:"👍 Útil" },
+                    { tipo:"bien_hecho", key:"bienHecho", label:"✅ Bien hecho", labelVoted:"✅ Bien hecho" },
+                  ].map(({ tipo, key, label, labelVoted }) => {
+                    const v   = validaciones[post.id];
+                    const cnt = v?.[key] || 0;
+                    const voted = v?.voted?.[key] || false;
+                    const esPropioTrabajo = user?.uid === post.tecnicoId;
+                    return (
+                      <button key={tipo}
+                        disabled={voted || esPropioTrabajo}
+                        onClick={() => handleValidar(post.id, tipo, post.tecnicoId)}
+                        style={{ background: voted ? "#F0FDF4" : "#F8FAFC",
+                                 color: voted ? "#059669" : "#64748B",
+                                 border:`1px solid ${voted ? "#A7F3D0" : "#E2E8F0"}`,
+                                 borderRadius:"8px", padding:"5px 12px", fontSize:"12px",
+                                 fontWeight:600, cursor: voted || esPropioTrabajo ? "default" : "pointer",
+                                 display:"flex", gap:"5px", alignItems:"center" }}>
+                        {voted ? labelVoted : label}
+                        {cnt > 0 && <span style={{ fontWeight:800 }}>{cnt}</span>}
+                      </button>
+                    );
+                  })}
+                  {(validaciones[post.id]?.util || 0) + (validaciones[post.id]?.bienHecho || 0) > 0 && (
+                    <span style={{ fontSize:"11px", color:"#94A3B8", alignSelf:"center", marginLeft:"4px" }}>
+                      {(validaciones[post.id]?.util||0) + (validaciones[post.id]?.bienHecho||0)} validaciones
+                    </span>
+                  )}
+                </div>
+              )}
+
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
-                            borderTop:"1px solid #F1F5F9", paddingTop:"12px" }}>
+                            paddingTop:"12px" }}>
                 <span style={{ fontSize:"12px", color:"#94A3B8" }}>
                   {esTrabajo ? (post.clienteNombre ? `Cliente: ${post.clienteNombre}` : "Trabajo documentado") : "Publicado recientemente"}
                 </span>

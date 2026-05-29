@@ -291,4 +291,61 @@ export async function activarPlanPro(uid, datosConekta) {
   });
 }
 
+// ── SOLICITUDES_CHAT ─────────────────────────────────────────────────────
+export async function crearSolicitudChat(datos) {
+  const r = await addDoc(collection(db, "solicitudes_chat"), {
+    ...datos, estado:"pendiente", createdAt:serverTimestamp(), updatedAt:serverTimestamp(),
+  });
+  return r.id;
+}
+export async function obtenerSolicitudChat(solicitudId) {
+  const snap = await getDoc(doc(db, "solicitudes_chat", solicitudId));
+  return snap.exists() ? { id:snap.id, ...snap.data() } : null;
+}
+export async function actualizarSolicitudChat(solicitudId, datos) {
+  await updateDoc(doc(db, "solicitudes_chat", solicitudId), { ...datos, updatedAt:serverTimestamp() });
+}
+export async function obtenerSolicitudesChat(tecnicoId, estado) {
+  const conds = [where("tecnicoId","==",tecnicoId)];
+  if (estado) conds.push(where("estado","==",estado));
+  const snap = await getDocs(query(collection(db,"solicitudes_chat"), ...conds));
+  const docs = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+  return docs.sort((a,b) => (b.createdAt?.toMillis?.()|| 0) - (a.createdAt?.toMillis?.()|| 0));
+}
+export async function enviarMensajeChat(solicitudId, mensaje) {
+  return addDoc(collection(db,"solicitudes_chat",solicitudId,"mensajes"), {
+    ...mensaje, timestamp:serverTimestamp(),
+  });
+}
+
+// ── VALIDACIONES ─────────────────────────────────────────────────────────
+export async function validarTrabajo(trabajoId, validadorId, tipo) {
+  const ref = doc(db, "validaciones", `${trabajoId}_${validadorId}_${tipo}`);
+  const snap = await getDoc(ref);
+  if (snap.exists()) return false;
+  await setDoc(ref, { trabajoId, validadorId, tipo, createdAt:serverTimestamp() });
+  return true;
+}
+export async function obtenerValidaciones(trabajoId) {
+  const snap = await getDocs(query(collection(db,"validaciones"), where("trabajoId","==",trabajoId)));
+  return snap.docs.map(d => d.data());
+}
+
+// ── RED DE COLABORADORES ─────────────────────────────────────────────────
+export async function agregarColaborador(userId, tecnicoData) {
+  await setDoc(
+    doc(db,"red_colaboradores",userId,"lista",tecnicoData.tecnicoId),
+    { ...tecnicoData, addedAt:serverTimestamp() },
+    { merge:true }
+  );
+}
+export async function obtenerColaboradores(userId) {
+  const snap = await getDocs(collection(db,"red_colaboradores",userId,"lista"));
+  return snap.docs.map(d => ({ id:d.id, ...d.data() }));
+}
+export async function estaEnRed(userId, tecnicoId) {
+  const snap = await getDoc(doc(db,"red_colaboradores",userId,"lista",tecnicoId));
+  return snap.exists();
+}
+
 export { auth, db, app };

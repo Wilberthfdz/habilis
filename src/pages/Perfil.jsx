@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Logo from "../components/Logo.jsx";
 import Nav from "../components/Nav.jsx";
 import Avatar from "../components/Avatar.jsx";
-import { obtenerTecnico, obtenerTrabajosDelTecnico } from "../lib/firebase.js";
+import { obtenerTecnico, obtenerTrabajosDelTecnico, agregarColaborador, estaEnRed } from "../lib/firebase.js";
 
 const initials = n => ((n||"").trim().charAt(0).toUpperCase()) || "T";
 
@@ -10,7 +10,9 @@ export default function Perfil({ nav, params, user }) {
   const [tecnico,  setTecnico]  = useState(null);
   const [trabajos, setTrabajos] = useState([]);
   const [loading,  setLoading]  = useState(true);
-  const [notFound, setNotFound] = useState(false);
+  const [notFound,   setNotFound]   = useState(false);
+  const [enRed,      setEnRed]      = useState(false);
+  const [agregando,  setAgregando]  = useState(false);
 
   const tecnicoId = params?.tecnicoId;
 
@@ -23,6 +25,9 @@ export default function Perfil({ nav, params, user }) {
         setTecnico(t);
         const tr = await obtenerTrabajosDelTecnico(tecnicoId).catch(() => []);
         setTrabajos(tr.filter(t => ["terminado","validado"].includes(t.estado)));
+        if (user?.uid && user.uid !== tecnicoId) {
+          estaEnRed(user.uid, tecnicoId).then(setEnRed).catch(() => {});
+        }
       } catch { setNotFound(true); }
       finally { setLoading(false); }
     })();
@@ -116,19 +121,45 @@ export default function Perfil({ nav, params, user }) {
               </p>
             )}
           </div>
-          <div style={{ display:"flex", gap:"10px" }}>
+          <div style={{ display:"flex", gap:"10px", flexWrap:"wrap" }}>
             {esOwner ? (
               <button style={{ ...BTN, flex:1 }} onClick={() => nav("panel")}>Ir a mi Panel</button>
             ) : (
               <>
-                <button style={{ ...BTN, flex:2 }} onClick={() => alert("Función de contacto próximamente")}>
-                  💬 Contactar
-                </button>
-                <button style={{ flex:1, background:"#F1F5F9", color:"#374151", border:"1px solid #E2E8F0",
-                                 borderRadius:"10px", padding:"11px", fontSize:"14px", fontWeight:600, cursor:"pointer" }}
-                  onClick={() => alert("Guardado próximamente")}>
-                  Guardar
-                </button>
+                {user ? (
+                  <button style={{ ...BTN, flex:2 }}
+                    onClick={() => nav("solicitarServicio", { tecnicoId, tecnicoNombre:tecnico.nombre })}>
+                    💬 Solicitar servicio
+                  </button>
+                ) : (
+                  <button style={{ ...BTN, flex:2 }}
+                    onClick={() => nav("login")}>
+                    💬 Iniciar sesión para contactar
+                  </button>
+                )}
+                {user && (
+                  <button
+                    onClick={async () => {
+                      if (enRed) return;
+                      setAgregando(true);
+                      try {
+                        await agregarColaborador(user.uid, {
+                          tecnicoId, tecnicoNombre:tecnico.nombre, oficio:tecnico.oficio,
+                          ciudad:tecnico.ciudad, fotoUrl:tecnico.fotoUrl||null, plan:tecnico.plan||"gratis",
+                        });
+                        setEnRed(true);
+                      } finally { setAgregando(false); }
+                    }}
+                    disabled={enRed || agregando}
+                    style={{ flex:1, background: enRed ? "#F0FDF4" : "#F1F5F9",
+                             color: enRed ? "#059669" : "#374151",
+                             border:`1px solid ${enRed ? "#A7F3D0" : "#E2E8F0"}`,
+                             borderRadius:"10px", padding:"11px", fontSize:"13px",
+                             fontWeight:600, cursor: enRed ? "default" : "pointer",
+                             minWidth:"100px" }}>
+                    {agregando ? "..." : enRed ? "✓ En mi red" : "🤝 Agregar a mi red"}
+                  </button>
+                )}
               </>
             )}
           </div>

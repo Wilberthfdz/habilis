@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import Logo from "../components/Logo.jsx";
 import Nav from "../components/Nav.jsx";
-import { obtenerTecnico, obtenerTrabajosDelTecnico, cerrarSesion, subirFotoPerfil } from "../lib/firebase.js";
+import { obtenerTecnico, obtenerTrabajosDelTecnico, cerrarSesion, subirFotoPerfil,
+         obtenerSolicitudesChat, actualizarTecnico, obtenerColaboradores } from "../lib/firebase.js";
 import Avatar from "../components/Avatar.jsx";
 import { sugerirRespuesta } from "../lib/gemini.js";
 
@@ -24,8 +25,12 @@ export default function PanelTecnico({ nav, user }) {
   const [aiResp,        setAiResp]        = useState("");
   const [aiLoading,     setAiLoading]     = useState(false);
   const [solicitudDemo, setSolicitudDemo] = useState("Necesito instalar un foco nuevo en la cocina, ¿puede venir mañana?");
-  const [uploadingPhoto,setUploadingPhoto]= useState(false);
-  const [photoError,    setPhotoError]    = useState("");
+  const [uploadingPhoto,    setUploadingPhoto]    = useState(false);
+  const [photoError,        setPhotoError]        = useState("");
+  const [solicitudesPend,   setSolicitudesPend]   = useState([]);
+  const [redCount,          setRedCount]          = useState(0);
+  const [alcance,           setAlcance]           = useState("nacional");
+  const [savingAlcance,     setSavingAlcance]     = useState(false);
 
   useEffect(() => {
     if (!user) { nav("login"); return; }
@@ -34,8 +39,15 @@ export default function PanelTecnico({ nav, user }) {
         const t = await obtenerTecnico(user.uid);
         if (!t) { setNoProfile(true); setLoadingData(false); return; }
         setTecnico(t);
-        const tr = await obtenerTrabajosDelTecnico(user.uid).catch(() => []);
+        setAlcance(t.alcance || "nacional");
+        const [tr, sols, red] = await Promise.all([
+          obtenerTrabajosDelTecnico(user.uid).catch(() => []),
+          obtenerSolicitudesChat(user.uid, "pendiente").catch(() => []),
+          obtenerColaboradores(user.uid).catch(() => []),
+        ]);
         setTrabajos(tr);
+        setSolicitudesPend(sols);
+        setRedCount(red.length);
       } catch { setNoProfile(true); }
       finally { setLoadingData(false); }
     })();
@@ -141,17 +153,71 @@ export default function PanelTecnico({ nav, user }) {
                       background:"radial-gradient(circle,rgba(249,115,22,0.14) 0%,transparent 65%)", pointerEvents:"none" }} />
         <div style={{ maxWidth:"960px", margin:"0 auto", position:"relative", zIndex:1 }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", flexWrap:"wrap", gap:"16px" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:"14px" }}>
-              <Avatar size={52} nombre={tecnico.nombre} fotoUrl={tecnico.fotoUrl} plan={tecnico.plan} uploading={uploadingPhoto} />
+            <div style={{ display:"flex", alignItems:"center", gap:"16px" }}>
+              {/* ── Profile photo with camera upload ── */}
+              <div style={{ position:"relative", flexShrink:0 }}>
+                {tecnico.fotoUrl ? (
+                  <img src={tecnico.fotoUrl} alt={tecnico.nombre}
+                    style={{ width:"72px", height:"72px", borderRadius:"50%", objectFit:"cover",
+                             border:"3px solid rgba(249,115,22,0.7)", display:"block",
+                             opacity: uploadingPhoto ? 0.45 : 1, transition:"opacity 0.2s" }} />
+                ) : (
+                  <div style={{ width:"72px", height:"72px", borderRadius:"50%",
+                                background:"linear-gradient(135deg,#F97316,#EA580C)",
+                                display:"flex", alignItems:"center", justifyContent:"center",
+                                fontWeight:900, fontSize:"28px", color:"#fff",
+                                border:"3px solid rgba(249,115,22,0.7)",
+                                userSelect:"none",
+                                opacity: uploadingPhoto ? 0.45 : 1, transition:"opacity 0.2s" }}>
+                    {initials(tecnico.nombre)}
+                  </div>
+                )}
+
+                {/* Spinner overlay while uploading */}
+                {uploadingPhoto && (
+                  <div style={{ position:"absolute", inset:0, borderRadius:"50%",
+                                background:"rgba(15,23,42,0.55)", display:"flex",
+                                alignItems:"center", justifyContent:"center" }}>
+                    <div style={{ width:"22px", height:"22px", border:"2.5px solid rgba(255,255,255,0.35)",
+                                  borderTopColor:"#fff", borderRadius:"50%",
+                                  animation:"spin 0.75s linear infinite" }} />
+                  </div>
+                )}
+
+                {/* Camera badge */}
+                <label title="Cambiar foto"
+                  style={{ position:"absolute", bottom:"1px", right:"1px",
+                           background:"#F97316", border:"2px solid #0F172A", borderRadius:"50%",
+                           width:"24px", height:"24px", display:"flex", alignItems:"center",
+                           justifyContent:"center", cursor: uploadingPhoto ? "not-allowed" : "pointer",
+                           fontSize:"11px", boxShadow:"0 2px 6px rgba(0,0,0,0.3)" }}>
+                  📷
+                  <input type="file" accept="image/*" style={{ display:"none" }}
+                         onChange={handleFotoChange} disabled={uploadingPhoto} />
+                </label>
+              </div>
+
+              {/* Greeting text */}
               <div>
-                <p style={{ color:"rgba(255,255,255,0.5)", fontSize:"12px", marginBottom:"3px" }}>Bienvenido de vuelta</p>
+                <p style={{ color:"rgba(255,255,255,0.45)", fontSize:"11px", marginBottom:"2px" }}>
+                  {uploadingPhoto ? "Subiendo foto..." : "Bienvenido de vuelta"}
+                </p>
                 <h1 style={{ fontSize:"clamp(18px,3vw,26px)", fontWeight:900, color:"#fff" }}>
                   {tecnico.nombre?.split(" ")[0]} 👋
                 </h1>
                 <p style={{ color:"#F97316", fontSize:"13px", fontWeight:600, marginTop:"2px" }}>
                   {tecnico.oficio} · {tecnico.ciudad}
-                  {esPro && <span style={{ marginLeft:"8px", background:"rgba(249,115,22,0.2)", border:"1px solid rgba(249,115,22,0.4)", borderRadius:"6px", padding:"1px 7px", fontSize:"10px", fontWeight:800 }}>⚡ PRO</span>}
+                  {esPro && (
+                    <span style={{ marginLeft:"8px", background:"rgba(249,115,22,0.2)",
+                                   border:"1px solid rgba(249,115,22,0.4)", borderRadius:"6px",
+                                   padding:"1px 7px", fontSize:"10px", fontWeight:800 }}>
+                      ⚡ PRO
+                    </span>
+                  )}
                 </p>
+                {photoError && (
+                  <p style={{ color:"#FCA5A5", fontSize:"11px", marginTop:"4px" }}>{photoError}</p>
+                )}
               </div>
             </div>
             {/* Mini stats */}
@@ -195,8 +261,18 @@ export default function PanelTecnico({ nav, user }) {
           {[["inicio","Inicio"],["trabajos","Mis trabajos"],["ia","✨ IA"],["config","Configurar"]].map(([id,label]) => (
             <button key={id} style={TAB(id)} onClick={() => setTab(id)}>{label}</button>
           ))}
-          <button style={{ ...TAB(false), color:"#F97316", fontWeight:800 }} onClick={() => nav("habilisCare")}>
-            🛡️ Mis equipos
+          <button style={{ ...TAB(tab==="solicitudes"), position:"relative" }} onClick={() => setTab("solicitudes")}>
+            Solicitudes
+            {solicitudesPend.length > 0 && (
+              <span style={{ position:"absolute", top:"3px", right:"3px", background:"#EF4444", color:"#fff",
+                             borderRadius:"50%", width:"16px", height:"16px", fontSize:"9px", fontWeight:900,
+                             display:"flex", alignItems:"center", justifyContent:"center" }}>
+                {solicitudesPend.length}
+              </span>
+            )}
+          </button>
+          <button style={TAB(tab==="miRed")} onClick={() => setTab("miRed")}>
+            🤝 Mi red {redCount > 0 && `(${redCount})`}
           </button>
         </div>
 
@@ -403,43 +479,82 @@ export default function PanelTecnico({ nav, user }) {
         {tab === "config" && (
           <div style={{ display:"flex", flexDirection:"column", gap:"14px" }}>
 
-            {/* ── PHOTO UPLOAD ── */}
+            {/* ── PHOTO CARD ── */}
             <div style={CARD}>
-              <h3 style={{ fontWeight:800, fontSize:"15px", color:"#0F172A", marginBottom:"16px" }}>Foto de perfil</h3>
-              <div style={{ display:"flex", alignItems:"center", gap:"20px" }}>
+              <h3 style={{ fontWeight:800, fontSize:"15px", color:"#0F172A", marginBottom:"18px" }}>
+                📸 Mi foto de perfil
+              </h3>
+              <div style={{ display:"flex", gap:"24px", alignItems:"center", flexWrap:"wrap" }}>
+                {/* Large photo preview */}
                 <div style={{ position:"relative", flexShrink:0 }}>
-                  <Avatar size={80} nombre={tecnico.nombre} fotoUrl={tecnico.fotoUrl} plan={tecnico.plan} uploading={uploadingPhoto} />
+                  {tecnico.fotoUrl ? (
+                    <img src={tecnico.fotoUrl} alt={tecnico.nombre}
+                      style={{ width:"120px", height:"120px", borderRadius:"50%", objectFit:"cover",
+                               border:"4px solid #E2E8F0", display:"block",
+                               opacity: uploadingPhoto ? 0.4 : 1, transition:"opacity 0.2s" }} />
+                  ) : (
+                    <div style={{ width:"120px", height:"120px", borderRadius:"50%",
+                                  background:"linear-gradient(135deg,#F97316,#EA580C)",
+                                  display:"flex", alignItems:"center", justifyContent:"center",
+                                  fontWeight:900, fontSize:"44px", color:"#fff",
+                                  border:"4px solid #E2E8F0",
+                                  opacity: uploadingPhoto ? 0.4 : 1, transition:"opacity 0.2s" }}>
+                      {initials(tecnico.nombre)}
+                    </div>
+                  )}
+                  {/* Spinner overlay */}
+                  {uploadingPhoto && (
+                    <div style={{ position:"absolute", inset:0, borderRadius:"50%",
+                                  background:"rgba(255,255,255,0.6)", display:"flex",
+                                  alignItems:"center", justifyContent:"center" }}>
+                      <div style={{ width:"28px", height:"28px", border:"3px solid #E2E8F0",
+                                    borderTopColor:"#F97316", borderRadius:"50%",
+                                    animation:"spin 0.75s linear infinite" }} />
+                    </div>
+                  )}
                   {/* Camera badge */}
-                  <label style={{ position:"absolute", bottom:"0", right:"0",
-                                   background:"#F97316", border:"2.5px solid #fff", borderRadius:"50%",
-                                   width:"28px", height:"28px", display:"flex", alignItems:"center",
-                                   justifyContent:"center", cursor:"pointer", fontSize:"13px",
-                                   boxShadow:"0 2px 6px rgba(0,0,0,0.18)" }}>
+                  <label title="Cambiar foto"
+                    style={{ position:"absolute", bottom:"4px", right:"4px",
+                             background:"#F97316", border:"3px solid #fff", borderRadius:"50%",
+                             width:"34px", height:"34px", display:"flex", alignItems:"center",
+                             justifyContent:"center", cursor: uploadingPhoto ? "not-allowed" : "pointer",
+                             fontSize:"14px", boxShadow:"0 2px 8px rgba(0,0,0,0.2)" }}>
                     📷
-                    <input type="file" accept="image/*" capture="environment"
-                           style={{ display:"none" }} onChange={handleFotoChange}
-                           disabled={uploadingPhoto} />
-                  </label>
-                </div>
-                <div>
-                  <p style={{ fontWeight:700, fontSize:"14px", color:"#0F172A", marginBottom:"4px" }}>
-                    {tecnico.fotoUrl ? "Cambiar foto" : "Subir foto de perfil"}
-                  </p>
-                  <p style={{ fontSize:"12px", color:"#94A3B8", lineHeight:1.5, marginBottom:"10px" }}>
-                    {uploadingPhoto ? "Subiendo..." : "JPG o PNG · Máx. 400×400px · Se comprime automáticamente"}
-                  </p>
-                  <label style={{ background:"#F1F5F9", color:"#0F172A", border:"1px solid #E2E8F0",
-                                   borderRadius:"8px", padding:"7px 14px", fontSize:"13px",
-                                   fontWeight:600, cursor:"pointer", display:"inline-block" }}>
-                    {uploadingPhoto ? "Subiendo..." : "Seleccionar foto"}
                     <input type="file" accept="image/*" style={{ display:"none" }}
                            onChange={handleFotoChange} disabled={uploadingPhoto} />
                   </label>
                 </div>
+
+                {/* Info + buttons */}
+                <div>
+                  <p style={{ fontWeight:700, fontSize:"15px", color:"#0F172A", marginBottom:"4px" }}>
+                    {tecnico.fotoUrl ? "Foto de perfil activa" : "Sin foto de perfil"}
+                  </p>
+                  <p style={{ fontSize:"13px", color:"#64748B", lineHeight:1.5, marginBottom:"16px" }}>
+                    {uploadingPhoto
+                      ? "⏳ Subiendo y guardando..."
+                      : "JPG o PNG · Se comprime a máx. 200×200 px automáticamente"}
+                  </p>
+                  <label style={{ display:"inline-flex", alignItems:"center", gap:"6px",
+                                   background: uploadingPhoto ? "#F1F5F9" : "#F97316",
+                                   color: uploadingPhoto ? "#94A3B8" : "#fff",
+                                   border:"none", borderRadius:"9px", padding:"9px 18px",
+                                   fontSize:"13px", fontWeight:700,
+                                   cursor: uploadingPhoto ? "not-allowed" : "pointer" }}>
+                    📷 {uploadingPhoto ? "Subiendo..." : "Cambiar foto"}
+                    <input type="file" accept="image/*" style={{ display:"none" }}
+                           onChange={handleFotoChange} disabled={uploadingPhoto} />
+                  </label>
+                  {tecnico.fotoUrl && !uploadingPhoto && (
+                    <p style={{ fontSize:"11px", color:"#94A3B8", marginTop:"8px" }}>
+                      ✓ Foto visible en tu perfil público y en búsquedas
+                    </p>
+                  )}
+                  {photoError && (
+                    <p style={{ color:"#DC2626", fontSize:"12px", marginTop:"8px" }}>{photoError}</p>
+                  )}
+                </div>
               </div>
-              {photoError && (
-                <p style={{ color:"#DC2626", fontSize:"12px", marginTop:"10px" }}>{photoError}</p>
-              )}
             </div>
 
             <div style={CARD}>
@@ -480,6 +595,128 @@ export default function PanelTecnico({ nav, user }) {
                 </button>
               </div>
             )}
+
+            {/* Geo visibility */}
+            <div style={CARD}>
+              <h3 style={{ fontWeight:800, fontSize:"15px", color:"#0F172A", marginBottom:"14px" }}>
+                🌎 Alcance de visibilidad
+              </h3>
+              <div style={{ display:"flex", flexDirection:"column", gap:"10px", marginBottom:"14px" }}>
+                {[
+                  { id:"estado",   label:"Solo mi estado",        desc:"Apareces solo en búsquedas de tu zona · Plan Gratis" },
+                  { id:"nacional", label:"Nacional",              desc:"Visible en toda la República Mexicana · Plan Gratis" },
+                  { id:"latam",    label:"México y LATAM",        desc:"Visible en toda Latinoamérica · Plan Pro" },
+                ].map(opt => (
+                  <label key={opt.id} style={{ display:"flex", gap:"12px", cursor:"pointer",
+                                               background: alcance===opt.id ? "#FFF7ED" : "#F8FAFC",
+                                               border:`1.5px solid ${alcance===opt.id ? "#F97316" : "#E2E8F0"}`,
+                                               borderRadius:"10px", padding:"12px 14px" }}>
+                    <input type="radio" name="alcance" value={opt.id} checked={alcance===opt.id}
+                           onChange={() => setAlcance(opt.id)}
+                           style={{ accentColor:"#F97316", marginTop:"2px", flexShrink:0 }} />
+                    <div>
+                      <p style={{ fontWeight:700, fontSize:"13px", color:"#0F172A" }}>{opt.label}</p>
+                      <p style={{ fontSize:"11px", color:"#64748B", marginTop:"2px" }}>{opt.desc}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+              <button onClick={async () => {
+                setSavingAlcance(true);
+                try { await actualizarTecnico(user.uid, { alcance }); setTecnico(t => ({ ...t, alcance })); }
+                finally { setSavingAlcance(false); }
+              }} disabled={savingAlcance}
+                style={{ ...BTN, opacity:savingAlcance?0.7:1 }}>
+                {savingAlcance ? "Guardando..." : "Guardar alcance"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── SOLICITUDES ── */}
+        {tab === "solicitudes" && (
+          <div style={{ display:"flex", flexDirection:"column", gap:"12px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
+                          marginBottom:"4px" }}>
+              <h3 style={{ fontWeight:800, fontSize:"15px", color:"#0F172A" }}>
+                Solicitudes pendientes
+                {solicitudesPend.length > 0 && (
+                  <span style={{ marginLeft:"8px", background:"#EF4444", color:"#fff",
+                                 fontSize:"11px", fontWeight:700, padding:"2px 7px", borderRadius:"12px" }}>
+                    {solicitudesPend.length}
+                  </span>
+                )}
+              </h3>
+            </div>
+            {solicitudesPend.length === 0 ? (
+              <div style={{ ...CARD, textAlign:"center", padding:"48px" }}>
+                <p style={{ fontSize:"40px", marginBottom:"12px" }}>💬</p>
+                <p style={{ fontWeight:700, color:"#0F172A", marginBottom:"6px" }}>Sin solicitudes pendientes</p>
+                <p style={{ color:"#64748B", fontSize:"13px" }}>
+                  Cuando un cliente te contacte desde tu perfil aparecerá aquí.
+                </p>
+              </div>
+            ) : solicitudesPend.map(sol => (
+              <div key={sol.id} style={CARD}>
+                <div style={{ display:"flex", gap:"12px", alignItems:"flex-start" }}>
+                  <div style={{ flex:1 }}>
+                    <div style={{ display:"flex", gap:"8px", alignItems:"center", marginBottom:"4px" }}>
+                      <p style={{ fontWeight:700, fontSize:"14px", color:"#0F172A" }}>{sol.clienteNombre}</p>
+                      <span style={{
+                        background: sol.urgencia==="Emergencia" ? "#FEF2F2" : sol.urgencia==="Urgente" ? "#FEF3C7" : "#F1F5F9",
+                        color:      sol.urgencia==="Emergencia" ? "#DC2626"  : sol.urgencia==="Urgente" ? "#D97706"  : "#64748B",
+                        fontSize:"10px", fontWeight:700, padding:"2px 7px", borderRadius:"12px",
+                      }}>{sol.urgencia}</span>
+                    </div>
+                    <p style={{ color:"#64748B", fontSize:"13px", lineHeight:1.5 }}>
+                      {(sol.descripcion||"").slice(0, 120)}{sol.descripcion?.length > 120 ? "..." : ""}
+                    </p>
+                    {sol.clasificacionGemini && (
+                      <p style={{ fontSize:"11px", color:"#F97316", marginTop:"4px", fontWeight:600 }}>
+                        ✨ {sol.clasificacionGemini.tipoTrabajo}
+                      </p>
+                    )}
+                  </div>
+                  <button onClick={() => nav("chat", { solicitudId:sol.id })}
+                    style={{ ...BTN_SM, flexShrink:0 }}>
+                    Ver solicitud
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── MI RED ── */}
+        {tab === "miRed" && (
+          <div style={{ display:"flex", flexDirection:"column", gap:"14px" }}>
+            <div style={CARD}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <div>
+                  <h3 style={{ fontWeight:800, fontSize:"15px", color:"#0F172A", marginBottom:"4px" }}>
+                    🤝 Mi red de colaboradores
+                  </h3>
+                  <p style={{ color:"#64748B", fontSize:"13px" }}>
+                    {redCount} técnico{redCount !== 1 ? "s" : ""} en tu red
+                  </p>
+                </div>
+                <button style={BTN} onClick={() => nav("miRed")}>
+                  Ver mi red →
+                </button>
+              </div>
+            </div>
+            <div style={{ ...CARD, background:"#F8FAFC", textAlign:"center", padding:"32px" }}>
+              <p style={{ fontSize:"32px", marginBottom:"10px" }}>🔗</p>
+              <p style={{ fontWeight:700, fontSize:"14px", color:"#0F172A", marginBottom:"6px" }}>
+                Colabora con otros técnicos
+              </p>
+              <p style={{ color:"#64748B", fontSize:"13px", marginBottom:"16px", lineHeight:1.5 }}>
+                Agrega técnicos a tu red desde sus perfiles. Podrás referirles trabajos y que te refieran a ti.
+              </p>
+              <button style={BTN} onClick={() => nav("buscar")}>
+                Buscar técnicos →
+              </button>
+            </div>
           </div>
         )}
       </div>
