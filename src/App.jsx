@@ -39,6 +39,21 @@ input:focus, textarea:focus, select:focus { outline: 2px solid #F97316; outline-
 .h-btn-orange:active { transform:scale(0.98); }
 .h-card { background:#fff; border:1px solid #E2E8F0; border-radius:16px; box-shadow:0 1px 3px rgba(0,0,0,0.06); transition:box-shadow 0.2s,transform 0.2s; }
 .h-card:hover { box-shadow:0 8px 24px rgba(0,0,0,0.1); }
+
+/* ── MOBILE RESPONSIVE ── */
+button, a, label[for], input[type=file] + * { min-height:44px; }
+input, select, textarea { font-size:16px !important; } /* prevent iOS zoom */
+@media (max-width:640px) {
+  body { font-size:15px; }
+  /* Force single column grids */
+  [style*="gridTemplateColumns"] { grid-template-columns:1fr !important; }
+  /* Cards full-width padding */
+  [style*="borderRadius:\"16px\""], [style*='borderRadius:"16px"'] { padding:14px !important; }
+  /* Prevent overflow */
+  * { max-width:100vw; }
+  /* Table horizontal scroll */
+  table { display:block; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+}
 `;
 
 class ErrorBoundary extends React.Component {

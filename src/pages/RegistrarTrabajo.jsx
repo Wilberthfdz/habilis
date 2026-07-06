@@ -28,6 +28,7 @@ export default function RegistrarTrabajo({ nav, user }) {
   const [fotos,   setFotos]   = useState({ antes:null, despues:null });
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState("");
+  const [touched, setTouched] = useState({});
 
   useEffect(() => { if (!user) nav("login"); }, [user]);
   if (!user) return null;
@@ -40,7 +41,9 @@ export default function RegistrarTrabajo({ nav, user }) {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement("canvas");
-        const MAX = 800;
+        // 400px max, quality 0.5 → ~15-30 KB/imagen como base64 (~40 KB)
+        // Dos fotos ≈ 80 KB total, muy por debajo del límite de 1 MB de Firestore
+        const MAX = 400;
         let w = img.width, h = img.height;
         if (w > MAX || h > MAX) {
           if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
@@ -48,7 +51,7 @@ export default function RegistrarTrabajo({ nav, user }) {
         }
         canvas.width = w; canvas.height = h;
         canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL("image/jpeg", 0.75));
+        resolve(canvas.toDataURL("image/jpeg", 0.5));
       };
       img.src = e.target.result;
     };
@@ -64,9 +67,12 @@ export default function RegistrarTrabajo({ nav, user }) {
   };
 
   const guardar = async () => {
-    if (!form.titulo.trim())   { setError("El título del trabajo es obligatorio."); return; }
-    if (!form.problema.trim()) { setError("Describe el problema detectado."); return; }
-    if (!form.solucion.trim()) { setError("Describe la solución aplicada."); return; }
+    // Mark all required fields as touched so red borders appear
+    setTouched({ titulo:true, problema:true, solucion:true });
+
+    if (!form.titulo.trim())   { setError("⚠️ Falta el título del trabajo."); window.scrollTo({top:0,behavior:"smooth"}); return; }
+    if (!form.problema.trim()) { setError("⚠️ Falta describir el problema (sección Detalles técnicos)."); window.scrollTo({top:0,behavior:"smooth"}); return; }
+    if (!form.solucion.trim()) { setError("⚠️ Falta describir la solución aplicada (sección Detalles técnicos)."); window.scrollTo({top:0,behavior:"smooth"}); return; }
     setError(""); setLoading(true);
     try {
       const evidencias = [fotos.antes, fotos.despues].filter(Boolean).filter(x => x !== "__loading__");
@@ -89,13 +95,16 @@ export default function RegistrarTrabajo({ nav, user }) {
       });
       nav("panel");
     } catch (e) {
-      console.error(e);
-      if (e.message?.includes("permission-denied") || e.message?.includes("Missing or insufficient"))
-        setError("Error de permisos. Verifica tu sesión.");
-      else if (e.message?.includes("too large") || e.message?.includes("payload"))
-        setError("Las imágenes son muy pesadas. Intenta sin fotos.");
+      console.error("Error guardando trabajo:", e);
+      const msg = e.message || e.code || String(e);
+      if (msg.includes("permission-denied") || msg.includes("Missing or insufficient") || msg.includes("PERMISSION_DENIED"))
+        setError("Sin permiso para guardar. ¿Estás con la sesión iniciada? (" + (e.code || "permission-denied") + ")");
+      else if (msg.includes("too large") || msg.includes("payload") || msg.includes("1 MiB") || msg.includes("exceeds"))
+        setError("El documento es muy grande. Intenta con fotos de menor resolución o sin fotos.");
+      else if (msg.includes("unauthenticated") || msg.includes("auth"))
+        setError("Sesión expirada. Vuelve a iniciar sesión.");
       else
-        setError("Error al guardar. Intenta de nuevo.");
+        setError("Error al guardar: " + msg.slice(0, 120));
     } finally { setLoading(false); }
   };
 
@@ -140,7 +149,13 @@ export default function RegistrarTrabajo({ nav, user }) {
           <div style={{ display:"flex", flexDirection:"column", gap:"14px" }}>
             <div>
               <label style={label}>Título del trabajo *</label>
-              <input style={inp} value={form.titulo} onChange={set("titulo")} placeholder="Ej: Instalación panel eléctrico 200A" />
+              <input
+                style={{ ...inp, border: touched.titulo && !form.titulo.trim() ? "2px solid #EF4444" : inp.border }}
+                value={form.titulo} onChange={set("titulo")}
+                placeholder="Ej: Instalación panel eléctrico 200A" />
+              {touched.titulo && !form.titulo.trim() && (
+                <p style={{ color:"#EF4444", fontSize:"12px", marginTop:"3px" }}>Campo obligatorio</p>
+              )}
             </div>
             <div>
               <label style={label}>Tipo de trabajo</label>
@@ -178,11 +193,25 @@ export default function RegistrarTrabajo({ nav, user }) {
           <div style={{ display:"flex", flexDirection:"column", gap:"14px" }}>
             <div>
               <label style={label}>Problema detectado *</label>
-              <textarea style={{ ...inp, resize:"vertical", minHeight:"80px" }} value={form.problema} onChange={set("problema")} placeholder="¿Cuál era el problema o qué pidió el cliente?" />
+              <textarea
+                style={{ ...inp, resize:"vertical", minHeight:"80px",
+                         border: touched.problema && !form.problema.trim() ? "2px solid #EF4444" : inp.border }}
+                value={form.problema} onChange={set("problema")}
+                placeholder="¿Cuál era el problema o qué pidió el cliente?" />
+              {touched.problema && !form.problema.trim() && (
+                <p style={{ color:"#EF4444", fontSize:"12px", marginTop:"3px" }}>Campo obligatorio</p>
+              )}
             </div>
             <div>
               <label style={label}>Solución aplicada *</label>
-              <textarea style={{ ...inp, resize:"vertical", minHeight:"80px" }} value={form.solucion} onChange={set("solucion")} placeholder="¿Qué hiciste exactamente?" />
+              <textarea
+                style={{ ...inp, resize:"vertical", minHeight:"80px",
+                         border: touched.solucion && !form.solucion.trim() ? "2px solid #EF4444" : inp.border }}
+                value={form.solucion} onChange={set("solucion")}
+                placeholder="¿Qué hiciste exactamente?" />
+              {touched.solucion && !form.solucion.trim() && (
+                <p style={{ color:"#EF4444", fontSize:"12px", marginTop:"3px" }}>Campo obligatorio</p>
+              )}
             </div>
             <div>
               <label style={label}>Materiales usados</label>
@@ -243,6 +272,15 @@ export default function RegistrarTrabajo({ nav, user }) {
             ))}
           </div>
         </div>
+
+        {/* Error also shown here, near the button */}
+        {error && (
+          <div style={{ background:"#FEF2F2", border:"2px solid #FECACA", borderRadius:"12px",
+                        padding:"14px 16px", fontSize:"14px", color:"#991B1B", marginBottom:"12px",
+                        fontWeight:600 }}>
+            {error}
+          </div>
+        )}
 
         <button onClick={guardar} disabled={loading}
           style={{ width:"100%", background:"#F97316", color:"#fff", border:"none", borderRadius:"12px",

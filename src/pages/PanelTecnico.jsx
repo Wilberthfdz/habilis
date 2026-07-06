@@ -340,24 +340,29 @@ export default function PanelTecnico({ nav, user }) {
               ))}
             </div>
 
-            {/* CTRL+W Integration */}
-            <div style={{ background:"#0F172A", borderRadius:"16px", padding:"18px 20px",
-                          display:"flex", gap:"14px", alignItems:"center", flexWrap:"wrap",
-                          boxShadow:"0 4px 12px rgba(15,23,42,0.15)" }}>
+            {/* Cotizaciones card */}
+            <div style={{ ...CARD, display:"flex", gap:"14px", alignItems:"center", flexWrap:"wrap" }}>
               <div style={{ flex:1 }}>
-                <p style={{ fontWeight:800, fontSize:"14px", color:"#fff", marginBottom:"3px" }}>
-                  💼 Cotizaciones CTRL+W
+                <p style={{ fontWeight:800, fontSize:"15px", color:"#0F172A", marginBottom:"3px" }}>
+                  📄 Cotizaciones
                 </p>
-                <p style={{ fontSize:"12px", color:"rgba(255,255,255,0.5)", lineHeight:1.5 }}>
-                  Crea cotizaciones profesionales con productos reales y envíalas por WhatsApp al cliente.
+                <p style={{ fontSize:"13px", color:"#64748B", lineHeight:1.5 }}>
+                  Genera cotizaciones profesionales para tus clientes
                 </p>
               </div>
-              <button
-                onClick={() => window.open("https://ctrlw.mx/cotizacion?action=crear&from=habilis", "_blank", "noopener,noreferrer")}
-                style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"9px",
-                         padding:"9px 16px", fontWeight:700, fontSize:"13px", cursor:"pointer", flexShrink:0 }}>
-                Nueva cotización →
-              </button>
+              <div style={{ display:"flex", gap:"8px", flexShrink:0, flexWrap:"wrap" }}>
+                <button onClick={() => nav("cotizaciones")}
+                  style={{ background:"#F1F5F9", color:"#0F172A", border:"1px solid #E2E8F0",
+                           borderRadius:"9px", padding:"9px 14px", fontWeight:600,
+                           fontSize:"13px", cursor:"pointer" }}>
+                  Ver mis cotizaciones
+                </button>
+                <button onClick={() => nav("editorCotizacion")}
+                  style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"9px",
+                           padding:"9px 16px", fontWeight:700, fontSize:"13px", cursor:"pointer" }}>
+                  + Nueva cotización
+                </button>
+              </div>
             </div>
 
             <div style={CARD}>

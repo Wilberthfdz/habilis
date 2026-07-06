@@ -6,9 +6,9 @@ import {
   obtenerProductosTecnico, guardarProductoTecnico,
 } from "../lib/firebase.js";
 
-const INP = { border:"1px solid #E2E8F0", borderRadius:"8px", padding:"9px 12px",
-              fontSize:"13px", outline:"none", background:"#fff", color:"#0F172A",
-              boxSizing:"border-box", width:"100%" };
+const INP = { border:"1px solid #E2E8F0", borderRadius:"8px", padding:"11px 12px",
+              fontSize:"15px", outline:"none", background:"#fff", color:"#0F172A",
+              boxSizing:"border-box", width:"100%", minHeight:"44px" };
 const LBL = { fontSize:"11px", fontWeight:700, color:"#64748B", textTransform:"uppercase",
               letterSpacing:"0.06em", display:"block", marginBottom:"3px" };
 const SEC = { background:"#fff", border:"1px solid #E2E8F0", borderRadius:"14px",
@@ -207,8 +207,20 @@ export default function EditorCotizacion({ nav, user, params }) {
         </div>
       </div>
 
-      <div style={{ maxWidth:"960px", margin:"0 auto", padding:"20px", display:"grid",
-                    gridTemplateColumns:"1fr min(360px,40%)", gap:"16px",
+      <style>{`
+        @media (max-width:720px) {
+          .editor-grid { grid-template-columns:1fr !important; }
+          .editor-sidebar { position:static !important; }
+          .editor-mob-footer { display:flex !important; }
+          .editor-sidebar-inner { display:none; }
+          .products-table { font-size:13px; }
+        }
+        @media (min-width:721px) {
+          .editor-mob-footer { display:none !important; }
+        }
+      `}</style>
+      <div className="editor-grid" style={{ maxWidth:"960px", margin:"0 auto", padding:"20px",
+                    display:"grid", gridTemplateColumns:"1fr min(360px,40%)", gap:"16px",
                     alignItems:"start" }}>
 
         {/* LEFT COLUMN */}
@@ -407,7 +419,7 @@ export default function EditorCotizacion({ nav, user, params }) {
         </div>
 
         {/* RIGHT COLUMN — TOTALS */}
-        <div style={{ position:"sticky", top:"80px" }}>
+        <div className="editor-sidebar" style={{ position:"sticky", top:"80px" }}><div className="editor-sidebar-inner">
           <div style={{ background:"#0F172A", borderRadius:"16px", padding:"22px",
                         boxShadow:"0 4px 16px rgba(15,23,42,0.2)" }}>
             <h3 style={{ fontWeight:800, fontSize:"14px", color:"rgba(255,255,255,0.7)",
@@ -487,7 +499,34 @@ export default function EditorCotizacion({ nav, user, params }) {
               📲 Enviar por WhatsApp
             </button>
           </div>
-        </div>
+        </div></div>
+      </div>
+
+      {/* Mobile sticky footer */}
+      <div className="editor-mob-footer"
+        style={{ position:"fixed", bottom:0, left:0, right:0, zIndex:300,
+                 background:"rgba(15,23,42,0.96)", backdropFilter:"blur(12px)",
+                 padding:"12px 16px", borderTop:"1px solid rgba(255,255,255,0.1)",
+                 gap:"8px", justifyContent:"stretch" }}>
+        <button onClick={() => guardar(true)} disabled={saving}
+          style={{ flex:1, background:"#F97316", color:"#fff", border:"none",
+                   borderRadius:"10px", padding:"13px", fontSize:"14px", fontWeight:700,
+                   cursor:"pointer", minHeight:"48px" }}>
+          {saving ? "..." : "💾 Guardar"}
+        </button>
+        <button onClick={enviarWA}
+          style={{ flex:1, background:"#25D366", color:"#fff", border:"none",
+                   borderRadius:"10px", padding:"13px", fontSize:"14px", fontWeight:700,
+                   cursor:"pointer", minHeight:"48px" }}>
+          📲 WhatsApp
+        </button>
+        <button onClick={() => nav("vistaCotizacion", { token:cotId })}
+          style={{ flex:1, background:"rgba(255,255,255,0.1)", color:"#fff",
+                   border:"1px solid rgba(255,255,255,0.2)", borderRadius:"10px",
+                   padding:"13px", fontSize:"14px", fontWeight:600,
+                   cursor:"pointer", minHeight:"48px" }}>
+          👁 Vista
+        </button>
       </div>
     </div>
   );
