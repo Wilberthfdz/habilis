@@ -13,9 +13,10 @@ export const firebaseConfig = {
 };
 
 // ── GEMINI API ──────────────────────────────────────────────────────────────
-// Obtén tu key GRATIS en: https://aistudio.google.com/apikey
-export const GEMINI_API_KEY = "AIzaSyAAw_l0_rBshf_9kc5yjvWtaFtB0ZdnNHc";
-export const GEMINI_MODEL   = "gemini-2.0-flash";
+// La key vive SOLO server-side, en functions/.env (GEMINI_API_KEY=...).
+// El cliente nunca debe tener la key — todas las llamadas pasan por la
+// Cloud Function `geminiProxy` (ver src/lib/gemini.js y functions/index.js).
+export const GEMINI_MODEL = "gemini-2.0-flash";
 
 // ── PRECIOS ─────────────────────────────────────────────────────────────────
 export const PRECIO_PRO_MXN = 100;

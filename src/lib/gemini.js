@@ -1,53 +1,16 @@
 // ─── GEMINI SERVICE ────────────────────────────────────────────────────────
-// Strategy:
-//   1. Try Firebase Function proxy (key lives server-side, no CORS risk).
-//      Requires Blaze plan + `firebase deploy --only functions`.
-//   2. Fall back to direct Gemini REST call using GEMINI_API_KEY from config.js.
-//      Works immediately on Spark plan; key is visible in client bundle.
+// Todas las llamadas pasan por la Cloud Function `geminiProxy`: la key vive
+// solo server-side (functions/.env), nunca en el bundle del cliente.
 
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { app } from "./firebase.js";
-import { GEMINI_API_KEY, GEMINI_MODEL } from "./config.js";
 
 const fns   = getFunctions(app, "us-central1");
 const proxy = httpsCallable(fns, "geminiProxy");
 
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
-
 async function callGemini(prompt, temperature = 0.7) {
-  // ── Try Function proxy first ─────────────────────────────────────────────
-  try {
-    const result = await proxy({ prompt, temperature });
-    return result.data?.text ?? "";
-  } catch (fnErr) {
-    // Proxy not available (Blaze required, not yet deployed, etc.) — fall through
-    const fnCode = fnErr?.code ?? "";
-    const isMissing =
-      fnCode.includes("not-found") ||
-      fnCode.includes("unavailable") ||
-      fnCode.includes("internal") ||
-      fnCode.includes("failed-precondition");
-
-    if (!isMissing) throw fnErr; // Real error (bad auth, quota, etc.)
-  }
-
-  // ── Fallback: direct REST call ───────────────────────────────────────────
-  if (!GEMINI_API_KEY || GEMINI_API_KEY === "PEGA_TU_GEMINI_API_KEY_AQUI") {
-    throw new Error("Gemini API key no configurada. Edita src/lib/config.js y reemplaza PEGA_TU_GEMINI_API_KEY_AQUI con tu key real.");
-  }
-
-  const res = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
-    method:  "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature, maxOutputTokens: 1024 },
-    }),
-  });
-
-  if (!res.ok) throw new Error(`Gemini error: ${res.status}`);
-  const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+  const result = await proxy({ prompt, temperature });
+  return result.data?.text ?? "";
 }
 
 // ── 1. MEJORA DE PERFIL ────────────────────────────────────────────────────
