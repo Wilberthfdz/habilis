@@ -20,7 +20,14 @@ const auth = getAuth(app);
 const db   = getFirestore(app);
 
 const PASSWORD = "HabilisDemo2026!";
+
+const SLUGS_5X = [
+  "electricista","plomero","hvac","albanil","tablaroca","mecanico",
+  "redes","cctv","pintor","soldador","refrigeracion","herrero",
+];
+
 const EMAILS = [
+  // Lote 1 (seedDemo.mjs) — 1 por oficio, 9 oficios
   "demo.electricista.cdmx@habilisdemo.mx",
   "demo.plomeria.cancun@habilisdemo.mx",
   "demo.hvac.gdl@habilisdemo.mx",
@@ -30,6 +37,8 @@ const EMAILS = [
   "demo.redes.cancun@habilisdemo.mx",
   "demo.refrigeracion.mty@habilisdemo.mx",
   "demo.pintor.cdmx@habilisdemo.mx",
+  // Lote 2 (seedDemo2.mjs) — 5 por oficio, 12 oficios
+  ...SLUGS_5X.flatMap(slug => [1, 2, 3, 4, 5].map(n => `demo2.${slug}${n}@habilisdemo.mx`)),
 ];
 
 async function main() {
