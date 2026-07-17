@@ -35,10 +35,22 @@ export default function RegistrarTrabajo({ nav, user }) {
 
   const set = k => e => setForm(f => ({ ...f, [k]:e.target.value }));
 
-  const processImg = file => new Promise(resolve => {
+  const MAX_UPLOAD_BYTES = 15 * 1024 * 1024; // 15 MB — antes de comprimir
+
+  const processImg = file => new Promise((resolve, reject) => {
+    if (!file.type || !file.type.startsWith("image/")) {
+      reject(new Error("El archivo debe ser una imagen (jpg, png, webp)."));
+      return;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      reject(new Error("La imagen es demasiado grande (máx. 15 MB)."));
+      return;
+    }
     const reader = new FileReader();
+    reader.onerror = () => reject(new Error("No se pudo leer el archivo."));
     reader.onload = e => {
       const img = new Image();
+      img.onerror = () => reject(new Error("El archivo no es una imagen válida."));
       img.onload = () => {
         const canvas = document.createElement("canvas");
         // 400px max, quality 0.5 → ~15-30 KB/imagen como base64 (~40 KB)
@@ -62,8 +74,14 @@ export default function RegistrarTrabajo({ nav, user }) {
     const file = e.target.files[0];
     if (!file) return;
     setFotos(f => ({ ...f, [tipo]: "__loading__" }));
-    const b64 = await processImg(file);
-    setFotos(f => ({ ...f, [tipo]: b64 }));
+    try {
+      const b64 = await processImg(file);
+      setFotos(f => ({ ...f, [tipo]: b64 }));
+    } catch (err) {
+      setFotos(f => ({ ...f, [tipo]: null }));
+      setError(`⚠️ ${err.message}`);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   const guardar = async () => {

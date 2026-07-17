@@ -8,8 +8,8 @@ import { app } from "./firebase.js";
 const fns   = getFunctions(app, "us-central1");
 const proxy = httpsCallable(fns, "geminiProxy");
 
-async function callGemini(prompt, temperature = 0.7) {
-  const result = await proxy({ prompt, temperature });
+async function callGemini(prompt, temperature = 0.7, agentName = "generic") {
+  const result = await proxy({ prompt, temperature, agentName });
   return result.data?.text ?? "";
 }
 
@@ -174,4 +174,27 @@ Responde SOLO JSON: {"sugeridos":["nombre1","nombre2","nombre3"],"razon":"explic
   } catch {
     return { sugeridos: tecnicos.slice(0,3).map(t => t.nombre), razon:"Técnicos complementarios" };
   }
+}
+
+// ── 9. REGISTRO POR VOZ ──────────────────────────────────────────────────
+// Requiere que la UI grabe audio (MediaRecorder) y lo pase en base64 —
+// esa parte de grabación todavía no existe en ningún formulario.
+const transcribirProxy = httpsCallable(fns, "transcribirRegistro");
+export async function transcribirRegistro(audioBase64, mimeType) {
+  const result = await transcribirProxy({ audioBase64, mimeType });
+  return result.data;
+}
+
+// ── 10. SUSCRIPCIÓN PRO (Mercado Pago) ───────────────────────────────────
+const crearSuscripcionProxy = httpsCallable(fns, "crearSuscripcion");
+export async function iniciarSuscripcionPro(email) {
+  const result = await crearSuscripcionProxy({ email });
+  return result.data?.url;
+}
+
+// ── 11. FACTURACIÓN CFDI (Facturapi) ─────────────────────────────────────
+const emitirFacturaProxy = httpsCallable(fns, "emitirFactura");
+export async function solicitarFactura(datosFiscales) {
+  const result = await emitirFacturaProxy(datosFiscales);
+  return result.data;
 }

@@ -20,6 +20,7 @@ import VistaCotizacion               from "./pages/VistaCotizacion.jsx";
 import SolicitarServicio             from "./pages/SolicitarServicio.jsx";
 import Chat                          from "./pages/Chat.jsx";
 import MiRed                         from "./pages/MiRed.jsx";
+import Admin                         from "./pages/Admin.jsx";
 
 const globalCSS = `
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -140,6 +141,7 @@ export default function App() {
       case "solicitarServicio":  return <SolicitarServicio  {...screenProps} params={params} />;
       case "chat":               return <Chat               {...screenProps} params={params} />;
       case "miRed":              return <MiRed              {...screenProps} />;
+      case "admin":              return <Admin              {...screenProps} />;
       default: return <Landing {...screenProps} />;
     }
   };

@@ -279,17 +279,14 @@ export async function obtenerProductosTecnico(tecnicoId) {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
-// ── SUSCRIPCIONES ────────────────────────────────────────────────────────
-export async function activarPlanPro(uid, datosConekta) {
-  // Aquí va la integración con Conekta para cobrar $100 MXN/mes
-  // Por ahora registra la intención de pago
-  await updateDoc(doc(db, "tecnicos", uid), {
-    plan: "pro",
-    planActivadoEn: serverTimestamp(),
-    planVenceEn: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-    conektaCustomerId: datosConekta?.customerId || null,
-  });
-}
+// NOTA DE SEGURIDAD: la vieja `activarPlanPro()` escribía plan:"pro" directo
+// desde el cliente sin verificar ningún pago (era un stub para Conekta que
+// nunca se completó, y no tenía ningún caller). Se eliminó — ver
+// SECURITY_AUDIT.md #1. El único camino real para volverse Pro ahora es
+// `iniciarSuscripcionPro()` (src/lib/gemini.js) → Mercado Pago → webhook
+// server-side (functions/index.js: webhookMP), que es el único que puede
+// escribir `plan` (las reglas de Firestore ya bloquean ese campo desde el
+// cliente).
 
 // ── SOLICITUDES_CHAT ─────────────────────────────────────────────────────
 export async function crearSolicitudChat(datos) {

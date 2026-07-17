@@ -12,6 +12,9 @@ export default function Nav({ nav, user, onLogout }) {
       { label:"Care",      route:"habilisCare" },
       { label:"Cotizaciones", route:"cotizaciones" },
     ] : []),
+    ...(user?.email === "wilberthfdz@gmail.com" ? [
+      { label:"⚙️ Admin",  route:"admin" },
+    ] : []),
   ];
 
   return (

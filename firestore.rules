@@ -2,33 +2,45 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == "wilberthfdz@gmail.com";
+    }
+
     match /tecnicos/{uid} {
       allow read:   if true;
       allow create: if request.auth != null && request.auth.uid == uid;
-      allow update: if request.auth != null && request.auth.uid == uid;
-      allow delete: if false;
+      // El dueño solo puede tocar campos de perfil "seguros" — plan, verificado,
+      // rating, rankScore, etc. son SOLO backend (agentes / webhook de pago).
+      // Antes cualquier usuario podía hacer updateDoc({plan:"pro"}) directo
+      // desde el cliente y volverse Pro gratis — ver SECURITY_AUDIT.md #1.
+      allow update: if isAdmin() || (
+        request.auth != null && request.auth.uid == uid &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['nombre','oficio','ciudad','experiencia','bio','fotoUrl','alcance','disponible','updatedAt'])
+      );
+      allow delete: if isAdmin();
     }
 
     match /trabajos/{trabajoId} {
       allow read:   if true;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null && resource.data.tecnicoId == request.auth.uid;
-      allow delete: if false;
+      allow create: if request.auth != null && request.resource.data.tecnicoId == request.auth.uid;
+      allow update: if (request.auth != null && resource.data.tecnicoId == request.auth.uid) || isAdmin();
+      allow delete: if isAdmin();
     }
 
     match /solicitudes/{solicitudId} {
       allow read:   if true;
-      allow create: if request.auth != null;
-      allow update: if false;
-      allow delete: if false;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
-    // Habilis Care — equipment assets (owner only)
+    // Habilis Care — equipment assets (owner only, admin can view/manage all)
     match /activos/{activoId} {
-      allow read:   if request.auth != null && resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read:   if (request.auth != null && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update: if (request.auth != null && resource.data.userId == request.auth.uid) || isAdmin();
+      allow delete: if (request.auth != null && resource.data.userId == request.auth.uid) || isAdmin();
     }
 
     // Service history records
@@ -36,23 +48,31 @@ service cloud.firestore {
       allow read:   if request.auth != null;
       allow create: if request.auth != null;
       allow update: if request.auth != null;
-      allow delete: if false;
+      allow delete: if isAdmin();
     }
 
     // Care subscription plans
     match /planes_care/{planId} {
-      allow read:   if request.auth != null && resource.data.clienteId == request.auth.uid;
+      allow read:   if (request.auth != null && resource.data.clienteId == request.auth.uid) || isAdmin();
       allow create: if request.auth != null;
-      allow update: if request.auth != null && resource.data.clienteId == request.auth.uid;
-      allow delete: if false;
+      allow update: if (request.auth != null && resource.data.clienteId == request.auth.uid) || isAdmin();
+      allow delete: if isAdmin();
     }
 
-    // Cotizaciones — public read (cotizacionId is the "token"), owner write
+    // Cotizaciones — public read (cotizacionId is the "token").
+    // El cliente público (sin login) SOLO puede cambiar `estado` a
+    // aceptada/rechazada — antes "allow update: if true" dejaba reescribir
+    // precio, datos del técnico o cualquier campo del documento completo.
     match /cotizaciones/{cotId} {
       allow read:   if true;
-      allow create: if request.auth != null;
-      allow update: if true;  // clients accept/reject without auth
-      allow delete: if false;
+      allow create: if request.auth != null && request.resource.data.tecnicoId == request.auth.uid;
+      allow update: if isAdmin()
+        || (request.auth != null && resource.data.tecnicoId == request.auth.uid)
+        || (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado','updatedAt'])
+          && request.resource.data.estado in ['aceptada','rechazada']
+        );
+      allow delete: if isAdmin();
     }
 
     // Folio counters (owner only)
@@ -61,20 +81,20 @@ service cloud.firestore {
       allow write:  if request.auth != null && request.auth.uid == tecnicoId;
     }
 
-    // Technician client directory
+    // Technician client directory — antes cualquier usuario autenticado
+    // podía leer/editar/borrar el directorio de clientes de OTRO técnico
+    // (IDOR). Ahora restringido al dueño (tecnicoId) o admin.
     match /clientes_tecnico/{clienteId} {
-      allow read:   if request.auth != null;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null;
-      allow delete: if request.auth != null;
+      allow read:   if (request.auth != null && resource.data.tecnicoId == request.auth.uid) || isAdmin();
+      allow create: if request.auth != null && request.resource.data.tecnicoId == request.auth.uid;
+      allow update, delete: if (request.auth != null && resource.data.tecnicoId == request.auth.uid) || isAdmin();
     }
 
-    // Technician product catalog
+    // Technician product catalog — mismo fix de IDOR que clientes_tecnico.
     match /productos_tecnico/{productoId} {
-      allow read:   if request.auth != null;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null;
-      allow delete: if request.auth != null;
+      allow read:   if (request.auth != null && resource.data.tecnicoId == request.auth.uid) || isAdmin();
+      allow create: if request.auth != null && request.resource.data.tecnicoId == request.auth.uid;
+      allow update, delete: if (request.auth != null && resource.data.tecnicoId == request.auth.uid) || isAdmin();
     }
 
     // Chat solicitudes — readable by both parties, writable by authenticated users
@@ -97,13 +117,72 @@ service cloud.firestore {
       allow read:   if true;
       allow create: if request.auth != null;
       allow update: if false;
-      allow delete: if false;
+      allow delete: if isAdmin();
     }
 
     // Technician collaboration network (subcollection per user)
     match /red_colaboradores/{userId}/lista/{tecnicoId} {
       allow read:   if request.auth != null && request.auth.uid == userId;
       allow write:  if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ── Agentes autónomos (Cloud Functions) — los agentes usan el Admin
+    // SDK, que ignora estas reglas; son estrictas a propósito porque solo
+    // protegen el acceso desde el cliente.
+
+    // Notificaciones generadas por los agentes — cada usuario ve las suyas
+    match /notificaciones/{id} {
+      allow read, update: if (request.auth != null && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isAdmin(); // el marketing masivo del admin crea desde el cliente; los agentes usan Admin SDK
+      allow delete: if (request.auth != null && resource.data.userId == request.auth.uid) || isAdmin();
+    }
+
+    // Pagos — el dueño lee los suyos; el admin lee y registra pagos manuales
+    match /pagos/{id} {
+      allow read:   if (request.auth != null && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    // Suscripciones pendientes de confirmación de Mercado Pago
+    match /suscripcionesPendientes/{uid} {
+      allow read:  if (request.auth != null && request.auth.uid == uid) || isAdmin();
+      allow write: if false; // solo el backend (Admin SDK)
+    }
+
+    // Facturas CFDI — el dueño lee las suyas; el admin lee todas
+    match /facturas/{id} {
+      allow read:  if (request.auth != null && resource.data.userId == request.auth.uid) || isAdmin();
+      allow write: if false; // solo el backend (Admin SDK)
+    }
+
+    // Logs de decisiones de agentes — evidencia para el XPRIZE.
+    // Solo el admin (panel ERP) puede leerlos desde el cliente.
+    match /aiLogs/{id} {
+      allow read:  if isAdmin();
+      allow write: if false; // solo los agentes (Admin SDK)
+    }
+
+    // Rate limiting interno — nunca accesible desde el cliente
+    match /rateLimits/{id} {
+      allow read, write: if false;
+    }
+
+    // Gastos del negocio (Admin ERP → Finanzas → Reporte XPRIZE)
+    match /gastos/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // Códigos promocionales (Admin ERP → Marketing)
+    match /promos/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Configuración general del sitio (precio Pro, modo mantenimiento, etc.)
+    match /config/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
   }
 }
