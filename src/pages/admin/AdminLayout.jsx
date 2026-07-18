@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { iniciarSesion, loginConGoogle } from "../../lib/firebase.js";
 
 const ADMIN_EMAIL = "wilberthfdz@gmail.com";
 
@@ -17,8 +18,65 @@ export function isAdminUser(user) {
   return !!user && user.email === ADMIN_EMAIL;
 }
 
+function AdminLoginGate({ nav }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [loadingGoogle, setLoadingGoogle] = useState(false);
+  const [error, setError] = useState("");
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setError(""); setLoading(true);
+    try {
+      await iniciarSesion(email.trim(), password);
+      // onAuthStateChanged en App.jsx recoge la sesión y re-renderiza solo.
+    } catch {
+      setError("Correo o contraseña incorrectos.");
+    } finally { setLoading(false); }
+  };
+
+  const conGoogle = async () => {
+    setError(""); setLoadingGoogle(true);
+    try { await loginConGoogle(); }
+    catch { setError("No se pudo iniciar sesión con Google."); }
+    finally { setLoadingGoogle(false); }
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0F172A", padding: 20 }}>
+      <form onSubmit={submit} style={{ background: "#fff", borderRadius: 16, padding: "32px 28px", width: "100%", maxWidth: 360, display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ textAlign: "center", marginBottom: 6 }}>
+          <div style={{ fontSize: 28 }}>⚙️</div>
+          <strong style={{ fontSize: 16 }}>Habilis Admin</strong>
+          <p style={{ fontSize: 12.5, color: "#64748B", marginTop: 4 }}>Acceso restringido</p>
+        </div>
+        {error && <div style={{ background: "#FEF2F2", color: "#991B1B", fontSize: 13, padding: "8px 10px", borderRadius: 8 }}>{error}</div>}
+        <input type="email" required placeholder="Correo" value={email} onChange={(e) => setEmail(e.target.value)}
+          style={{ border: "1px solid #E2E8F0", borderRadius: 8, padding: "10px 12px", fontSize: 14 }} />
+        <input type="password" required placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)}
+          style={{ border: "1px solid #E2E8F0", borderRadius: 8, padding: "10px 12px", fontSize: 14 }} />
+        <button type="submit" disabled={loading} style={{ background: "#F97316", color: "#fff", border: "none", borderRadius: 8, padding: "10px", fontWeight: 700, cursor: "pointer" }}>
+          {loading ? "Entrando…" : "Entrar"}
+        </button>
+        <button type="button" onClick={conGoogle} disabled={loadingGoogle}
+          style={{ background: "#F1F5F9", border: "1px solid #E2E8F0", borderRadius: 8, padding: "10px", fontWeight: 700, cursor: "pointer" }}>
+          {loadingGoogle ? "Entrando…" : "Continuar con Google"}
+        </button>
+        <button type="button" onClick={() => nav("landing")} style={{ background: "transparent", border: "none", color: "#94A3B8", fontSize: 12.5, cursor: "pointer", marginTop: 4 }}>
+          ← Volver al sitio
+        </button>
+      </form>
+    </div>
+  );
+}
+
 export default function AdminLayout({ user, nav, active, onChangeModule, children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  if (!user) {
+    return <AdminLoginGate nav={nav} />;
+  }
 
   if (!isAdminUser(user)) {
     return (

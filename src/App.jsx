@@ -89,9 +89,18 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+// Si entras directo por URL (ej. myhabilis.com/admin), arranca ahí en vez
+// del landing. El resto de la navegación sigue siendo por estado (nav()),
+// esto solo cubre la carga inicial de la página.
+const screenInicial = () => {
+  const path = window.location.pathname.replace(/\/+$/, "");
+  if (path === "/admin") return "admin";
+  return "landing";
+};
+
 export default function App() {
   const [user,    setUser]    = useState(undefined);
-  const [screen,  setScreen]  = useState("landing");
+  const [screen,  setScreen]  = useState(screenInicial);
   const [params,  setParams]  = useState({});
 
   useEffect(() => {
@@ -100,6 +109,10 @@ export default function App() {
   }, []);
 
   const nav = (screen, params = {}) => {
+    // Refleja /admin en la URL para poder entrar y compartir el link directo;
+    // el resto de las pantallas se queda igual (navegación por estado).
+    const path = screen === "admin" ? "/admin" : "/";
+    if (window.location.pathname !== path) window.history.pushState({}, "", path);
     setScreen(screen);
     setParams(params);
     window.scrollTo(0, 0);
