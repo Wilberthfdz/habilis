@@ -21,6 +21,7 @@ import SolicitarServicio             from "./pages/SolicitarServicio.jsx";
 import Chat                          from "./pages/Chat.jsx";
 import MiRed                         from "./pages/MiRed.jsx";
 import Admin                         from "./pages/Admin.jsx";
+import Inversion                     from "./pages/Inversion.jsx";
 
 const globalCSS = `
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -95,6 +96,7 @@ class ErrorBoundary extends React.Component {
 const screenInicial = () => {
   const path = window.location.pathname.replace(/\/+$/, "");
   if (path === "/admin") return "admin";
+  if (path === "/inversion") return "inversion";
   return "landing";
 };
 
@@ -111,7 +113,7 @@ export default function App() {
   const nav = (screen, params = {}) => {
     // Refleja /admin en la URL para poder entrar y compartir el link directo;
     // el resto de las pantallas se queda igual (navegación por estado).
-    const path = screen === "admin" ? "/admin" : "/";
+    const path = screen === "admin" ? "/admin" : screen === "inversion" ? "/inversion" : "/";
     if (window.location.pathname !== path) window.history.pushState({}, "", path);
     setScreen(screen);
     setParams(params);
@@ -155,6 +157,7 @@ export default function App() {
       case "chat":               return <Chat               {...screenProps} params={params} />;
       case "miRed":              return <MiRed              {...screenProps} />;
       case "admin":              return <Admin              {...screenProps} />;
+      case "inversion":          return <Inversion          {...screenProps} />;
       default: return <Landing {...screenProps} />;
     }
   };

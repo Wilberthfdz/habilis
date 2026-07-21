@@ -18,7 +18,7 @@ export function isAdminUser(user) {
   return !!user && user.email === ADMIN_EMAIL;
 }
 
-function AdminLoginGate({ nav }) {
+export function AdminLoginGate({ nav }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
