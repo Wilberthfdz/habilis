@@ -1,6 +1,6 @@
 // ─── FIREBASE SERVICE — Base de datos, auth y storage ────────────────────
 import { initializeApp }                   from "firebase/app";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, OAuthProvider, signInWithPopup } from "firebase/auth";
 import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, where, orderBy, limit, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 // Storage SDK removed — profile photos use base64-in-Firestore (no Blaze plan needed)
 import { firebaseConfig }                  from "./config.js";
@@ -25,6 +25,15 @@ export const onAuth = (callback) => onAuthStateChanged(auth, callback);
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
 export const loginConGoogle = () => signInWithPopup(auth, googleProvider);
+
+// Apple Sign-In — mismo patrón que Google: el intercambio de tokens lo hace
+// Firebase por detrás, este código nunca ve credenciales. La configuración
+// real (Services ID, Team ID, Key ID, .p8 de Apple Developer) se da de alta
+// en Firebase Console → Authentication → Sign-in method → Apple, no aquí.
+const appleProvider = new OAuthProvider("apple.com");
+appleProvider.addScope("email");
+appleProvider.addScope("name");
+export const loginConApple = () => signInWithPopup(auth, appleProvider);
 
 // ── TÉCNICOS ────────────────────────────────────────────────────────────
 export async function crearPerfilTecnico(uid, datos) {

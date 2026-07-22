@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Logo from "../components/Logo.jsx";
-import { iniciarSesion, loginConGoogle, obtenerTecnico } from "../lib/firebase.js";
+import { iniciarSesion, loginConGoogle, loginConApple, obtenerTecnico } from "../lib/firebase.js";
 
 // Google "G" logo inline SVG
 function GoogleIcon() {
@@ -14,11 +14,22 @@ function GoogleIcon() {
   );
 }
 
+// Apple logo inline SVG — botón negro con logo blanco, según los lineamientos
+// de marca de Apple ("Sign in with Apple" Human Interface Guidelines)
+function AppleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 384 512" style={{ flexShrink:0 }}>
+      <path fill="#fff" d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5c0 26.2 4.8 53.3 14.4 81.2 12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/>
+    </svg>
+  );
+}
+
 export default function Login({ nav, user }) {
   const [email,         setEmail]         = useState("");
   const [password,      setPassword]      = useState("");
   const [loading,       setLoading]       = useState(false);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
+  const [loadingApple,  setLoadingApple]  = useState(false);
   const [error,         setError]         = useState("");
 
   useEffect(() => { if (user) nav("panel"); }, [user]);
@@ -49,34 +60,46 @@ export default function Login({ nav, user }) {
     } finally { setLoading(false); }
   };
 
+  // Compartido entre Google y Apple — ambos son signInWithPopup y fallan
+  // con los mismos códigos de error de Firebase Auth.
+  const mapOAuthError = (code, providerLabel) => {
+    if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return "";
+    if (code === "auth/popup-blocked")
+      return `El navegador bloqueó la ventana de ${providerLabel}. Permite ventanas emergentes para este sitio e intenta de nuevo.`;
+    if (code === "auth/unauthorized-domain")
+      return "Este dominio no está autorizado en Firebase. Agrega el dominio en Firebase Console → Authentication → Authorized domains.";
+    if (code === "auth/operation-not-allowed")
+      return `${providerLabel} Sign-In no está habilitado. Actívalo en Firebase Console → Authentication → Sign-in method → ${providerLabel}.`;
+    if (code === "auth/network-request-failed")
+      return "Sin conexión. Verifica tu internet e intenta de nuevo.";
+    return `No se pudo iniciar sesión con ${providerLabel}. (${code || "error desconocido"})`;
+  };
+
   const handleGoogle = async () => {
     setLoadingGoogle(true); setError("");
     try {
       const cred = await loginConGoogle();
       await routeAfterLogin(cred.user.uid);
     } catch (err) {
-      const code = err.code || "";
-      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
-        // User dismissed — no message needed
-      } else if (code === "auth/popup-blocked") {
-        setError("El navegador bloqueó la ventana de Google. Permite ventanas emergentes para este sitio e intenta de nuevo.");
-      } else if (code === "auth/unauthorized-domain") {
-        setError("Este dominio no está autorizado en Firebase. Agrega habilis-eb89c.web.app en Firebase Console → Authentication → Authorized domains.");
-      } else if (code === "auth/operation-not-allowed") {
-        setError("Google Sign-In no está habilitado. Actívalo en Firebase Console → Authentication → Sign-in method → Google.");
-      } else if (code === "auth/network-request-failed") {
-        setError("Sin conexión. Verifica tu internet e intenta de nuevo.");
-      } else {
-        setError(`No se pudo iniciar sesión con Google. (${code || "error desconocido"})`);
-      }
+      setError(mapOAuthError(err.code || "", "Google"));
     } finally { setLoadingGoogle(false); }
+  };
+
+  const handleApple = async () => {
+    setLoadingApple(true); setError("");
+    try {
+      const cred = await loginConApple();
+      await routeAfterLogin(cred.user.uid);
+    } catch (err) {
+      setError(mapOAuthError(err.code || "", "Apple"));
+    } finally { setLoadingApple(false); }
   };
 
   const inp = { width:"100%", border:"1px solid #E2E8F0", borderRadius:"10px", padding:"12px 16px",
                 fontSize:"14px", outline:"none", background:"#F8FAFC", color:"#0F172A",
                 boxSizing:"border-box" };
 
-  const busy = loading || loadingGoogle;
+  const busy = loading || loadingGoogle || loadingApple;
 
   return (
     <div style={{ minHeight:"100vh", background:"#0F172A", display:"flex", flexDirection:"column",
@@ -116,6 +139,21 @@ export default function Login({ nav, user }) {
               : <GoogleIcon />
             }
             {loadingGoogle ? "Conectando..." : "Continuar con Google"}
+          </button>
+
+          {/* ── APPLE BUTTON ────────────────────────────────────────────── */}
+          <button onClick={handleApple} disabled={busy}
+            style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"center",
+                     gap:"10px", background:"#000", color:"#fff", border:"1.5px solid #000",
+                     borderRadius:"12px", padding:"13px 16px", fontSize:"15px", fontWeight:600,
+                     cursor:"pointer", marginBottom:"20px", opacity: busy ? 0.7 : 1,
+                     boxShadow:"0 1px 4px rgba(0,0,0,0.12)", transition:"box-shadow 0.15s" }}>
+            {loadingApple
+              ? <div style={{ width:"18px", height:"18px", border:"2px solid rgba(255,255,255,0.3)",
+                               borderTopColor:"#fff", borderRadius:"50%", animation:"spin 0.75s linear infinite" }} />
+              : <AppleIcon />
+            }
+            {loadingApple ? "Conectando..." : "Continuar con Apple"}
           </button>
 
           {/* Divider */}
