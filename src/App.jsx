@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, lazy, Suspense } from "react";
 import { onAuth }                    from "./lib/firebase.js";
 import Landing                       from "./pages/Landing.jsx";
 import Registro                      from "./pages/Registro.jsx";
@@ -20,8 +20,13 @@ import VistaCotizacion               from "./pages/VistaCotizacion.jsx";
 import SolicitarServicio             from "./pages/SolicitarServicio.jsx";
 import Chat                          from "./pages/Chat.jsx";
 import MiRed                         from "./pages/MiRed.jsx";
-import Admin                         from "./pages/Admin.jsx";
-import Inversion                     from "./pages/Inversion.jsx";
+import Privacidad                    from "./pages/Privacidad.jsx";
+import Terminos                      from "./pages/Terminos.jsx";
+
+// Carga diferida: el ERP admin y la página de inversión solo los ve un
+// puñado de personas — no tienen por qué pesar en el bundle de todos.
+const Admin     = lazy(() => import("./pages/Admin.jsx"));
+const Inversion = lazy(() => import("./pages/Inversion.jsx"));
 
 const globalCSS = `
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -97,8 +102,13 @@ const screenInicial = () => {
   const path = window.location.pathname.replace(/\/+$/, "");
   if (path === "/admin") return "admin";
   if (path === "/inversion") return "inversion";
+  if (path === "/privacidad") return "privacidad";
+  if (path === "/terminos") return "terminos";
   return "landing";
 };
+
+// Pantallas que se reflejan en la URL (compartibles por link directo)
+const RUTAS_URL = { admin: "/admin", inversion: "/inversion", privacidad: "/privacidad", terminos: "/terminos" };
 
 export default function App() {
   const [user,    setUser]    = useState(undefined);
@@ -111,9 +121,9 @@ export default function App() {
   }, []);
 
   const nav = (screen, params = {}) => {
-    // Refleja /admin en la URL para poder entrar y compartir el link directo;
-    // el resto de las pantallas se queda igual (navegación por estado).
-    const path = screen === "admin" ? "/admin" : screen === "inversion" ? "/inversion" : "/";
+    // Refleja las pantallas compartibles en la URL; el resto de la
+    // navegación se queda igual (por estado).
+    const path = RUTAS_URL[screen] || "/";
     if (window.location.pathname !== path) window.history.pushState({}, "", path);
     setScreen(screen);
     setParams(params);
@@ -158,6 +168,8 @@ export default function App() {
       case "miRed":              return <MiRed              {...screenProps} />;
       case "admin":              return <Admin              {...screenProps} />;
       case "inversion":          return <Inversion          {...screenProps} />;
+      case "privacidad":         return <Privacidad         {...screenProps} />;
+      case "terminos":           return <Terminos           {...screenProps} />;
       default: return <Landing {...screenProps} />;
     }
   };
@@ -165,7 +177,14 @@ export default function App() {
   return (
     <ErrorBoundary>
       <style>{globalCSS}</style>
-      {renderScreen()}
+      <Suspense fallback={
+        <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ width:"40px", height:"40px", border:"3px solid #D97706", borderTopColor:"transparent",
+                        borderRadius:"50%", animation:"spin 0.8s linear infinite" }} />
+        </div>
+      }>
+        {renderScreen()}
+      </Suspense>
     </ErrorBoundary>
   );
 }

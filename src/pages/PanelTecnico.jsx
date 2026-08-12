@@ -413,6 +413,36 @@ export default function PanelTecnico({ nav, user }) {
                   }}>{t.estado}</span>
                 </div>
                 {t.descripcion && <p style={{ color:"#64748B", fontSize:"12px", marginTop:"8px", lineHeight:1.5 }}>{t.descripcion.slice(0,120)}{t.descripcion.length>120?"...":""}</p>}
+                {/* Veredicto del agente moderador (campos *IA escritos por el backend) */}
+                {t.moderadoPorIA && (
+                  <div style={{ display:"flex", gap:"6px", flexWrap:"wrap", marginTop:"10px",
+                                paddingTop:"10px", borderTop:"1px dashed #E2E8F0" }}>
+                    <span style={{ background: t.aprobadoIA ? "#F0FDF4" : "#FEF2F2",
+                                   color: t.aprobadoIA ? "#059669" : "#DC2626",
+                                   fontSize:"10.5px", fontWeight:700, padding:"3px 8px", borderRadius:"6px" }}>
+                      {t.aprobadoIA ? "✨ Revisado por IA" : "⚠️ Marcado por IA"}
+                    </span>
+                    {typeof t.calidadIA === "number" && (
+                      <span style={{ background:"#F8FAFC", color:"#475569", fontSize:"10.5px",
+                                     fontWeight:700, padding:"3px 8px", borderRadius:"6px",
+                                     border:"1px solid #E2E8F0" }}>
+                        Calidad {t.calidadIA}/10
+                      </span>
+                    )}
+                    {t.categoriaIA && (
+                      <span style={{ background:"#F8FAFC", color:"#475569", fontSize:"10.5px",
+                                     fontWeight:700, padding:"3px 8px", borderRadius:"6px",
+                                     border:"1px solid #E2E8F0" }}>
+                        {t.categoriaIA}
+                      </span>
+                    )}
+                    {!t.aprobadoIA && t.razonModeracionIA && (
+                      <span style={{ width:"100%", color:"#DC2626", fontSize:"11px" }}>
+                        {t.razonModeracionIA}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>

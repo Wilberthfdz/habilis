@@ -1,6 +1,6 @@
 // ─── FIREBASE SERVICE — Base de datos, auth y storage ────────────────────
 import { initializeApp }                   from "firebase/app";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, OAuthProvider, signInWithPopup } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, OAuthProvider, signInWithPopup, sendPasswordResetEmail } from "firebase/auth";
 import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, where, orderBy, limit, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 // Storage SDK removed — profile photos use base64-in-Firestore (no Blaze plan needed)
 import { firebaseConfig }                  from "./config.js";
@@ -18,6 +18,8 @@ export const iniciarSesion = (email, password) =>
   signInWithEmailAndPassword(auth, email, password);
 
 export const cerrarSesion = () => signOut(auth);
+
+export const enviarResetPassword = (email) => sendPasswordResetEmail(auth, email);
 
 export const onAuth = (callback) => onAuthStateChanged(auth, callback);
 
@@ -352,6 +354,23 @@ export async function obtenerColaboradores(userId) {
 export async function estaEnRed(userId, tecnicoId) {
   const snap = await getDoc(doc(db,"red_colaboradores",userId,"lista",tecnicoId));
   return snap.exists();
+}
+
+// ── NOTIFICACIONES (escritas por los agentes de IA y el admin) ───────────
+export async function obtenerNotificaciones(userId) {
+  // Sin orderBy para no requerir índice compuesto — se ordena en cliente
+  const q = query(collection(db, "notificaciones"), where("userId", "==", userId), limit(50));
+  const snap = await getDocs(q);
+  const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return docs.sort((a, b) => (b.fecha?.toMillis?.() || 0) - (a.fecha?.toMillis?.() || 0));
+}
+
+export async function marcarNotificacionLeida(notifId) {
+  await updateDoc(doc(db, "notificaciones", notifId), { leida: true });
+}
+
+export async function marcarTodasLeidas(notifs) {
+  await Promise.all(notifs.filter(n => !n.leida).map(n => marcarNotificacionLeida(n.id)));
 }
 
 export { auth, db, app };

@@ -177,8 +177,7 @@ Responde SOLO JSON: {"sugeridos":["nombre1","nombre2","nombre3"],"razon":"explic
 }
 
 // ── 9. REGISTRO POR VOZ ──────────────────────────────────────────────────
-// Requiere que la UI grabe audio (MediaRecorder) y lo pase en base64 —
-// esa parte de grabación todavía no existe en ningún formulario.
+// La grabación vive en CompletarPerfil.jsx (MediaRecorder → base64 → aquí).
 const transcribirProxy = httpsCallable(fns, "transcribirRegistro");
 export async function transcribirRegistro(audioBase64, mimeType) {
   const result = await transcribirProxy({ audioBase64, mimeType });

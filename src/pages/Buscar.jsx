@@ -3,11 +3,10 @@ import Logo from "../components/Logo.jsx";
 import Nav from "../components/Nav.jsx";
 import Avatar from "../components/Avatar.jsx";
 import { buscarTecnicos } from "../lib/firebase.js";
+import { TAXONOMIA, buscarPorTexto } from "../lib/taxonomia.js";
 
-const CATS = [
-  "Electricista","Plomero","Técnico HVAC / Minisplits","Mecánico",
-  "Pintor","Instalador CCTV","Albañil","Tablaroquero","Soldador","Herrero",
-];
+// Chips desde la taxonomía real de oficios (src/lib/taxonomia.js)
+const CATS = TAXONOMIA.map(c => ({ id: c.id, nombre: c.nombre }));
 
 const initials = n => ((n||"").trim().charAt(0).toUpperCase()) || "T";
 
@@ -35,12 +34,18 @@ export default function Buscar({ nav, user, params }) {
 
   const filtrar = (lista, f) => {
     const l = f.trim().toLowerCase();
-    // Text filter
+    // La búsqueda entiende la taxonomía: "clima" también encuentra técnicos
+    // registrados con categoriaId "clima" aunque su oficio diga "Minisplits".
+    const hits = l ? buscarPorTexto(l, 10) : [];
+    const catIds = new Set(hits.map(h => h.categoriaId || h.id.split(".")[0]));
+    const subIds = new Set(hits.filter(h => h.nivel >= 2).map(h => h.subcategoriaId || h.id));
     const matched = l
       ? lista.filter(t =>
           (t.oficio||"").toLowerCase().includes(l) ||
           (t.nombre||"").toLowerCase().includes(l) ||
-          (t.ciudad||"").toLowerCase().includes(l)
+          (t.ciudad||"").toLowerCase().includes(l) ||
+          (t.categoriaId && catIds.has(t.categoriaId)) ||
+          (t.subcategoriaId && subIds.has(t.subcategoriaId))
         )
       : [...lista];
     // Alcance filter: hide "estado"-only technicians when searching outside their city
@@ -112,11 +117,11 @@ export default function Buscar({ nav, user, params }) {
             Todos
           </button>
           {CATS.map(cat => (
-            <button key={cat} onClick={() => setChip(cat)}
-              style={{ padding:"6px 16px", background: q === cat ? "#F97316" : "#F1F5F9",
-                       color: q === cat ? "#fff" : "#374151", border:"none",
+            <button key={cat.id} onClick={() => setChip(cat.nombre)}
+              style={{ padding:"6px 16px", background: q === cat.nombre ? "#F97316" : "#F1F5F9",
+                       color: q === cat.nombre ? "#fff" : "#374151", border:"none",
                        borderRadius:"20px", fontSize:"12px", fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
-              {cat}
+              {cat.nombre}
             </button>
           ))}
         </div>

@@ -263,11 +263,19 @@ export default function HabilisCare({ nav, user }) {
                 Registra tus equipos y Habilis Care te avisa cuándo necesitan servicio.
               </p>
             </div>
-            <button onClick={() => setShowModal(true)}
-              style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"10px",
-                       padding:"11px 22px", fontWeight:700, fontSize:"14px", cursor:"pointer", flexShrink:0 }}>
-              + Agregar equipo
-            </button>
+            <div style={{ display:"flex", gap:"10px", flexShrink:0, flexWrap:"wrap" }}>
+              <button onClick={() => nav("planCare")}
+                style={{ background:"rgba(255,255,255,0.08)", color:"#fff",
+                         border:"1px solid rgba(255,255,255,0.18)", borderRadius:"10px",
+                         padding:"11px 22px", fontWeight:700, fontSize:"14px", cursor:"pointer" }}>
+                🛡️ Planes de mantenimiento
+              </button>
+              <button onClick={() => setShowModal(true)}
+                style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"10px",
+                         padding:"11px 22px", fontWeight:700, fontSize:"14px", cursor:"pointer" }}>
+                + Agregar equipo
+              </button>
+            </div>
           </div>
 
           {/* Stats row */}

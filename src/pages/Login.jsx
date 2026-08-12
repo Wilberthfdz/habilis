@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Logo from "../components/Logo.jsx";
-import { iniciarSesion, loginConGoogle, loginConApple, obtenerTecnico } from "../lib/firebase.js";
+import { iniciarSesion, loginConGoogle, loginConApple, obtenerTecnico, enviarResetPassword } from "../lib/firebase.js";
 
 // Google "G" logo inline SVG
 function GoogleIcon() {
@@ -31,6 +31,7 @@ export default function Login({ nav, user }) {
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [loadingApple,  setLoadingApple]  = useState(false);
   const [error,         setError]         = useState("");
+  const [resetEnviado,  setResetEnviado]  = useState(false);
 
   useEffect(() => { if (user) nav("panel"); }, [user]);
 
@@ -198,11 +199,29 @@ export default function Login({ nav, user }) {
           </form>
 
           <div style={{ marginTop:"16px", textAlign:"center" }}>
-            <button onClick={() => alert("Restablecimiento de contraseña próximamente")}
-              style={{ background:"none", border:"none", color:"rgba(255,255,255,0.35)",
-                       fontSize:"12px", cursor:"pointer" }}>
-              ¿Olvidaste tu contraseña?
-            </button>
+            {resetEnviado ? (
+              <p style={{ fontSize:"12px", color:"#86EFAC" }}>
+                ✓ Te enviamos un correo para restablecer tu contraseña. Revisa tu bandeja (y spam).
+              </p>
+            ) : (
+              <button onClick={async () => {
+                  if (!email.trim()) { setError("Escribe tu correo arriba y vuelve a tocar aquí."); return; }
+                  setError("");
+                  try {
+                    await enviarResetPassword(email.trim());
+                    setResetEnviado(true);
+                  } catch (err) {
+                    const c = err.code || "";
+                    setError(c.includes("invalid-email") ? "El correo no es válido."
+                           : c.includes("too-many-requests") ? "Demasiados intentos. Espera unos minutos."
+                           : "No se pudo enviar el correo. Intenta de nuevo.");
+                  }
+                }}
+                style={{ background:"none", border:"none", color:"rgba(255,255,255,0.35)",
+                         fontSize:"12px", cursor:"pointer" }}>
+                ¿Olvidaste tu contraseña?
+              </button>
+            )}
           </div>
 
           <div style={{ borderTop:"1px solid rgba(255,255,255,0.07)", marginTop:"22px", paddingTop:"18px",

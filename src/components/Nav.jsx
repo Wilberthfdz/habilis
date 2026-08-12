@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Logo from "./Logo.jsx";
+import NotifBell from "./NotifBell.jsx";
 
 export default function Nav({ nav, user, onLogout }) {
   const [open, setOpen] = useState(false);
@@ -94,6 +95,7 @@ export default function Nav({ nav, user, onLogout }) {
         <div style={{ width:"1px", height:"16px", background:"rgba(255,255,255,0.12)", margin:"0 8px" }}/>
         {user ? (
           <>
+            <NotifBell nav={nav} user={user} />
             <button className="nav-btn-panel" onClick={() => nav("panel")}>Mi Panel</button>
             {onLogout && (
               <button className="nav-btn-logout" onClick={onLogout} style={{ marginLeft:"6px" }}>
@@ -114,7 +116,12 @@ export default function Nav({ nav, user, onLogout }) {
         )}
       </div>
 
-      {/* Hamburger */}
+      {/* Hamburger (la campana queda visible también en móvil) */}
+      {user && (
+        <div className="nav-hamburger" style={{ marginLeft:"auto", marginRight:"4px" }}>
+          <NotifBell nav={nav} user={user} />
+        </div>
+      )}
       <button className="nav-hamburger"
         onClick={() => setOpen(o => !o)}
         style={{ background:"none", border:"none", color:"#fff", cursor:"pointer",
