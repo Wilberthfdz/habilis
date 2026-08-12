@@ -184,5 +184,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+
+    // Log de auditoría del ERP: toda acción del admin queda registrada
+    match /adminLogs/{id} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false; // el rastro no se edita ni se borra
+    }
   }
 }

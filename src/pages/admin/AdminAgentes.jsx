@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { db } from "../../lib/firebase.js";
 import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
+import { exportarCSV } from "../../lib/erp.js";
 
 const AGENTE_INFO = {
   matching:    { icon: "🎯", label: "Matching" },
@@ -29,6 +30,7 @@ const CARD = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 14
 export default function AdminAgentes() {
   const [logs, setLogs] = useState(null);
   const [error, setError] = useState("");
+  const [filtroAgente, setFiltroAgente] = useState("todos");
 
   useEffect(() => {
     const q = query(collection(db, "aiLogs"), orderBy("fecha", "desc"), limit(200));
@@ -54,6 +56,17 @@ export default function AdminAgentes() {
   const hoy = logs.filter((l) => esHoy(l.fecha));
   const porAgente = {};
   for (const l of hoy) porAgente[l.agente] = (porAgente[l.agente] || 0) + 1;
+
+  const visibles = filtroAgente === "todos" ? logs : logs.filter((l) => (l.agente || "generic") === filtroAgente);
+
+  // Evidencia XPRIZE: exportar las decisiones tal cual quedaron registradas
+  const exportar = () => exportarCSV("habilis_decisiones_ia", [
+    { key: (l) => fmtHora(l.fecha), label: "Fecha y hora" },
+    { key: (l) => (AGENTE_INFO[l.agente] || AGENTE_INFO.generic).label, label: "Agente" },
+    { key: "decision", label: "Decisión" },
+    { key: "entidadId", label: "Entidad" },
+    { key: "razon", label: "Razón" },
+  ], visibles);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -82,9 +95,22 @@ export default function AdminAgentes() {
           </div>
         ))}
         <div style={CARD}>
-          <div style={{ fontSize: 12, color: "#64748B", fontWeight: 700, textTransform: "uppercase" }}>Total histórico</div>
+          <div style={{ fontSize: 12, color: "#64748B", fontWeight: 700, textTransform: "uppercase" }}>Últimas cargadas</div>
           <div style={{ fontSize: 28, fontWeight: 800 }}>{logs.length}{logs.length === 200 ? "+" : ""}</div>
+          <div style={{ fontSize: 10.5, color: "#94A3B8" }}>máx. 200 más recientes</div>
         </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <select value={filtroAgente} onChange={(e) => setFiltroAgente(e.target.value)}
+          style={{ border: "1px solid #E2E8F0", borderRadius: 8, padding: "8px 10px", fontSize: 13 }}>
+          <option value="todos">Todos los agentes</option>
+          {Object.entries(AGENTE_INFO).map(([k, v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
+        </select>
+        <button onClick={exportar}
+          style={{ background: "#0F172A", color: "#fff", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+          ⬇ Exportar evidencia (CSV)
+        </button>
       </div>
 
       <div style={{ ...CARD, padding: 0, overflow: "hidden" }}>
@@ -98,12 +124,12 @@ export default function AdminAgentes() {
               </tr>
             </thead>
             <tbody>
-              {logs.length === 0 && (
+              {visibles.length === 0 && (
                 <tr><td colSpan={5} style={{ padding: 20, textAlign: "center", color: "#94A3B8" }}>
                   Todavía no hay decisiones registradas — corren en cuanto se cree una solicitud, un trabajo, un técnico nuevo, o al desplegar los schedulers diarios.
                 </td></tr>
               )}
-              {logs.map((l) => {
+              {visibles.map((l) => {
                 const info = AGENTE_INFO[l.agente] || AGENTE_INFO.generic;
                 return (
                   <tr key={l.id} style={{ borderBottom: "1px solid #F1F5F9" }}>
