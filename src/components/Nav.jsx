@@ -115,7 +115,7 @@ export default function Nav({ nav, user, onLogout }) {
           </button>
         ))}
 
-        {/* Acerca de — dropdown estilo Uber */}
+        {/* Acerca de — dropdown */}
         <div style={{ position:"relative" }}
           onMouseEnter={() => setAboutOpen(true)}
           onMouseLeave={() => setAboutOpen(false)}>
