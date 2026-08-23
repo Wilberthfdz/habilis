@@ -25,7 +25,7 @@ const PRO = [
 
 const FAQ = [
   ["¿Puedo cancelar en cualquier momento?","Sí. Sin contratos de permanencia. Cancela desde tu panel cuando quieras."],
-  ["¿Cómo se realiza el cobro?","Cobro mensual de $100 MXN mediante tarjeta de débito o crédito a través de Conekta (próximamente)."],
+  ["¿Cómo se realiza el cobro?","Cobro mensual de $100 MXN por suscripción a través de Mercado Pago, con tarjeta de débito o crédito. Puedes solicitar factura CFDI con tus datos fiscales."],
   ["¿Qué son los leads garantizados?","Son solicitudes de clientes que coinciden con tu oficio y ciudad, enviadas directo a tu panel."],
   ["¿El plan Gratis es realmente gratis?","Sí, siempre. Los clientes también pueden buscar y contactar técnicos sin costo alguno."],
 ];
@@ -115,7 +115,7 @@ export default function Precios({ nav, user }) {
                 </li>
               ))}
             </ul>
-            <button onClick={() => nav("registro", { plan:"pro" })}
+            <button onClick={() => nav(user ? "suscripcionPro" : "registro", user ? {} : { plan:"pro" })}
               style={{ width:"100%", background:"#F97316", color:"#fff", border:"none",
                        borderRadius:"12px", padding:"14px", fontSize:"15px", fontWeight:700, cursor:"pointer" }}>
               Obtener Plan Pro ⚡

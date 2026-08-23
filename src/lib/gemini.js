@@ -186,9 +186,9 @@ export async function transcribirRegistro(audioBase64, mimeType) {
 
 // ── 10. SUSCRIPCIÓN PRO (Mercado Pago) ───────────────────────────────────
 const crearSuscripcionProxy = httpsCallable(fns, "crearSuscripcion");
-export async function iniciarSuscripcionPro(email) {
-  const result = await crearSuscripcionProxy({ email });
-  return result.data?.url;
+export async function iniciarSuscripcionPro(email, codigo) {
+  const result = await crearSuscripcionProxy({ email, codigo: codigo || null });
+  return result.data;   // { url, monto }
 }
 
 // ── 11. FACTURACIÓN CFDI (Facturapi) ─────────────────────────────────────
@@ -212,7 +212,7 @@ DATOS DEL PRODUCTO (tu única fuente de verdad):
 - Habilis es una bolsa de trabajo especializada: el técnico crea su perfil, documenta trabajos con fotos, y los clientes lo encuentran y lo contactan directo. Habilis NO cobra comisión por trabajo ni intermedia pagos entre técnico y cliente.
 - Habilis es solo plataforma de intermediación tecnológica: no presta los servicios, no emplea a los técnicos y NO se hace responsable del trabajo realizado — cada técnico independiente responde por su servicio (los detalles están en /terminos).
 - Plan Gratis: perfil, aparecer en búsquedas, hasta 5 trabajos documentados.
-- Plan Pro: $100 MXN/mes (IVA incluido), suscripción por Mercado Pago. Incluye prioridad en búsquedas, sin anuncios, trabajos ilimitados, herramientas de IA, cotizaciones, Habilis Care y soporte prioritario. Se cancela cuando quieras desde Mercado Pago; hay factura CFDI si la pides con tus datos fiscales.
+- Plan Pro: $100 MXN/mes (IVA incluido), suscripción por Mercado Pago. Incluye prioridad en búsquedas, sin anuncios, trabajos ilimitados, herramientas de IA, cotizaciones, Habilis Care y soporte prioritario. Se contrata en la página /pro (acepta códigos de descuento). Se cancela cuando quieras desde Mercado Pago; la factura CFDI se solicita también en /pro con tus datos fiscales.
 - Funciones: búsqueda de técnicos por oficio y ciudad, feed de trabajos, chat, cotizaciones profesionales, Habilis Care (mantenimiento preventivo de equipos), registro de trabajos por voz, red de colaboradores.
 - Registro: con correo, Google o Apple. Recuperación de contraseña desde la pantalla de inicio de sesión.
 - Contacto humano: habilisempresa@gmail.com

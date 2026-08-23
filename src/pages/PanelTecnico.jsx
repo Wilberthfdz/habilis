@@ -243,10 +243,10 @@ export default function PanelTecnico({ nav, user }) {
               <p style={{ fontSize:"13px", color:"rgba(255,255,255,0.7)" }}>
                 Actualiza a <b>Plan Pro por $100 MXN/mes</b> → apareces primero + IA completa + sin anuncios
               </p>
-              <button onClick={() => nav("precios")}
+              <button onClick={() => nav("suscripcionPro")}
                 style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"8px",
                          padding:"6px 14px", fontWeight:700, fontSize:"12px", cursor:"pointer", flexShrink:0 }}>
-                Ver Plan Pro →
+                Hacerme Pro →
               </button>
             </div>
           )}

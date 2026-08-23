@@ -422,9 +422,30 @@ exports.transcribirRegistro = onCall({ secrets: [GEMINI_KEY] }, async (request) 
 exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
   const uid = requireAuth(request);
   await checkRateLimit(uid, "crearSuscripcion", 10);
-  const { email } = request.data;
+  const { email, codigo } = request.data;
   if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new HttpsError("invalid-argument", "Email requerido.");
+  }
+
+  // Código de descuento (colección `promos` del admin de Marketing).
+  let monto = 100;
+  let promoId = null;
+  if (codigo) {
+    if (typeof codigo !== "string" || codigo.length > 30) {
+      throw new HttpsError("invalid-argument", "Código de descuento inválido.");
+    }
+    const snap = await db.collection("promos")
+      .where("codigo", "==", codigo.trim().toUpperCase()).limit(1).get();
+    if (snap.empty) throw new HttpsError("not-found", "Ese código de descuento no existe.");
+    const promo = snap.docs[0].data();
+    if (promo.usosMaximos && (promo.usosActuales || 0) >= promo.usosMaximos) {
+      throw new HttpsError("failed-precondition", "Ese código ya alcanzó su límite de usos.");
+    }
+    const pct = Math.min(99, Math.max(0, Number(promo.descuento) || 0));
+    // Mercado Pago no acepta suscripciones de $0: los códigos de 100% no
+    // pasan por aquí (el tope de 99% de arriba también protege datos malos).
+    monto = Math.round(100 * (1 - pct / 100) * 100) / 100;
+    promoId = snap.docs[0].id;
   }
 
   const r = await fetch("https://api.mercadopago.com/preapproval", {
@@ -433,7 +454,7 @@ exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
     body: JSON.stringify({
       reason: "Habilis Pro",
       external_reference: uid,
-      auto_recurring: { frequency: 1, frequency_type: "months", transaction_amount: 100, currency_id: "MXN" },
+      auto_recurring: { frequency: 1, frequency_type: "months", transaction_amount: monto, currency_id: "MXN" },
       back_url: "https://myhabilis.com",
       payer_email: email,
     }),
@@ -445,9 +466,11 @@ exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
   }
   await db.collection("suscripcionesPendientes").doc(uid).set({
     preapprovalId: data.id,
+    monto,
+    promoId,
     fecha: admin.firestore.FieldValue.serverTimestamp(),
   });
-  return { url: data.init_point };
+  return { url: data.init_point, monto };
 });
 
 // El body de un webhook NUNCA es de confianza por sí mismo: en vez de creerle
@@ -464,6 +487,9 @@ exports.webhookMP = onRequest({ secrets: [MP_TOKEN] }, async (req, res) => {
       const sub = await r.json();
       const uid = sub.external_reference;
       if (uid && sub.status === "authorized") {
+        const pendiente = await db.collection("suscripcionesPendientes").doc(uid).get();
+        const montoReal = sub.auto_recurring?.transaction_amount
+          ?? pendiente.data()?.monto ?? 100;
         await db.collection("tecnicos").doc(uid).update({
           plan: "pro",
           suscripcionId: sub.id,
@@ -471,12 +497,18 @@ exports.webhookMP = onRequest({ secrets: [MP_TOKEN] }, async (req, res) => {
         });
         await db.collection("pagos").add({
           userId: uid,
-          monto: 100,
+          monto: montoReal,
           metodo: "mercadopago",
           estado: "aprobado",
           concepto: "Habilis Pro mensual",
           fecha: admin.firestore.FieldValue.serverTimestamp(),
         });
+        const promoId = pendiente.data()?.promoId;
+        if (promoId) {
+          await db.collection("promos").doc(promoId).update({
+            usosActuales: admin.firestore.FieldValue.increment(1),
+          });
+        }
       }
       if (uid && sub.status === "cancelled") {
         await db.collection("tecnicos").doc(uid).update({ plan: "gratis" });
@@ -508,6 +540,9 @@ exports.emitirFactura = onCall({ secrets: [FACTURAPI_KEY] }, async (request) => 
   if (!regimenFiscal || typeof regimenFiscal !== "string" || !usoCFDI || typeof usoCFDI !== "string") {
     throw new HttpsError("invalid-argument", "Régimen fiscal y uso de CFDI son requeridos.");
   }
+  // Facturar lo que realmente paga (puede traer descuento por código promo).
+  const pendiente = await db.collection("suscripcionesPendientes").doc(uid).get();
+  const montoFactura = pendiente.data()?.monto ?? 100;
   const r = await fetch("https://www.facturapi.io/v2/invoices", {
     method: "POST",
     headers: { Authorization: `Bearer ${FACTURAPI_KEY.value()}`, "Content-Type": "application/json" },
@@ -519,7 +554,7 @@ exports.emitirFactura = onCall({ secrets: [FACTURAPI_KEY] }, async (request) => 
           product: {
             description: "Suscripción Habilis Pro - 1 mes",
             product_key: "81112100",
-            price: 100,
+            price: montoFactura,
             tax_included: true,
             taxes: [{ type: "IVA", rate: 0.16 }],
           },
@@ -538,7 +573,7 @@ exports.emitirFactura = onCall({ secrets: [FACTURAPI_KEY] }, async (request) => 
     userId: uid,
     facturaId: inv.id,
     rfc,
-    total: 100,
+    total: montoFactura,
     fecha: admin.firestore.FieldValue.serverTimestamp(),
   });
   return { facturaId: inv.id, verificationUrl: inv.verification_url };

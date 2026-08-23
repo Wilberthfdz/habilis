@@ -25,6 +25,7 @@ import Terminos                      from "./pages/Terminos.jsx";
 import QuienesSomos                  from "./pages/QuienesSomos.jsx";
 import ComoFunciona                  from "./pages/ComoFunciona.jsx";
 import Soporte                       from "./pages/Soporte.jsx";
+import SuscripcionPro                from "./pages/SuscripcionPro.jsx";
 
 // Carga diferida: el ERP admin y la página de inversión solo los ve un
 // puñado de personas — no tienen por qué pesar en el bundle de todos.
@@ -110,6 +111,7 @@ const screenInicial = () => {
   if (path === "/quienes-somos") return "quienesSomos";
   if (path === "/como-funciona") return "comoFunciona";
   if (path === "/soporte") return "soporte";
+  if (path === "/pro") return "suscripcionPro";
   return "landing";
 };
 
@@ -117,6 +119,7 @@ const screenInicial = () => {
 const RUTAS_URL = {
   admin: "/admin", inversion: "/inversion", privacidad: "/privacidad", terminos: "/terminos",
   quienesSomos: "/quienes-somos", comoFunciona: "/como-funciona", soporte: "/soporte",
+  suscripcionPro: "/pro",
 };
 
 export default function App() {
@@ -182,6 +185,7 @@ export default function App() {
       case "quienesSomos":       return <QuienesSomos       {...screenProps} />;
       case "comoFunciona":       return <ComoFunciona       {...screenProps} />;
       case "soporte":            return <Soporte            {...screenProps} />;
+      case "suscripcionPro":     return <SuscripcionPro     {...screenProps} />;
       default: return <Landing {...screenProps} />;
     }
   };
