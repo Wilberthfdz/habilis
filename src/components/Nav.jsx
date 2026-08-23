@@ -2,8 +2,18 @@ import { useState } from "react";
 import Logo from "./Logo.jsx";
 import NotifBell from "./NotifBell.jsx";
 
+const aboutLinks = [
+  { label:"Quiénes somos",          route:"quienesSomos" },
+  { label:"Lo que ofrecemos",       route:"quienesSomos" },
+  { label:"Cómo funciona la app",   route:"comoFunciona" },
+  { label:"Soporte",                route:"soporte" },
+  { label:"Términos y condiciones", route:"terminos" },
+  { label:"Aviso de privacidad",    route:"privacidad" },
+];
+
 export default function Nav({ nav, user, onLogout }) {
   const [open, setOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   const primaryLinks = [
     { label:"Buscar",      route:"buscar" },
@@ -79,6 +89,18 @@ export default function Nav({ nav, user, onLogout }) {
           border-color:rgba(220,38,38,0.3);
         }
 
+        .nav-about-menu {
+          position:absolute; top:calc(100% + 8px); left:0; min-width:230px;
+          background:#fff; border-radius:12px; padding:8px 0;
+          box-shadow:0 12px 32px rgba(0,0,0,0.22); z-index:300;
+        }
+        .nav-about-item {
+          display:block; width:100%; text-align:left; background:none; border:none;
+          padding:11px 20px; font-size:13.5px; font-weight:600; color:#475569;
+          cursor:pointer; font-family:inherit; transition:background 0.12s, color 0.12s;
+        }
+        .nav-about-item:hover { background:#F1F5F9; color:#0F172A; }
+
         @media(min-width:768px) { .nav-hamburger{display:none!important;} }
         @media(max-width:767px) { .nav-desktop{display:none!important;} .nav-hamburger{display:flex!important;} }
       `}</style>
@@ -92,6 +114,32 @@ export default function Nav({ nav, user, onLogout }) {
             {l.label}
           </button>
         ))}
+
+        {/* Acerca de — dropdown estilo Uber */}
+        <div style={{ position:"relative" }}
+          onMouseEnter={() => setAboutOpen(true)}
+          onMouseLeave={() => setAboutOpen(false)}>
+          <button className="nav-link" onClick={() => setAboutOpen(o => !o)}
+            style={{ gap:"6px" }}>
+            Acerca de
+            <svg viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="currentColor"
+              strokeWidth="1.8" strokeLinecap="round"
+              style={{ transform: aboutOpen ? "rotate(180deg)" : "none", transition:"transform 0.15s" }}>
+              <path d="M2 4l4 4 4-4"/>
+            </svg>
+          </button>
+          {aboutOpen && (
+            <div className="nav-about-menu">
+              {aboutLinks.map(l => (
+                <button key={l.label} className="nav-about-item"
+                  onClick={() => { nav(l.route); setAboutOpen(false); }}>
+                  {l.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div style={{ width:"1px", height:"16px", background:"rgba(255,255,255,0.12)", margin:"0 8px" }}/>
         {user ? (
           <>
@@ -142,6 +190,17 @@ export default function Nav({ nav, user, onLogout }) {
           padding:"8px 16px 20px", display:"flex", flexDirection:"column", gap:"4px", zIndex:201
         }}>
           {primaryLinks.map(l => (
+            <button key={l.label} className="nav-link" style={{ width:"100%", justifyContent:"flex-start" }}
+              onClick={() => { nav(l.route); setOpen(false); }}>
+              {l.label}
+            </button>
+          ))}
+          <div style={{ height:"1px", background:"rgba(255,255,255,0.08)", margin:"8px 0" }}/>
+          <p style={{ fontSize:"11px", fontWeight:800, color:"rgba(255,255,255,0.35)",
+                      letterSpacing:"0.08em", textTransform:"uppercase", padding:"6px 12px" }}>
+            Acerca de
+          </p>
+          {aboutLinks.map(l => (
             <button key={l.label} className="nav-link" style={{ width:"100%", justifyContent:"flex-start" }}
               onClick={() => { nav(l.route); setOpen(false); }}>
               {l.label}

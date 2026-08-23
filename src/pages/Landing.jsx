@@ -772,6 +772,20 @@ export default function Landing({ nav, user }) {
               </div>
               <div>
                 <p style={{ fontWeight:800, fontSize:"12px", color:"#0A1120",
+                            marginBottom:"14px", letterSpacing:"0.06em", textTransform:"uppercase" }}>Acerca de</p>
+                {[["Quiénes somos","quienesSomos"],["Cómo funciona la app","comoFunciona"],["Soporte","soporte"]].map(([l,r]) => (
+                  <button key={l} onClick={() => nav(r)}
+                    style={{ display:"block", background:"none", border:"none", color:"#6B6560",
+                             fontSize:"13px", marginBottom:"10px", cursor:"pointer", padding:0,
+                             textAlign:"left", fontFamily:"inherit", transition:"color 0.15s" }}
+                    onMouseEnter={e => e.currentTarget.style.color="#F07020"}
+                    onMouseLeave={e => e.currentTarget.style.color="#6B6560"}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+              <div>
+                <p style={{ fontWeight:800, fontSize:"12px", color:"#0A1120",
                             marginBottom:"14px", letterSpacing:"0.06em", textTransform:"uppercase" }}>Legal</p>
                 {[["Aviso de privacidad","privacidad"],["Términos y condiciones","terminos"]].map(([l,r]) => (
                   <button key={l} onClick={() => nav(r)}
