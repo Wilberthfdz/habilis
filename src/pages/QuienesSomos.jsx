@@ -67,10 +67,24 @@ export default function QuienesSomos({ nav, user }) {
             con información real en lugar de recomendaciones al azar.
           </p>
           <p style={{ fontSize:"15px", color:"#475569", lineHeight:1.8 }}>
-            No somos un intermediario: no cobramos comisión por trabajo ni nos metemos en el
-            trato entre técnico y cliente. Cobramos únicamente por visibilidad y herramientas.
-            El trabajo, el precio y la relación son de ustedes.
+            Cobramos únicamente por visibilidad y herramientas — nunca comisión por trabajo.
+            El precio, los tiempos y el trato los acuerdan técnico y cliente directamente.
           </p>
+
+          <div style={{ marginTop:"18px", background:"#FFF7ED", border:"1px solid #FDBA74",
+                        borderRadius:"12px", padding:"18px 20px" }}>
+            <p style={{ fontSize:"13px", fontWeight:800, color:"#9A3412", marginBottom:"6px",
+                        letterSpacing:"0.04em", textTransform:"uppercase" }}>
+              Somos la plataforma, no el prestador del servicio
+            </p>
+            <p style={{ fontSize:"14px", color:"#7C2D12", lineHeight:1.7 }}>
+              Igual que otras plataformas de intermediación tecnológica, Habilis conecta a
+              técnicos independientes con clientes: no ejecutamos los trabajos, no empleamos a
+              los técnicos y <strong>no nos hacemos responsables del servicio prestado</strong>.
+              Cada técnico responde por su propio trabajo, y la plataforma te da las herramientas
+              para elegirlo bien: historial documentado, validaciones y moderación con IA.
+            </p>
+          </div>
         </div>
       </div>
 

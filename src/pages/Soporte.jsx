@@ -6,6 +6,7 @@ import { soporteIA } from "../lib/gemini.js";
 const FAQ = [
   ["¿Cuánto cuesta Habilis?", "Buscar y contactar técnicos es gratis, siempre. Para técnicos hay plan Gratis (perfil + 5 trabajos documentados) y plan Pro de $100 MXN/mes con IVA incluido: prioridad en búsquedas, sin anuncios, trabajos ilimitados, herramientas de IA, cotizaciones y Habilis Care."],
   ["¿Habilis cobra comisión por trabajo?", "No. Habilis no intermedia pagos ni cobra comisión: el precio, la fecha y la garantía los acuerdan técnico y cliente directamente. Solo cobramos la suscripción Pro por visibilidad y herramientas."],
+  ["¿Habilis se hace responsable de los trabajos?", "No. Habilis es una plataforma de intermediación tecnológica: conecta a técnicos independientes con clientes, pero no presta los servicios ni emplea a los técnicos, y no responde por el trabajo realizado. Cada técnico responde por su propio servicio. La plataforma te ayuda a elegir bien con historial documentado, validaciones y moderación con IA."],
   ["¿Cómo cancelo mi plan Pro?", "Cuando quieras, desde Mercado Pago (donde se gestiona la suscripción). Conservas los beneficios hasta el fin del periodo pagado; no hay reembolsos por periodos parciales."],
   ["¿Puedo pedir factura (CFDI)?", "Sí. Los suscriptores Pro pueden solicitar su CFDI desde el panel proporcionando RFC, razón social, código postal, régimen fiscal y uso de CFDI."],
   ["Olvidé mi contraseña, ¿qué hago?", "En la pantalla de iniciar sesión hay una opción para recuperarla: te enviamos un enlace de restablecimiento a tu correo."],

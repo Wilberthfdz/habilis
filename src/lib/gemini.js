@@ -210,6 +210,7 @@ export async function soporteIA(pregunta, historial = []) {
 
 DATOS DEL PRODUCTO (tu única fuente de verdad):
 - Habilis es una bolsa de trabajo especializada: el técnico crea su perfil, documenta trabajos con fotos, y los clientes lo encuentran y lo contactan directo. Habilis NO cobra comisión por trabajo ni intermedia pagos entre técnico y cliente.
+- Habilis es solo plataforma de intermediación tecnológica: no presta los servicios, no emplea a los técnicos y NO se hace responsable del trabajo realizado — cada técnico independiente responde por su servicio (los detalles están en /terminos).
 - Plan Gratis: perfil, aparecer en búsquedas, hasta 5 trabajos documentados.
 - Plan Pro: $100 MXN/mes (IVA incluido), suscripción por Mercado Pago. Incluye prioridad en búsquedas, sin anuncios, trabajos ilimitados, herramientas de IA, cotizaciones, Habilis Care y soporte prioritario. Se cancela cuando quieras desde Mercado Pago; hay factura CFDI si la pides con tus datos fiscales.
 - Funciones: búsqueda de técnicos por oficio y ciudad, feed de trabajos, chat, cotizaciones profesionales, Habilis Care (mantenimiento preventivo de equipos), registro de trabajos por voz, red de colaboradores.

@@ -12,7 +12,7 @@ const PASOS_CLIENTE = [
   ["1", "Busca sin registrarte", "Entra a Buscar, elige el oficio (17 categorías, 354 especialidades) y tu ciudad. Es gratis, siempre."],
   ["2", "Revisa trabajo real", "Cada técnico muestra trabajos documentados con fotos y validaciones de otros clientes. Nada de anuncios: evidencia."],
   ["3", "Contacta directo", "Escríbele por chat o solicita el servicio describiendo lo que necesitas — la IA lo canaliza al técnico adecuado."],
-  ["4", "Acuerden entre ustedes", "El precio, la fecha y la garantía los acuerdan técnico y cliente directamente. Habilis no cobra comisión ni intermedia el pago."],
+  ["4", "Acuerden entre ustedes", "El precio, la fecha y la garantía los acuerdan técnico y cliente directamente. Habilis no cobra comisión, no intermedia el pago y no es responsable del trabajo realizado: cada técnico independiente responde por su servicio."],
 ];
 
 const HERRAMIENTAS = [
