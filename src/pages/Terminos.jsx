@@ -50,8 +50,11 @@ export default function Terminos({ nav }) {
             Estos Términos y Condiciones de Uso ("Términos") regulan el acceso y uso que tú, como
             persona física, hagas desde México de la plataforma Habilis, disponible en el sitio
             <strong> myhabilis.com</strong> y sus aplicaciones asociadas (los "Servicios"),
-            operados por Habilis (el "Titular"), con domicilio de contacto en Cancún, Quintana Roo,
-            México, y correo <strong>habilisempresa@gmail.com</strong>.
+            operados por Habilis Tecnology, S.A.P.I. de C.V., sociedad en proceso de
+            constitución (el "Titular"), con domicilio de contacto en Cancún, Quintana Roo,
+            México, y correo <strong>habilisempresa@gmail.com</strong>. En tanto concluye la
+            constitución de la sociedad, el operador de la plataforma es Wilberth Fernández
+            Quen, con el mismo domicilio y contacto.
           </p>
           <p style={P}>
             <strong>Al acceder o usar los Servicios aceptas quedar obligado por estos Términos</strong>,
