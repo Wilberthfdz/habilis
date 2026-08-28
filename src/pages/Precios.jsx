@@ -18,7 +18,6 @@ const PRO = [
   [true, "4 leads garantizados al mes"],
   [true, "Herramientas de IA con Gemini"],
   [true, "Generación de cotizaciones"],
-  [true, "⚡ Integración CTRL+W — cotizaciones con catálogo completo"],
   [true, "🛡️ Habilis Care — mantenimiento preventivo"],
   [true, "Soporte prioritario en español"],
 ];

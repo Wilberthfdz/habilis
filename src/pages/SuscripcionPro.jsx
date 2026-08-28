@@ -8,7 +8,7 @@ const BENEFICIOS = [
   "Sin anuncios en tu perfil",
   "Trabajos documentados ilimitados",
   "Herramientas de IA completas",
-  "Cotizaciones profesionales + CTRL+W",
+  "Cotizaciones profesionales",
   "Habilis Care y soporte prioritario",
 ];
 
