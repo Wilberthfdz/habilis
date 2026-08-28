@@ -4,7 +4,7 @@ import NotifBell from "./NotifBell.jsx";
 
 const aboutLinks = [
   { label:"Quiénes somos",          route:"quienesSomos" },
-  { label:"Lo que ofrecemos",       route:"quienesSomos" },
+  { label:"Lo que ofrecemos",       route:"quienesSomos", params:{ seccion:"ofrecemos" } },
   { label:"Cómo funciona la app",   route:"comoFunciona" },
   { label:"Soporte",                route:"soporte" },
   { label:"Términos y condiciones", route:"terminos" },
@@ -132,7 +132,7 @@ export default function Nav({ nav, user, onLogout }) {
             <div className="nav-about-menu">
               {aboutLinks.map(l => (
                 <button key={l.label} className="nav-about-item"
-                  onClick={() => { nav(l.route); setAboutOpen(false); }}>
+                  onClick={() => { nav(l.route, l.params || {}); setAboutOpen(false); }}>
                   {l.label}
                 </button>
               ))}
@@ -185,9 +185,12 @@ export default function Nav({ nav, user, onLogout }) {
       {open && (
         <div style={{
           position:"absolute", top:"60px", left:0, right:0,
-          background:"rgba(8,14,28,0.98)", backdropFilter:"blur(20px)",
+          // Opaco a propósito: con fondo translúcido el contenido de la página
+          // se transparentaba detrás del menú y estorbaba la lectura.
+          background:"#080E1C",
           borderBottom:"1px solid rgba(255,255,255,0.08)",
-          padding:"8px 16px 20px", display:"flex", flexDirection:"column", gap:"4px", zIndex:201
+          padding:"8px 16px 20px", display:"flex", flexDirection:"column", gap:"4px", zIndex:201,
+          maxHeight:"calc(100vh - 60px)", overflowY:"auto"
         }}>
           {primaryLinks.map(l => (
             <button key={l.label} className="nav-link" style={{ width:"100%", justifyContent:"flex-start" }}
@@ -202,7 +205,7 @@ export default function Nav({ nav, user, onLogout }) {
           </p>
           {aboutLinks.map(l => (
             <button key={l.label} className="nav-link" style={{ width:"100%", justifyContent:"flex-start" }}
-              onClick={() => { nav(l.route); setOpen(false); }}>
+              onClick={() => { nav(l.route, l.params || {}); setOpen(false); }}>
               {l.label}
             </button>
           ))}

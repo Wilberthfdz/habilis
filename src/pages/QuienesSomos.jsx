@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import Nav from "../components/Nav.jsx";
 import Logo from "../components/Logo.jsx";
 
@@ -34,7 +35,17 @@ const OFRECEMOS = [
 const SEC = { maxWidth:"1000px", margin:"0 auto", padding:"0 20px" };
 const H2S = { fontSize:"clamp(22px,3.5vw,30px)", fontWeight:900, color:"#0F172A", marginBottom:"14px" };
 
-export default function QuienesSomos({ nav, user }) {
+export default function QuienesSomos({ nav, user, params = {} }) {
+  const refOfrecemos = useRef(null);
+
+  // "Lo que ofrecemos" es la misma página: al llegar desde ese enlace,
+  // baja a la sección en vez de dejar al usuario en el inicio.
+  useEffect(() => {
+    if (params.seccion === "ofrecemos" && refOfrecemos.current) {
+      refOfrecemos.current.scrollIntoView({ behavior:"smooth", block:"start" });
+    }
+  }, [params.seccion]);
+
   return (
     <div style={{ minHeight:"100vh", background:"#F1F5F9" }}>
       <Nav nav={nav} user={user} />
@@ -102,7 +113,7 @@ export default function QuienesSomos({ nav, user }) {
       </div>
 
       {/* Lo que ofrecemos */}
-      <div style={{ ...SEC, marginBottom:"72px" }}>
+      <div ref={refOfrecemos} style={{ ...SEC, marginBottom:"72px", scrollMarginTop:"76px" }}>
         <h2 style={{ ...H2S, textAlign:"center" }}>Lo que ofrecemos</h2>
         <p style={{ fontSize:"15px", color:"#64748B", textAlign:"center", maxWidth:"560px",
                     margin:"0 auto 32px", lineHeight:1.7 }}>

@@ -182,7 +182,7 @@ export default function App() {
       case "inversion":          return <Inversion          {...screenProps} />;
       case "privacidad":         return <Privacidad         {...screenProps} />;
       case "terminos":           return <Terminos           {...screenProps} />;
-      case "quienesSomos":       return <QuienesSomos       {...screenProps} />;
+      case "quienesSomos":       return <QuienesSomos       {...screenProps} params={params} />;
       case "comoFunciona":       return <ComoFunciona       {...screenProps} />;
       case "soporte":            return <Soporte            {...screenProps} />;
       case "suscripcionPro":     return <SuscripcionPro     {...screenProps} />;
