@@ -21,10 +21,12 @@ const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
+const { firmaMPValida } = require("./mpFirma");
 admin.initializeApp();
 
 const GEMINI_KEY = defineSecret("GEMINI_KEY");
 const MP_TOKEN = defineSecret("MP_ACCESS_TOKEN");
+const MP_WEBHOOK_SECRET = defineSecret("MP_WEBHOOK_SECRET");
 const FACTURAPI_KEY = defineSecret("FACTURAPI_KEY");
 
 const db = admin.firestore();
@@ -477,9 +479,24 @@ exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
 // el status/monto que manda, solo tomamos el `id` para volver a preguntarle
 // a la API real de Mercado Pago (con nuestro token) cuál es el estado
 // verdadero, y solo entonces escribimos en Firestore.
-exports.webhookMP = onRequest({ secrets: [MP_TOKEN] }, async (req, res) => {
+exports.webhookMP = onRequest({ secrets: [MP_TOKEN, MP_WEBHOOK_SECRET] }, async (req, res) => {
   try {
     const { type, data } = req.body || {};
+
+    // Segunda capa (defensa en profundidad): si la clave del webhook está
+    // configurada, exigimos firma válida. Mientras no lo esté, se registra
+    // el aviso y se sigue — el re-consulta contra la API de MP de abajo es
+    // lo que impide que un body falso escriba algo.
+    const secreto = MP_WEBHOOK_SECRET.value();
+    if (secreto) {
+      if (!data?.id || !firmaMPValida(req.headers, data.id, secreto)) {
+        console.warn("webhookMP: firma inválida o ausente — petición descartada");
+        return res.status(200).send("OK");
+      }
+    } else {
+      console.warn("webhookMP: MP_WEBHOOK_SECRET no configurado — firma no verificada");
+    }
+
     if (type === "subscription_preapproval" && data?.id) {
       const r = await fetch(`https://api.mercadopago.com/preapproval/${data.id}`, {
         headers: { Authorization: `Bearer ${MP_TOKEN.value()}` },
