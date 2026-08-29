@@ -795,15 +795,25 @@ export default function PanelTecnico({ nav, user }) {
             </div>
 
             <div style={CARD}>
-              <h3 style={{ fontWeight:800, fontSize:"15px", color:"#0F172A", marginBottom:"8px" }}>🪪 Verificación de identidad</h3>
+              <h3 style={{ fontWeight:800, fontSize:"15px", color:"#0F172A", marginBottom:"8px" }}>
+                🪪 Verificación de identidad {!esPro && <span style={{ background:"#FFF7ED", color:"#EA580C", fontSize:"10px", fontWeight:700, padding:"2px 7px", borderRadius:"6px" }}>PRO</span>}
+              </h3>
               <p style={{ fontSize:"13px", color:"#64748B", lineHeight:1.5, marginBottom:"14px" }}>
-                {tecnico.verificado
-                  ? "Tu identidad ya está verificada — tienes la insignia ✅ en tu perfil público."
-                  : "Sube tu INE para obtener la insignia de verificado y generar más confianza con los clientes."}
+                {!esPro
+                  ? "Beneficio Pro/Empresa: sube tu INE para obtener la insignia de verificado y generar más confianza con los clientes."
+                  : tecnico.verificado
+                    ? "Tu identidad ya está verificada — tienes la insignia ✅ en tu perfil público."
+                    : "Sube tu INE para obtener la insignia de verificado y generar más confianza con los clientes."}
               </p>
-              <button style={{ ...BTN }} onClick={() => nav("verificacion")}>
-                {tecnico.verificado ? "Ver mi verificación" : "Verificar mi identidad →"}
-              </button>
+              {esPro ? (
+                <button style={{ ...BTN }} onClick={() => nav("verificacion")}>
+                  {tecnico.verificado ? "Ver mi verificación" : "Verificar mi identidad →"}
+                </button>
+              ) : (
+                <button onClick={() => nav("precios")} style={{ ...BTN, background:"#fff", color:"#F97316", border:"1px solid #F97316" }}>
+                  Requiere Plan Pro →
+                </button>
+              )}
             </div>
 
             {!esPro && (

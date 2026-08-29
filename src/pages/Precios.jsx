@@ -19,6 +19,9 @@ const PRO = [
   [true, "Herramientas de IA con Gemini"],
   [true, "Generación de cotizaciones"],
   [true, "🛡️ Habilis Care — mantenimiento preventivo"],
+  [true, "🪪 Verificación de identidad con insignia ✅"],
+  [true, "🔗 Link de perfil personalizado (myhabilis.com/t/tu-nombre)"],
+  [true, "📅 Agenda de citas online"],
   [true, "Soporte prioritario en español"],
 ];
 

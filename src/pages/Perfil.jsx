@@ -170,7 +170,7 @@ export default function Perfil({ nav, params, user }) {
           </div>
         </div>
 
-        {esOwner && <CompartirPerfil tecnico={tecnico} onSlug={(s) => setTecnico(t => ({ ...t, slug:s }))} />}
+        {esOwner && <CompartirPerfil tecnico={tecnico} nav={nav} onSlug={(s) => setTecnico(t => ({ ...t, slug:s }))} />}
 
         {!esOwner && esPlanPagante(tecnico.plan) && <AgendarCita tecnico={tecnico} user={user} nav={nav} />}
 
@@ -252,7 +252,7 @@ export default function Perfil({ nav, params, user }) {
 }
 
 // ── Link bonito para compartir (solo el dueño lo ve) ────────────────────
-function CompartirPerfil({ tecnico, onSlug }) {
+function CompartirPerfil({ tecnico, onSlug, nav }) {
   const [editando, setEditando] = useState(false);
   const [texto,    setTexto]    = useState(tecnico.slug || "");
   const [guardando,setGuardando]= useState(false);
@@ -302,6 +302,16 @@ function CompartirPerfil({ tecnico, onSlug }) {
             style={{ background:"#F1F5F9", border:"1px solid #E2E8F0", borderRadius:"9px",
                      padding:"9px 16px", fontSize:"13px", fontWeight:600, cursor:"pointer" }}>
             Cambiar
+          </button>
+        </div>
+      ) : !esPlanPagante(tecnico.plan) ? (
+        <div>
+          <p style={{ color:"#64748B", fontSize:"13px", marginBottom:"14px", lineHeight:1.6 }}>
+            Elegir un link corto y fácil de recordar (myhabilis.com/t/tu-nombre) es un beneficio Pro/Empresa.
+          </p>
+          <button className="h-btn-orange" style={{ padding:"9px 18px", fontSize:"13px" }}
+            onClick={() => nav("precios")}>
+            Conocer Plan Pro →
           </button>
         </div>
       ) : (

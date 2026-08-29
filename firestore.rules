@@ -48,17 +48,18 @@ service cloud.firestore {
         || (request.auth != null && resource.data.empresaId == request.auth.uid);
     }
 
-    // Reserva de slugs bonitos (myhabilis.com/t/juan-electricista). El id del
-    // documento ES el slug — así una transacción que hace tx.get() antes de
-    // tx.set() garantiza unicidad real (dos personas no pueden reservar el
-    // mismo slug a la vez). Solo el dueño del perfil puede reclamar/soltar
-    // su propio slug; nunca se permite "update" — cambiar de slug es
-    // borrar la reserva vieja y crear una nueva.
+    // Reserva de slugs bonitos (myhabilis.com/t/juan-electricista) — beneficio
+    // Pro/Empresa. El id del documento ES el slug — así una transacción que
+    // hace tx.get() antes de tx.set() garantiza unicidad real (dos personas
+    // no pueden reservar el mismo slug a la vez). Solo el dueño del perfil
+    // puede reclamar/soltar su propio slug; nunca se permite "update" —
+    // cambiar de slug es borrar la reserva vieja y crear una nueva.
     match /slugs/{slug} {
       allow read: if true;
       allow create: if request.auth != null &&
         request.resource.data.tecnicoId == request.auth.uid &&
-        slug.matches('^[a-z0-9-]{3,60}$');
+        slug.matches('^[a-z0-9-]{3,60}$') &&
+        get(/databases/$(database)/documents/tecnicos/$(request.auth.uid)).data.plan in ['pro','empresa'];
       allow delete: if isAdmin() ||
         (request.auth != null && resource.data.tecnicoId == request.auth.uid);
       allow update: if false;
@@ -86,17 +87,20 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
-    // Verificación de identidad — INE + comprobante de oficio. A diferencia
-    // de tecnicos, NO es pública: solo el dueño y el admin ven los documentos.
-    // El dueño puede volver a subir tras un rechazo, pero no auto-aprobarse
-    // (estado solo puede quedar en "pendiente" desde su propio update).
+    // Verificación de identidad — INE + comprobante de oficio, beneficio
+    // Pro/Empresa. A diferencia de tecnicos, NO es pública: solo el dueño y
+    // el admin ven los documentos. El dueño puede volver a subir tras un
+    // rechazo, pero no auto-aprobarse (estado solo puede quedar en
+    // "pendiente" desde su propio update).
     match /verificaciones/{uid} {
       allow read:   if (request.auth != null && request.auth.uid == uid) || isAdmin();
       allow create: if request.auth != null && request.auth.uid == uid &&
-        request.resource.data.estado == "pendiente";
+        request.resource.data.estado == "pendiente" &&
+        get(/databases/$(database)/documents/tecnicos/$(uid)).data.plan in ['pro','empresa'];
       allow update: if isAdmin() || (
         request.auth != null && request.auth.uid == uid &&
-        request.resource.data.estado == "pendiente"
+        request.resource.data.estado == "pendiente" &&
+        get(/databases/$(database)/documents/tecnicos/$(uid)).data.plan in ['pro','empresa']
       );
       allow delete: if isAdmin();
     }

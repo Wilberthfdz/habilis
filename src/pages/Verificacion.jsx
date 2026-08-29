@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Nav from "../components/Nav.jsx";
 import Logo from "../components/Logo.jsx";
-import { obtenerVerificacion, subirVerificacion } from "../lib/firebase.js";
+import { obtenerVerificacion, subirVerificacion, obtenerTecnico, esPlanPagante } from "../lib/firebase.js";
 
 // Comprime una imagen a máx. 900px (legible para revisión manual) antes de
 // convertirla a base64 — mismo patrón que la foto de perfil pero con más
@@ -37,6 +37,7 @@ const ESTADO_INFO = {
 
 export default function Verificacion({ nav, user }) {
   const [verif, setVerif] = useState(undefined); // undefined=cargando, null=sin solicitud
+  const [tecnico, setTecnico] = useState(undefined);
   const [ineFile, setIneFile] = useState(null);
   const [comprobanteFile, setComprobanteFile] = useState(null);
   const [enviando, setEnviando] = useState(false);
@@ -45,6 +46,7 @@ export default function Verificacion({ nav, user }) {
   useEffect(() => {
     if (!user) return;
     obtenerVerificacion(user.uid).then(setVerif).catch(() => setVerif(null));
+    obtenerTecnico(user.uid).then(setTecnico).catch(() => setTecnico(null));
   }, [user]);
 
   const enviar = async () => {
@@ -94,8 +96,31 @@ export default function Verificacion({ nav, user }) {
 
       <div style={{ maxWidth: 560, margin: "-32px auto 60px", padding: "0 20px" }}>
         <div className="h-card" style={{ padding: "clamp(20px,4vw,28px)" }}>
-          {verif === undefined ? (
+          {verif === undefined || tecnico === undefined ? (
             <p style={{ color: "#94A3B8", textAlign: "center" }}>Cargando…</p>
+          ) : !tecnico ? (
+            <div style={{ textAlign: "center", padding: "16px 0" }}>
+              <p style={{ color: "#64748B", fontSize: 13.5, lineHeight: 1.7, marginBottom: 16 }}>
+                La verificación de identidad es para perfiles de técnico. Crea tu perfil técnico primero.
+              </p>
+              <button className="h-btn-orange" style={{ padding: "11px 24px" }} onClick={() => nav("hacerseTecnico")}>
+                Crear perfil técnico →
+              </button>
+            </div>
+          ) : !esPlanPagante(tecnico.plan) ? (
+            <div style={{ textAlign: "center", padding: "16px 0" }}>
+              <div style={{ fontSize: 38, marginBottom: 10 }}>🪪</div>
+              <p style={{ fontWeight: 800, fontSize: 16, color: "#0F172A", marginBottom: 8 }}>
+                La verificación es un beneficio Pro
+              </p>
+              <p style={{ color: "#64748B", fontSize: 13.5, lineHeight: 1.7, marginBottom: 20 }}>
+                Con Plan Pro o Empresa puedes subir tu INE y obtener la insignia de verificado ✅
+                en tu perfil público.
+              </p>
+              <button className="h-btn-orange" style={{ padding: "11px 24px" }} onClick={() => nav("precios")}>
+                Conocer Plan Pro →
+              </button>
+            </div>
           ) : (
             <>
               {info && (
