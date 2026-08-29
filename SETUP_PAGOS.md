@@ -1,6 +1,6 @@
 # Configuración de pagos (Mercado Pago + Facturapi)
 
-> ## Resumen: cuatro pasos
+> ## Resumen: cinco pasos
 >
 > ```bash
 > # 1. Traer el código y crear el secreto que falta
@@ -14,7 +14,16 @@
 > 3. Dar de alta el webhook en Mercado Pago (sección 3) — la clave secreta
 >    que devuelve es la del paso 1, así que si aún no la tienes, haz primero
 >    el alta y luego el paso 1.
-> 4. Entrar a `myhabilis.com/pro` y pagar con un **usuario de prueba
+> 4. Comprobar que el sitio en vivo ya trae los cambios:
+>
+>    ```bash
+>    npm run verificar
+>    ```
+>
+>    Busca marcas del código nuevo dentro del bundle que sirve myhabilis.com,
+>    así que no se confunde con la caché del navegador ni con la fecha que
+>    muestra la consola. Si algo sale ❌, el hosting no se publicó.
+> 5. Entrar a `myhabilis.com/pro` y pagar con un **usuario de prueba
 >    comprador** de Mercado Pago (sección 4).
 >
 > `npm run deploy` publica los tres destinos de una vez —backend, reglas y
