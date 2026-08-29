@@ -160,7 +160,7 @@ export default function App() {
     switch (screen) {
       case "landing": return <Landing {...screenProps} />;
       case "registro": return <Registro {...screenProps} params={params} />;
-      case "login": return <Login {...screenProps} />;
+      case "login": return <Login {...screenProps} params={params} />;
       case "precios": return <Precios {...screenProps} />;
       case "feed": return <Feed {...screenProps} />;
       case "buscar": return <Buscar {...screenProps} params={params} />;

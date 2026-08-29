@@ -24,7 +24,10 @@ function AppleIcon() {
   );
 }
 
-export default function Login({ nav, user }) {
+export default function Login({ nav, user, params = {} }) {
+  // Igual que en el registro: si llegó aquí desde "Obtener Plan Pro", al
+  // iniciar sesión debe caer en el checkout, no en el panel.
+  const quierePro = params.plan === "pro";
   const [email,         setEmail]         = useState("");
   const [password,      setPassword]      = useState("");
   const [loading,       setLoading]       = useState(false);
@@ -33,7 +36,7 @@ export default function Login({ nav, user }) {
   const [error,         setError]         = useState("");
   const [resetEnviado,  setResetEnviado]  = useState(false);
 
-  useEffect(() => { if (user) nav("panel"); }, [user]);
+  useEffect(() => { if (user) nav(quierePro ? "suscripcionPro" : "panel"); }, [user]);
 
   const mapError = code => {
     if (code.includes("user-not-found") || code.includes("wrong-password") || code.includes("invalid-credential"))
@@ -227,7 +230,7 @@ export default function Login({ nav, user }) {
           <div style={{ borderTop:"1px solid rgba(255,255,255,0.07)", marginTop:"22px", paddingTop:"18px",
                         textAlign:"center", fontSize:"14px", color:"rgba(255,255,255,0.4)" }}>
             ¿Sin cuenta?{" "}
-            <button onClick={() => nav("registro")}
+            <button onClick={() => nav("registro", quierePro ? { plan:"pro" } : {})}
               style={{ background:"none", border:"none", color:"#F97316",
                        fontWeight:700, cursor:"pointer", fontSize:"14px" }}>
               Regístrate gratis
