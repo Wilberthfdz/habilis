@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node 20: la misma versión que declara functions/package.json y que
+      # usa el runtime de Cloud Functions en producción.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Instalar dependencias del frontend
+        run: npm ci
+
+      - name: Instalar dependencias de functions
+        run: npm ci --prefix functions
+
+      - name: Pruebas
+        run: npm test
+
+      - name: Compilar frontend
+        run: npm run build
+
+      # Un error de sintaxis aquí tumba el webhook de cobros al desplegar,
+      # así que se valida en cada cambio.
+      - name: Validar sintaxis del backend
+        run: node --check functions/index.js

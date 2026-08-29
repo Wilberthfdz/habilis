@@ -24,6 +24,10 @@ import MisSolicitudes                from "./pages/MisSolicitudes.jsx";
 import MiCuentaCliente               from "./pages/MiCuentaCliente.jsx";
 import Privacidad                    from "./pages/Privacidad.jsx";
 import Terminos                      from "./pages/Terminos.jsx";
+import QuienesSomos                  from "./pages/QuienesSomos.jsx";
+import ComoFunciona                  from "./pages/ComoFunciona.jsx";
+import Soporte                       from "./pages/Soporte.jsx";
+import SuscripcionPro                from "./pages/SuscripcionPro.jsx";
 
 // Carga diferida: el ERP admin y la página de inversión solo los ve un
 // puñado de personas — no tienen por qué pesar en el bundle de todos.
@@ -106,6 +110,10 @@ const screenInicial = () => {
   if (path === "/inversion") return "inversion";
   if (path === "/privacidad") return "privacidad";
   if (path === "/terminos") return "terminos";
+  if (path === "/quienes-somos") return "quienesSomos";
+  if (path === "/como-funciona") return "comoFunciona";
+  if (path === "/soporte") return "soporte";
+  if (path === "/pro") return "suscripcionPro";
   // Links compartidos de cotizaciones (WhatsApp, etc.) usan ?vista=<id>
   if (new URLSearchParams(window.location.search).get("vista")) return "vistaCotizacion";
   return "landing";
@@ -117,7 +125,11 @@ const paramsIniciales = () => {
 };
 
 // Pantallas que se reflejan en la URL (compartibles por link directo)
-const RUTAS_URL = { admin: "/admin", inversion: "/inversion", privacidad: "/privacidad", terminos: "/terminos" };
+const RUTAS_URL = {
+  admin: "/admin", inversion: "/inversion", privacidad: "/privacidad", terminos: "/terminos",
+  quienesSomos: "/quienes-somos", comoFunciona: "/como-funciona", soporte: "/soporte",
+  suscripcionPro: "/pro",
+};
 
 export default function App() {
   const [user,    setUser]    = useState(undefined);
@@ -157,7 +169,7 @@ export default function App() {
     switch (screen) {
       case "landing": return <Landing {...screenProps} />;
       case "registro": return <Registro {...screenProps} params={params} />;
-      case "login": return <Login {...screenProps} />;
+      case "login": return <Login {...screenProps} params={params} />;
       case "precios": return <Precios {...screenProps} />;
       case "feed": return <Feed {...screenProps} />;
       case "buscar": return <Buscar {...screenProps} params={params} />;
@@ -181,6 +193,10 @@ export default function App() {
       case "inversion":          return <Inversion          {...screenProps} />;
       case "privacidad":         return <Privacidad         {...screenProps} />;
       case "terminos":           return <Terminos           {...screenProps} />;
+      case "quienesSomos":       return <QuienesSomos       {...screenProps} params={params} />;
+      case "comoFunciona":       return <ComoFunciona       {...screenProps} />;
+      case "soporte":            return <Soporte            {...screenProps} />;
+      case "suscripcionPro":     return <SuscripcionPro     {...screenProps} />;
       default: return <Landing {...screenProps} />;
     }
   };

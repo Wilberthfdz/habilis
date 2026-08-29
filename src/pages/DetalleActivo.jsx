@@ -104,7 +104,6 @@ export default function DetalleActivo({ nav, user, params }) {
     } finally { setSolicitando(false); }
   };
 
-
   if (loading) return (
     <div style={{ background:"#F1F5F9", minHeight:"100vh" }}>
       <div style={{ background:"#0F172A" }}><Nav nav={nav} user={user} /></div>

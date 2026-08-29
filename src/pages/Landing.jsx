@@ -98,7 +98,7 @@ const CATS = [
 const STEPS = [
   { n:"01", title:"Busca el servicio", desc:"Escribe lo que necesitas y tu ciudad. Filtra por técnicos verificados con historial fotográfico real." },
   { n:"02", title:"Revisa el perfil",  desc:"Ve trabajos documentados con fotos antes/después, calificaciones de clientes reales y años de experiencia." },
-  { n:"03", title:"Contrata directo",  desc:"Contacta al técnico sin intermediarios. Sin comisiones ocultas, sin apps de terceros." },
+  { n:"03", title:"Contrata directo",  desc:"Acuerdas precio y fecha directo con el técnico. Sin comisión por trabajo, sin comisiones ocultas." },
 ];
 
 /* ─── Hero Illustration ─────────────────────────────────────────────── */
@@ -403,7 +403,7 @@ export default function Landing({ nav, user }) {
               marginBottom:"40px", maxWidth:"460px", lineHeight:1.7
             }}>
               Encuentra técnicos con trabajos documentados —<br/>
-              fotos reales, calificaciones honestas, sin intermediarios.
+              fotos reales, calificaciones honestas, sin comisión por trabajo.
             </p>
 
             {/* Search */}
@@ -448,7 +448,7 @@ export default function Landing({ nav, user }) {
         <div style={{ borderTop:"1px solid rgba(255,255,255,0.06)", padding:"22px clamp(20px,5vw,64px)" }}>
           <div style={{ display:"flex", justifyContent:"center", gap:"clamp(24px,6vw,80px)",
                         flexWrap:"wrap", maxWidth:"900px", margin:"0 auto" }}>
-            {[["30M+","Técnicos en México"],["100%","Gratis para clientes"],["Real","Trabajos con evidencia"],["Directo","Sin intermediarios"]].map(([v,l]) => (
+            {[["30M+","Técnicos en México"],["100%","Gratis para clientes"],["Real","Trabajos con evidencia"],["0%","Comisión por trabajo"]].map(([v,l]) => (
               <div key={v} style={{ textAlign:"center" }}>
                 <div style={{ fontWeight:900, fontSize:"clamp(16px,2.8vw,24px)", color:"#F07020" }}>{v}</div>
                 <div style={{ color:"rgba(255,255,255,0.35)", fontSize:"11px", marginTop:"3px", maxWidth:"110px" }}>{l}</div>
@@ -772,6 +772,20 @@ export default function Landing({ nav, user }) {
               </div>
               <div>
                 <p style={{ fontWeight:800, fontSize:"12px", color:"#0A1120",
+                            marginBottom:"14px", letterSpacing:"0.06em", textTransform:"uppercase" }}>Acerca de</p>
+                {[["Quiénes somos","quienesSomos"],["Cómo funciona la app","comoFunciona"],["Soporte","soporte"]].map(([l,r]) => (
+                  <button key={l} onClick={() => nav(r)}
+                    style={{ display:"block", background:"none", border:"none", color:"#6B6560",
+                             fontSize:"13px", marginBottom:"10px", cursor:"pointer", padding:0,
+                             textAlign:"left", fontFamily:"inherit", transition:"color 0.15s" }}
+                    onMouseEnter={e => e.currentTarget.style.color="#F07020"}
+                    onMouseLeave={e => e.currentTarget.style.color="#6B6560"}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+              <div>
+                <p style={{ fontWeight:800, fontSize:"12px", color:"#0A1120",
                             marginBottom:"14px", letterSpacing:"0.06em", textTransform:"uppercase" }}>Legal</p>
                 {[["Aviso de privacidad","privacidad"],["Términos y condiciones","terminos"]].map(([l,r]) => (
                   <button key={l} onClick={() => nav(r)}
@@ -789,7 +803,7 @@ export default function Landing({ nav, user }) {
           <div style={{ borderTop:"1px solid #EDE8E1", paddingTop:"20px",
                         display:"flex", justifyContent:"space-between",
                         alignItems:"center", flexWrap:"wrap", gap:"12px" }}>
-            <p style={{ color:"#B5AFA8", fontSize:"12px" }}>© 2025 Habilis · Todos los derechos reservados</p>
+            <p style={{ color:"#B5AFA8", fontSize:"12px" }}>© 2026 Habilis · Todos los derechos reservados</p>
             <p style={{ color:"#B5AFA8", fontSize:"12px" }}>Hecho en México</p>
           </div>
         </div>

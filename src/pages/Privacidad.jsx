@@ -1,8 +1,9 @@
 import Logo from "../components/Logo.jsx";
 
 // Aviso de privacidad conforme a la LFPDPPP (México).
-// Responsable actual: persona física (pendiente actualizar al constituir la sociedad).
-const ACTUALIZADO = "12 de agosto de 2026";
+// La SAPI está en proceso de constitución: al quedar inscrita, quitar la
+// mención transitoria a la persona física de la sección 1.
+const ACTUALIZADO = "23 de agosto de 2026";
 
 const H2 = { fontSize:"17px", fontWeight:800, color:"#0F172A", margin:"28px 0 10px" };
 const P  = { fontSize:"14px", color:"#475569", lineHeight:1.75, marginBottom:"10px" };
@@ -29,11 +30,13 @@ export default function Privacidad({ nav }) {
 
           <h2 style={H2}>1. Responsable del tratamiento</h2>
           <p style={P}>
-            Wilberth Fernández Quen, con domicilio en Cancún, Quintana Roo, México
-            (en adelante "Habilis"), operador de la plataforma <strong>myhabilis.com</strong>,
-            es responsable del tratamiento de tus datos personales conforme a la Ley Federal de
-            Protección de Datos Personales en Posesión de los Particulares (LFPDPPP).
-            Contacto: <strong>habilisempresa@gmail.com</strong>.
+            Habilis Tecnology, S.A.P.I. de C.V., sociedad en proceso de constitución con
+            domicilio en Cancún, Quintana Roo, México (en adelante "Habilis"), operadora de la
+            plataforma <strong>myhabilis.com</strong>, es responsable del tratamiento de tus
+            datos personales conforme a la Ley Federal de Protección de Datos Personales en
+            Posesión de los Particulares (LFPDPPP). En tanto concluye la constitución de la
+            sociedad, el responsable del tratamiento es Wilberth Fernández Quen, con el mismo
+            domicilio. Contacto: <strong>habilisempresa@gmail.com</strong>.
           </p>
 
           <h2 style={H2}>2. Datos que recabamos</h2>

@@ -3,8 +3,18 @@ import Logo from "./Logo.jsx";
 import NotifBell from "./NotifBell.jsx";
 import { obtenerTecnico, cerrarSesion, enviarVerificacionEmail } from "../lib/firebase.js";
 
+const aboutLinks = [
+  { label:"Quiénes somos",          route:"quienesSomos" },
+  { label:"Lo que ofrecemos",       route:"quienesSomos", params:{ seccion:"ofrecemos" } },
+  { label:"Cómo funciona la app",   route:"comoFunciona" },
+  { label:"Soporte",                route:"soporte" },
+  { label:"Términos y condiciones", route:"terminos" },
+  { label:"Aviso de privacidad",    route:"privacidad" },
+];
+
 export default function Nav({ nav, user }) {
   const [open, setOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   // null = aún no sabemos (evita parpadear el botón equivocado); true/false una vez resuelto.
   const [esTecnico, setEsTecnico] = useState(null);
   const [reenviando, setReenviando] = useState(false);
@@ -99,6 +109,18 @@ export default function Nav({ nav, user }) {
           border-color:rgba(220,38,38,0.3);
         }
 
+        .nav-about-menu {
+          position:absolute; top:calc(100% + 8px); left:0; min-width:230px;
+          background:#fff; border-radius:12px; padding:8px 0;
+          box-shadow:0 12px 32px rgba(0,0,0,0.22); z-index:300;
+        }
+        .nav-about-item {
+          display:block; width:100%; text-align:left; background:none; border:none;
+          padding:11px 20px; font-size:13.5px; font-weight:600; color:#475569;
+          cursor:pointer; font-family:inherit; transition:background 0.12s, color 0.12s;
+        }
+        .nav-about-item:hover { background:#F1F5F9; color:#0F172A; }
+
         @media(min-width:768px) { .nav-hamburger{display:none!important;} }
         @media(max-width:767px) { .nav-desktop{display:none!important;} .nav-hamburger{display:flex!important;} }
       `}</style>
@@ -112,6 +134,32 @@ export default function Nav({ nav, user }) {
             {l.label}
           </button>
         ))}
+
+        {/* Acerca de — dropdown */}
+        <div style={{ position:"relative" }}
+          onMouseEnter={() => setAboutOpen(true)}
+          onMouseLeave={() => setAboutOpen(false)}>
+          <button className="nav-link" onClick={() => setAboutOpen(o => !o)}
+            style={{ gap:"6px" }}>
+            Acerca de
+            <svg viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="currentColor"
+              strokeWidth="1.8" strokeLinecap="round"
+              style={{ transform: aboutOpen ? "rotate(180deg)" : "none", transition:"transform 0.15s" }}>
+              <path d="M2 4l4 4 4-4"/>
+            </svg>
+          </button>
+          {aboutOpen && (
+            <div className="nav-about-menu">
+              {aboutLinks.map(l => (
+                <button key={l.label} className="nav-about-item"
+                  onClick={() => { nav(l.route, l.params || {}); setAboutOpen(false); }}>
+                  {l.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div style={{ width:"1px", height:"16px", background:"rgba(255,255,255,0.12)", margin:"0 8px" }}/>
         {user ? (
           <>
@@ -159,13 +207,27 @@ export default function Nav({ nav, user }) {
       {open && (
         <div style={{
           position:"absolute", top:"60px", left:0, right:0,
-          background:"rgba(8,14,28,0.98)",
+          // Opaco a propósito: con fondo translúcido el contenido de la página
+          // se transparentaba detrás del menú y estorbaba la lectura.
+          background:"#080E1C",
           borderBottom:"1px solid rgba(255,255,255,0.08)",
-          padding:"8px 16px 20px", display:"flex", flexDirection:"column", gap:"4px", zIndex:201
+          padding:"8px 16px 20px", display:"flex", flexDirection:"column", gap:"4px", zIndex:201,
+          maxHeight:"calc(100vh - 60px)", overflowY:"auto"
         }}>
           {primaryLinks.map(l => (
             <button key={l.label} className="nav-link" style={{ width:"100%", justifyContent:"flex-start" }}
               onClick={() => { nav(l.route); setOpen(false); }}>
+              {l.label}
+            </button>
+          ))}
+          <div style={{ height:"1px", background:"rgba(255,255,255,0.08)", margin:"8px 0" }}/>
+          <p style={{ fontSize:"11px", fontWeight:800, color:"rgba(255,255,255,0.35)",
+                      letterSpacing:"0.08em", textTransform:"uppercase", padding:"6px 12px" }}>
+            Acerca de
+          </p>
+          {aboutLinks.map(l => (
+            <button key={l.label} className="nav-link" style={{ width:"100%", justifyContent:"flex-start" }}
+              onClick={() => { nav(l.route, l.params || {}); setOpen(false); }}>
               {l.label}
             </button>
           ))}

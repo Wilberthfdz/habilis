@@ -3,10 +3,27 @@ import { initializeApp }                   from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, OAuthProvider, signInWithPopup, sendPasswordResetEmail, sendEmailVerification, updateProfile } from "firebase/auth";
 import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, where, orderBy, limit, getDocs, addDoc, serverTimestamp, increment } from "firebase/firestore";
 // Storage SDK removed — profile photos use base64-in-Firestore (no Blaze plan needed)
-import { firebaseConfig }                  from "./config.js";
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
+import { firebaseConfig, APPCHECK_SITE_KEY }   from "./config.js";
 
 // Inicializar Firebase (Google Cloud — satisface requisito de competencia)
 const app     = initializeApp(firebaseConfig);
+
+// App Check: acredita que quien llama es esta app y no un script ajeno.
+// Sin él, cualquiera con la URL de `geminiProxy` puede crear cuentas y
+// quemar crédito de Gemini. Solo se activa si hay clave configurada, así
+// que mientras esté vacía la app se comporta igual que siempre.
+if (APPCHECK_SITE_KEY) {
+  try {
+    initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(APPCHECK_SITE_KEY),
+      isTokenAutoRefreshEnabled: true,
+    });
+  } catch (e) {
+    // Nunca dejar la app inservible por un fallo de App Check.
+    console.error("App Check no pudo inicializarse:", e.message);
+  }
+}
 const auth    = getAuth(app);
 const db      = getFirestore(app);
 
@@ -55,6 +72,14 @@ export async function crearPerfilTecnico(uid, datos) {
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
+}
+
+// Facturas del propio técnico. Las reglas ya permiten que el dueño lea las
+// suyas; sin esto solo el admin podía verlas.
+export async function obtenerFacturas(uid) {
+  const q = query(collection(db, "facturas"), where("userId", "==", uid), orderBy("fecha", "desc"), limit(24));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
 export async function obtenerTecnico(uid) {

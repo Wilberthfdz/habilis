@@ -23,8 +23,8 @@ const PRO = [
 ];
 
 const FAQ = [
-  ["¿Puedo cancelar en cualquier momento?","Sí. Sin contratos de permanencia. Cancela desde tu panel cuando quieras."],
-  ["¿Cómo se realiza el cobro?","Cobro mensual de $100 MXN mediante tarjeta de débito o crédito a través de Conekta (próximamente)."],
+  ["¿Puedo cancelar en cualquier momento?","Sí. Sin contratos de permanencia. Cancelas desde tu página de suscripción cuando quieras, y conservas los beneficios hasta el fin del mes pagado."],
+  ["¿Cómo se realiza el cobro?","Cobro mensual de $100 MXN por suscripción a través de Mercado Pago, con tarjeta de débito o crédito. Puedes solicitar factura CFDI con tus datos fiscales."],
   ["¿Qué son los leads garantizados?","Son solicitudes de clientes que coinciden con tu oficio y ciudad, enviadas directo a tu panel."],
   ["¿El plan Gratis es realmente gratis?","Sí, siempre. Los clientes también pueden buscar y contactar técnicos sin costo alguno."],
 ];
@@ -102,7 +102,7 @@ export default function Precios({ nav, user }) {
               <span style={{ fontSize:"15px", color:"rgba(255,255,255,0.4)", marginBottom:"8px" }}>MXN/mes</span>
             </div>
             <p style={{ color:"rgba(255,255,255,0.45)", fontSize:"13px", marginBottom:"28px" }}>
-              ≈ $3.30 MXN al día · Sin IVA
+              ≈ $3.30 MXN al día · IVA incluido
             </p>
             <hr style={{ border:"none", borderTop:"1px solid rgba(255,255,255,0.08)", marginBottom:"24px" }} />
             <ul style={{ listStyle:"none", padding:0, marginBottom:"32px" }}>
@@ -114,7 +114,7 @@ export default function Precios({ nav, user }) {
                 </li>
               ))}
             </ul>
-            <button onClick={() => nav("registro", { plan:"pro" })}
+            <button onClick={() => nav(user ? "suscripcionPro" : "registro", user ? {} : { plan:"pro" })}
               style={{ width:"100%", background:"#F97316", color:"#fff", border:"none",
                        borderRadius:"12px", padding:"14px", fontSize:"15px", fontWeight:700, cursor:"pointer" }}>
               Obtener Plan Pro ⚡
@@ -123,7 +123,7 @@ export default function Precios({ nav, user }) {
         </div>
 
         <p style={{ textAlign:"center", color:"#94A3B8", fontSize:"13px", marginTop:"24px" }}>
-          * Cancela en cualquier momento. Los precios no incluyen IVA.
+          * Cancela en cualquier momento. El precio incluye IVA.
         </p>
       </div>
 

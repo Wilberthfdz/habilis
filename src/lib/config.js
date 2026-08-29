@@ -18,5 +18,16 @@ export const firebaseConfig = {
 // Cloud Function `geminiProxy` (ver src/lib/gemini.js y functions/index.js).
 export const GEMINI_MODEL = "gemini-2.0-flash";
 
+// ── APP CHECK ───────────────────────────────────────────────────────────────
+// Clave de sitio de reCAPTCHA v3, generada en la consola de Firebase:
+// Compilación → App Check → Apps → registrar la app web con reCAPTCHA v3.
+// Es pública por diseño (viaja en el navegador, igual que el apiKey); lo que
+// protege es el par con el secreto, que se queda en Google.
+//
+// Vacía = App Check apagado: la app funciona igual y no se envían tokens.
+// Al ponerla, el cliente empieza a mandar tokens y en la consola se puede ver
+// cuánto tráfico llega verificado ANTES de exigirlo (Métricas → Aplicar).
+export const APPCHECK_SITE_KEY = "";
+
 // ── PRECIOS ─────────────────────────────────────────────────────────────────
 export const PRECIO_PRO_MXN = 100;

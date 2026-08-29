@@ -232,7 +232,6 @@ export default function HabilisCare({ nav, user }) {
     proximo: activos.filter(a => { const p = calcularProxima(a); return p && diasHasta(p) <= 30 && diasHasta(p) >= 0; }).length,
   };
 
-
   return (
     <div style={{ background:"#F1F5F9", minHeight:"100vh" }}>
       <div style={{ background:"#0F172A" }}><Nav nav={nav} user={user} /></div>
