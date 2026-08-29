@@ -461,6 +461,9 @@ exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
       // dejar al usuario en la portada sin saber si se cobró.
       back_url: "https://myhabilis.com/pro",
       payer_email: email,
+      // Flujo por redirección: la suscripción nace pendiente y el propio
+      // pagador la autoriza en el checkout de Mercado Pago.
+      status: "pending",
     }),
   });
   const data = await r.json();

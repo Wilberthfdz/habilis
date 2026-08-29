@@ -33,6 +33,7 @@ const LBL = { fontSize:"12px", fontWeight:700, color:"#64748B", marginBottom:"5p
 export default function SuscripcionPro({ nav, user }) {
   const [tecnico, setTecnico]   = useState(undefined);
   const [codigo, setCodigo]     = useState("");
+  const [emailPago, setEmailPago] = useState("");
   const [error, setError]       = useState("");
   const [cargando, setCargando] = useState(false);
 
@@ -48,6 +49,8 @@ export default function SuscripcionPro({ nav, user }) {
   // viendo la pantalla de compra como si no hubiera pagado, se muestra
   // "confirmando" y se relee su plan hasta que aparezca.
   const vueltaDePago = typeof window !== "undefined" && window.location.search.length > 1;
+
+  useEffect(() => { if (user?.email) setEmailPago(user.email); }, [user]);
 
   useEffect(() => {
     if (!user) { setTecnico(null); return; }
@@ -78,9 +81,14 @@ export default function SuscripcionPro({ nav, user }) {
   }, [user, vueltaDePago]);
 
   const pagar = async () => {
+    const correo = emailPago.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
+      setError("Escribe un correo válido para la suscripción.");
+      return;
+    }
     setError(""); setCargando(true);
     try {
-      const { url } = await iniciarSuscripcionPro(user.email, codigo.trim() || null);
+      const { url } = await iniciarSuscripcionPro(correo, codigo.trim() || null);
       window.location.href = url;   // checkout de Mercado Pago
     } catch (e) {
       setError(e.message || "No se pudo iniciar el pago. Intenta de nuevo.");
@@ -178,6 +186,15 @@ export default function SuscripcionPro({ nav, user }) {
               ))}
             </ul>
 
+            <label style={LBL}>Correo de tu cuenta de Mercado Pago</label>
+            <input style={INP} type="email" value={emailPago} inputMode="email"
+              onChange={e => setEmailPago(e.target.value)} placeholder="tucorreo@ejemplo.com" />
+            <p style={{ fontSize:"11.5px", color:"#94A3B8", marginTop:"-6px", marginBottom:"14px",
+                        lineHeight:1.55 }}>
+              Debe ser el correo con el que entras a Mercado Pago. Si usas otro distinto al de
+              Habilis, cámbialo aquí para no tener que corregirlo en el checkout.
+            </p>
+
             <label style={LBL}>Código de descuento (opcional)</label>
             <input style={{ ...INP, textTransform:"uppercase" }} value={codigo}
               onChange={e => setCodigo(e.target.value)} placeholder="EJEMPLO10" maxLength={30} />
@@ -192,10 +209,10 @@ export default function SuscripcionPro({ nav, user }) {
               {cargando ? "Conectando con Mercado Pago…" : "Pagar con Mercado Pago →"}
             </button>
             <p style={{ fontSize:"12px", color:"#94A3B8", marginTop:"12px", lineHeight:1.6, textAlign:"center" }}>
-              Suscripción mensual con renovación automática: se cobra cada mes hasta que
-              la canceles, y puedes hacerlo desde esta misma página cuando quieras. El pago
-              se procesa de forma segura en Mercado Pago — Habilis nunca ve tu tarjeta —
-              y tu plan se activa al confirmarse.
+              Mercado Pago te pedirá iniciar sesión para autorizar el cobro recurrente:
+              es un requisito suyo para las suscripciones, no un paso extra de Habilis.
+              Ahí registras tu tarjeta — Habilis nunca la ve. Se cobra cada mes hasta que
+              canceles, y puedes cancelar desde esta misma página cuando quieras.
             </p>
           </div>
         )}
