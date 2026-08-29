@@ -26,6 +26,14 @@ if (APPCHECK_SITE_KEY) {
 }
 const auth    = getAuth(app);
 const db      = getFirestore(app);
+// Plantillas de Firebase Auth (verificación, reset de contraseña) en
+// español — por defecto salían en inglés, lo que sumaba a que se vieran
+// genéricas/spam.
+auth.languageCode = "es";
+
+// A dónde regresa el enlace del correo tras verificar/restablecer. Sin esto
+// caía en la página genérica de Firebase en vez de volver a Habilis.
+const actionCodeSettings = { url: "https://myhabilis.com", handleCodeInApp: false };
 
 // ── AUTH ────────────────────────────────────────────────────────────────
 export const registrarUsuario = (email, password) =>
@@ -36,9 +44,9 @@ export const iniciarSesion = (email, password) =>
 
 export const cerrarSesion = () => signOut(auth);
 
-export const enviarResetPassword = (email) => sendPasswordResetEmail(auth, email);
+export const enviarResetPassword = (email) => sendPasswordResetEmail(auth, email, actionCodeSettings);
 
-export const enviarVerificacionEmail = (user) => sendEmailVerification(user);
+export const enviarVerificacionEmail = (user) => sendEmailVerification(user, actionCodeSettings);
 
 export const actualizarNombreAuth = (user, nombre) => updateProfile(user, { displayName: nombre });
 
