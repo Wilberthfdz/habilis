@@ -104,14 +104,6 @@ export default function DetalleActivo({ nav, user, params }) {
     } finally { setSolicitando(false); }
   };
 
-  const openCtrlW = () => {
-    const url = new URL("https://ctrlw.mx/cotizacion");
-    url.searchParams.set("action", "crear");
-    url.searchParams.set("from", "habilis");
-    url.searchParams.set("equipo", activo?.nombre || "");
-    url.searchParams.set("cliente", user?.email || "");
-    window.open(url.toString(), "_blank", "noopener,noreferrer");
-  };
 
   if (loading) return (
     <div style={{ background:"#F1F5F9", minHeight:"100vh" }}>
@@ -199,11 +191,6 @@ export default function DetalleActivo({ nav, user, params }) {
               {solicitando ? "Enviando..." : "🔧 Solicitar mantenimiento"}
             </button>
           )}
-          <button onClick={openCtrlW}
-            style={{ flex:1, background:"#0F172A", color:"#fff", border:"none", borderRadius:"10px",
-                     padding:"10px 18px", fontSize:"14px", fontWeight:700, cursor:"pointer" }}>
-            💼 Cotizar con CTRL+W
-          </button>
         </div>
 
         {/* Asset details */}
@@ -294,24 +281,6 @@ export default function DetalleActivo({ nav, user, params }) {
               {s.tecnico && <p style={{ fontSize:"12px", color:"#94A3B8", marginTop:"3px" }}>👤 {s.tecnico}</p>}
             </div>
           ))}
-        </div>
-
-        {/* CTRL+W promo */}
-        <div style={{ background:"#0F172A", borderRadius:"16px", padding:"20px", marginBottom:"14px",
-                      display:"flex", gap:"16px", alignItems:"center", flexWrap:"wrap" }}>
-          <div style={{ flex:1 }}>
-            <p style={{ fontWeight:700, fontSize:"14px", color:"#fff", marginBottom:"4px" }}>
-              💼 Genera cotizaciones con CTRL+W
-            </p>
-            <p style={{ fontSize:"12px", color:"rgba(255,255,255,0.5)", lineHeight:1.5 }}>
-              Crea cotizaciones profesionales con catálogo de refacciones y envía por WhatsApp directo al cliente.
-            </p>
-          </div>
-          <button onClick={openCtrlW}
-            style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"10px",
-                     padding:"10px 18px", fontWeight:700, fontSize:"13px", cursor:"pointer", flexShrink:0 }}>
-            Abrir CTRL+W →
-          </button>
         </div>
 
       </div>

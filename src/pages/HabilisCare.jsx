@@ -232,13 +232,6 @@ export default function HabilisCare({ nav, user }) {
     proximo: activos.filter(a => { const p = calcularProxima(a); return p && diasHasta(p) <= 30 && diasHasta(p) >= 0; }).length,
   };
 
-  const openCtrlW = (equipo) => {
-    const url = new URL("https://ctrlw.mx/cotizacion");
-    url.searchParams.set("action", "crear");
-    url.searchParams.set("from", "habilis");
-    url.searchParams.set("equipo", equipo || "");
-    window.open(url.toString(), "_blank", "noopener,noreferrer");
-  };
 
   return (
     <div style={{ background:"#F1F5F9", minHeight:"100vh" }}>
@@ -373,17 +366,6 @@ export default function HabilisCare({ nav, user }) {
                     </span>
                   </div>
 
-                  {salud < 80 && (
-                    <div style={{ marginTop:"10px" }}>
-                      <button
-                        onClick={e => { e.stopPropagation(); openCtrlW(activo.nombre); }}
-                        style={{ width:"100%", background:"#0F172A", color:"#fff", border:"none",
-                                 borderRadius:"8px", padding:"8px", fontSize:"12px", fontWeight:700,
-                                 cursor:"pointer" }}>
-                        Cotizar con CTRL+W →
-                      </button>
-                    </div>
-                  )}
                 </div>
               );
             })}
