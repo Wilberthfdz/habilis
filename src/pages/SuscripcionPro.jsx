@@ -34,6 +34,8 @@ export default function SuscripcionPro({ nav, user }) {
   const [tecnico, setTecnico]   = useState(undefined);
   const [codigo, setCodigo]     = useState("");
   const [emailPago, setEmailPago] = useState("");
+  const [editarEmail, setEditarEmail] = useState(false);
+  const [verCodigo, setVerCodigo] = useState(false);
   const [error, setError]       = useState("");
   const [cargando, setCargando] = useState(false);
 
@@ -186,18 +188,49 @@ export default function SuscripcionPro({ nav, user }) {
               ))}
             </ul>
 
-            <label style={LBL}>Correo de tu cuenta de Mercado Pago</label>
-            <input style={INP} type="email" value={emailPago} inputMode="email"
-              onChange={e => setEmailPago(e.target.value)} placeholder="tucorreo@ejemplo.com" />
-            <p style={{ fontSize:"11.5px", color:"#94A3B8", marginTop:"-6px", marginBottom:"14px",
-                        lineHeight:1.55 }}>
-              Debe ser el correo con el que entras a Mercado Pago. Si usas otro distinto al de
-              Habilis, cámbialo aquí para no tener que corregirlo en el checkout.
-            </p>
+            {/* El camino normal es un solo clic: los campos solo aparecen si
+                el técnico los necesita, para no convertir el pago en un
+                formulario. */}
+            <div style={{ background:"#F8FAFC", border:"1px solid #E2E8F0", borderRadius:"10px",
+                          padding:"12px 14px", marginBottom:"12px" }}>
+              {editarEmail ? (
+                <>
+                  <label style={LBL}>Correo de tu cuenta de Mercado Pago</label>
+                  <input style={{ ...INP, marginBottom:"6px" }} type="email" value={emailPago}
+                    inputMode="email" autoFocus placeholder="tucorreo@ejemplo.com"
+                    onChange={e => setEmailPago(e.target.value)} />
+                  <p style={{ fontSize:"11.5px", color:"#94A3B8", lineHeight:1.5 }}>
+                    Debe ser el correo con el que entras a Mercado Pago.
+                  </p>
+                </>
+              ) : (
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
+                              gap:"10px", flexWrap:"wrap" }}>
+                  <span style={{ fontSize:"13px", color:"#475569", wordBreak:"break-all" }}>
+                    Se cobrará a <strong>{emailPago || "tu cuenta"}</strong>
+                  </span>
+                  <button onClick={() => setEditarEmail(true)}
+                    style={{ background:"none", border:"none", padding:0, fontSize:"12.5px",
+                             fontWeight:800, color:"#F97316", cursor:"pointer", flexShrink:0 }}>
+                    Usar otro correo
+                  </button>
+                </div>
+              )}
+            </div>
 
-            <label style={LBL}>Código de descuento (opcional)</label>
-            <input style={{ ...INP, textTransform:"uppercase" }} value={codigo}
-              onChange={e => setCodigo(e.target.value)} placeholder="EJEMPLO10" maxLength={30} />
+            {verCodigo ? (
+              <>
+                <label style={LBL}>Código de descuento</label>
+                <input style={{ ...INP, textTransform:"uppercase" }} value={codigo} autoFocus
+                  onChange={e => setCodigo(e.target.value)} placeholder="EJEMPLO10" maxLength={30} />
+              </>
+            ) : (
+              <button onClick={() => setVerCodigo(true)}
+                style={{ background:"none", border:"none", padding:"0 0 14px", fontSize:"12.5px",
+                         fontWeight:700, color:"#64748B", cursor:"pointer" }}>
+                ¿Tienes un código de descuento?
+              </button>
+            )}
 
             {error && (
               <p style={{ fontSize:"13px", color:"#DC2626", background:"#FEE2E2", borderRadius:"8px",
