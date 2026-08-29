@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import Logo from "./Logo.jsx";
 import NotifBell from "./NotifBell.jsx";
-import { obtenerTecnico, cerrarSesion, enviarVerificacionEmail } from "../lib/firebase.js";
+import { obtenerTecnico, cerrarSesion } from "../lib/firebase.js";
+import { enviarVerificacionEmailPropio } from "../lib/gemini.js";
 import { isAdminUser } from "../lib/admin.js";
 
 const aboutLinks = [
@@ -37,7 +38,7 @@ export default function Nav({ nav, user }) {
 
   const reenviarVerificacion = async () => {
     setReenviando(true);
-    try { await enviarVerificacionEmail(user); setReenviado(true); }
+    try { await enviarVerificacionEmailPropio(); setReenviado(true); }
     catch {} finally { setReenviando(false); }
   };
 

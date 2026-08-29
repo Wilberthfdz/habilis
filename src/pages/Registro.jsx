@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Logo from "../components/Logo.jsx";
-import { registrarUsuario, crearPerfilTecnico, crearPerfilCliente, enviarVerificacionEmail, actualizarNombreAuth } from "../lib/firebase.js";
+import { registrarUsuario, crearPerfilTecnico, crearPerfilCliente, actualizarNombreAuth } from "../lib/firebase.js";
+import { enviarVerificacionEmailPropio } from "../lib/gemini.js";
 import { TAXONOMIA } from "../lib/taxonomia.js";
 
 const inp = { width:"100%", border:"1px solid #E2E8F0", borderRadius:"10px",
@@ -50,7 +51,7 @@ export default function Registro({ nav, params = {} }) {
     setError(""); setLoading(true);
     try {
       const cred = await registrarUsuario(form.email.trim(), form.password);
-      enviarVerificacionEmail(cred.user).catch(() => {});
+      enviarVerificacionEmailPropio().catch(() => {});
       actualizarNombreAuth(cred.user, `${form.nombre.trim()} ${form.apellido.trim()}`).catch(() => {});
       if (esCliente) {
         await crearPerfilCliente(cred.user.uid, {

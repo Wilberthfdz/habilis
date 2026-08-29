@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Logo from "../components/Logo.jsx";
-import { iniciarSesion, loginConGoogle, loginConApple, obtenerTecnico, obtenerCliente, enviarResetPassword } from "../lib/firebase.js";
+import { iniciarSesion, loginConGoogle, loginConApple, obtenerTecnico, obtenerCliente } from "../lib/firebase.js";
+import { enviarResetPasswordPropio } from "../lib/gemini.js";
 
 // Google "G" logo inline SVG
 function GoogleIcon() {
@@ -217,13 +218,10 @@ export default function Login({ nav, user, params = {} }) {
                   if (!email.trim()) { setError("Escribe tu correo arriba y vuelve a tocar aquí."); return; }
                   setError("");
                   try {
-                    await enviarResetPassword(email.trim());
+                    await enviarResetPasswordPropio(email.trim());
                     setResetEnviado(true);
                   } catch (err) {
-                    const c = err.code || "";
-                    setError(c.includes("invalid-email") ? "El correo no es válido."
-                           : c.includes("too-many-requests") ? "Demasiados intentos. Espera unos minutos."
-                           : "No se pudo enviar el correo. Intenta de nuevo.");
+                    setError(err.message || "No se pudo enviar el correo. Intenta de nuevo.");
                   }
                 }}
                 style={{ background:"none", border:"none", color:"rgba(255,255,255,0.35)",

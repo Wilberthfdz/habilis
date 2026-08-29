@@ -560,8 +560,7 @@ exports.crearTicketSoporte = onCall(async (request) => {
 // que cae en spam por no tener la reputación de myhabilis.com). El enlace de
 // acción lo sigue emitiendo Firebase Auth (generateEmailVerificationLink /
 // generatePasswordResetLink); solo cambia quién manda el correo.
-// TODAVÍA NO está conectado al frontend — falta verificar el dominio en
-// Resend y guardar RESEND_API_KEY. Ver DESPLEGAR.md / SETUP_PAGOS.md.
+// Dominio myhabilis.com verificado en Resend (2026-08-29).
 // ═══════════════════════════════════════════════════════════════
 async function enviarCorreoResend(key, to, subject, html) {
   const r = await fetch("https://api.resend.com/emails", {

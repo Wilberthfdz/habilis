@@ -1,6 +1,6 @@
 // ─── FIREBASE SERVICE — Base de datos, auth y storage ────────────────────
 import { initializeApp }                   from "firebase/app";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, OAuthProvider, signInWithPopup, sendPasswordResetEmail, sendEmailVerification, updateProfile } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, OAuthProvider, signInWithPopup, updateProfile } from "firebase/auth";
 import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, query, where, orderBy, limit, getDocs, addDoc, serverTimestamp, increment, runTransaction } from "firebase/firestore";
 // Storage SDK removed — profile photos use base64-in-Firestore (no Blaze plan needed)
 import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
@@ -26,14 +26,6 @@ if (APPCHECK_SITE_KEY) {
 }
 const auth    = getAuth(app);
 const db      = getFirestore(app);
-// Plantillas de Firebase Auth (verificación, reset de contraseña) en
-// español — por defecto salían en inglés, lo que sumaba a que se vieran
-// genéricas/spam.
-auth.languageCode = "es";
-
-// A dónde regresa el enlace del correo tras verificar/restablecer. Sin esto
-// caía en la página genérica de Firebase en vez de volver a Habilis.
-const actionCodeSettings = { url: "https://myhabilis.com", handleCodeInApp: false };
 
 // ── AUTH ────────────────────────────────────────────────────────────────
 export const registrarUsuario = (email, password) =>
@@ -44,9 +36,10 @@ export const iniciarSesion = (email, password) =>
 
 export const cerrarSesion = () => signOut(auth);
 
-export const enviarResetPassword = (email) => sendPasswordResetEmail(auth, email, actionCodeSettings);
-
-export const enviarVerificacionEmail = (user) => sendEmailVerification(user, actionCodeSettings);
+// El correo de verificación/reset ya no lo manda Firebase directo (caía en
+// spam, dominio compartido): ver enviarVerificacionEmailPropio /
+// enviarResetPasswordPropio en lib/gemini.js, que lo mandan por Resend
+// desde noreply@myhabilis.com con el mismo enlace de acción de Firebase Auth.
 
 export const actualizarNombreAuth = (user, nombre) => updateProfile(user, { displayName: nombre });
 
