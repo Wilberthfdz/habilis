@@ -56,7 +56,14 @@ service cloud.firestore {
     match /trabajos/{trabajoId} {
       allow read:   if true;
       allow create: if request.auth != null && request.resource.data.tecnicoId == request.auth.uid;
-      allow update: if (request.auth != null && resource.data.tecnicoId == request.auth.uid) || isAdmin();
+      // El dueño solo puede tocar evidencias/estado del propio trabajo — antes
+      // podía reescribir cualquier campo (incluido costoTotal, ya usado en
+      // reportes de Finanzas, o reasignar tecnicoId a otra cuenta).
+      allow update: if isAdmin() || (
+        request.auth != null && resource.data.tecnicoId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['estado','evidencias','updatedAt'])
+      );
       allow delete: if isAdmin();
     }
 
@@ -80,19 +87,23 @@ service cloud.firestore {
       allow delete: if (request.auth != null && resource.data.userId == request.auth.uid) || isAdmin();
     }
 
-    // Service history records
+    // Service history records — antes cualquier autenticado podía leer/editar
+    // el historial de servicio de CUALQUIER equipo, no solo el propio.
     match /servicios/{servicioId} {
-      allow read:   if request.auth != null;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null;
+      allow read:   if (request.auth != null && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update: if (request.auth != null && resource.data.userId == request.auth.uid) || isAdmin();
       allow delete: if isAdmin();
     }
 
-    // Care subscription plans
+    // Care subscription plans — sin cobro automatizado todavía: cualquier
+    // usuario podía updateDoc({estado:"activo"}) desde el navegador y
+    // activarse un plan "pagado" gratis. `estado`/`montoPagado` ahora son
+    // solo-admin hasta que exista un webhook de pago real para esto.
     match /planes_care/{planId} {
       allow read:   if (request.auth != null && resource.data.clienteId == request.auth.uid) || isAdmin();
-      allow create: if request.auth != null;
-      allow update: if (request.auth != null && resource.data.clienteId == request.auth.uid) || isAdmin();
+      allow create: if request.auth != null && request.resource.data.clienteId == request.auth.uid;
+      allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
@@ -103,8 +114,12 @@ service cloud.firestore {
     match /cotizaciones/{cotId} {
       allow read:   if true;
       allow create: if request.auth != null && request.resource.data.tecnicoId == request.auth.uid;
+      // El técnico solo puede seguir editando MIENTRAS el cliente no haya
+      // respondido — antes podía cambiar precios de una cotización ya
+      // aceptada/rechazada, sin que el cliente lo supiera ni la reconfirmara.
       allow update: if isAdmin()
-        || (request.auth != null && resource.data.tecnicoId == request.auth.uid)
+        || (request.auth != null && resource.data.tecnicoId == request.auth.uid &&
+            !(resource.data.estado in ['aceptada','rechazada']))
         || (
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado','updatedAt'])
           && request.resource.data.estado in ['aceptada','rechazada']
@@ -153,20 +168,34 @@ service cloud.firestore {
       allow delete: if false;
 
       match /mensajes/{mensajeId} {
-        allow read, create: if request.auth != null && (
+        allow read: if request.auth != null && (
           get(/databases/$(database)/documents/solicitudes_chat/$(solicitudId)).data.clienteId == request.auth.uid ||
           get(/databases/$(database)/documents/solicitudes_chat/$(solicitudId)).data.tecnicoId == request.auth.uid ||
           isAdmin()
+        );
+        // Antes solo se exigía ser una de las dos partes — cualquiera podía
+        // mandar autorId=<la otra persona> y falsificar lo que "dijo" en una
+        // disputa. Ahora el autor solo puede ser quien firma la petición
+        // (o "sistema" para los avisos automáticos de aceptar/rechazar).
+        allow create: if request.auth != null && (
+          get(/databases/$(database)/documents/solicitudes_chat/$(solicitudId)).data.clienteId == request.auth.uid ||
+          get(/databases/$(database)/documents/solicitudes_chat/$(solicitudId)).data.tecnicoId == request.auth.uid ||
+          isAdmin()
+        ) && (
+          (request.resource.data.autorId == request.auth.uid && request.resource.data.tipo == "mensaje") ||
+          (request.resource.data.autorId == "sistema" && request.resource.data.tipo == "sistema")
         );
         allow update: if false;
         allow delete: if false;
       }
     }
 
-    // Social validations — one per user-work-type combination
+    // Social validations — one per user-work-type combination. `validadorId`
+    // debe ser quien firma la petición — antes cualquiera podía validar en
+    // nombre de otro usuario.
     match /validaciones/{validacionId} {
       allow read:   if true;
-      allow create: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.validadorId == request.auth.uid;
       allow update: if false;
       allow delete: if isAdmin();
     }
@@ -234,9 +263,14 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Configuración general del sitio (precio Pro, modo mantenimiento, etc.)
+    // Configuración general del sitio (config/general) y disclosures
+    // financieros internos del XPRIZE (config/xprize) comparten colección.
+    // Ningún componente público lee esto todavía (ver AdminConfig.jsx) — el
+    // "true" anterior exponía sin querer el reporte financiero interno junto
+    // con la config pública. Solo-admin hasta que algo público necesite leer
+    // config/general puntualmente.
     match /config/{id} {
-      allow read: if true;
+      allow read: if isAdmin();
       allow write: if isAdmin();
     }
 

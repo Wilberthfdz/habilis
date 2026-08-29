@@ -250,8 +250,8 @@ export default function VistaCotizacion({ nav, params }) {
           </div>
         )}
 
-        {/* Accept/Reject — only when sent and not yet decided */}
-        {(estado === "enviada" || estado === "borrador") && !done && (
+        {/* Accept/Reject — only when sent, not yet decided, and not expired */}
+        {(estado === "enviada" || estado === "borrador") && !done && !vencida && (
           <div className="no-print"
             style={{ borderTop:"2px solid #F1F5F9", paddingTop:"24px",
                      display:"flex", gap:"12px", justifyContent:"center" }}>
@@ -278,6 +278,14 @@ export default function VistaCotizacion({ nav, params }) {
                      color: done === "aceptada" ? "#059669" : "#DC2626",
                      fontWeight:700, fontSize:"15px" }}>
             {done === "aceptada" ? "✅ Cotización aceptada. El técnico se pondrá en contacto contigo." : "Cotización rechazada."}
+          </div>
+        )}
+
+        {(estado === "enviada" || estado === "borrador") && !done && vencida && (
+          <div className="no-print"
+            style={{ background:"#FFF7ED", border:"1px solid #FED7AA", borderRadius:"12px",
+                     padding:"16px", textAlign:"center", color:"#EA580C", fontWeight:700, fontSize:"15px" }}>
+            Esta cotización venció el {fmtD(vencimiento)}. Pide al técnico que te comparta una nueva.
           </div>
         )}
 

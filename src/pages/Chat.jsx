@@ -25,6 +25,7 @@ export default function Chat({ nav, user, params }) {
   const [showReview,   setShowReview]   = useState(false);
   const [rating,       setRating]       = useState(0);
   const [reviewText,   setReviewText]   = useState("");
+  const [chatError,    setChatError]    = useState(false);
   const bottomRef = useRef(null);
 
   const esTecnico = solicitud && user?.uid === solicitud.tecnicoId;
@@ -45,7 +46,9 @@ export default function Chat({ nav, user, params }) {
   useEffect(() => {
     if (!solicitudId || !user) { nav(user ? destinoPropio : "login"); return; }
 
-    // Real-time listener on solicitud document
+    // Real-time listener on solicitud document. Sin el segundo callback, un
+    // error (p.ej. permission-denied) dejaba loading:true para siempre y la
+    // pantalla se quedaba en el spinner sin ningún aviso.
     const unsubSol = onSnapshot(doc(db, "solicitudes_chat", solicitudId), snap => {
       if (snap.exists()) {
         setSolicitud({ id: snap.id, ...snap.data() });
@@ -53,7 +56,7 @@ export default function Chat({ nav, user, params }) {
       } else {
         setLoading(false);
       }
-    });
+    }, err => { console.error(err); setChatError(true); setLoading(false); });
 
     // Real-time listener on messages subcollection
     const qMsg = query(
@@ -62,7 +65,7 @@ export default function Chat({ nav, user, params }) {
     );
     const unsubMsg = onSnapshot(qMsg, snap => {
       setMensajes(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
+    }, err => console.error(err));
 
     return () => { unsubSol(); unsubMsg(); };
   }, [solicitudId, user]);
@@ -114,6 +117,11 @@ export default function Chat({ nav, user, params }) {
         tipo:       "mensaje",
         timestamp:  serverTimestamp(),
       });
+    } catch (e) {
+      // Antes el input se limpiaba igual aunque la escritura fallara — el
+      // mensaje se perdía en silencio sin que la persona se diera cuenta.
+      console.error(e);
+      setTexto(msg);
     } finally { setEnviando(false); }
   };
 
@@ -159,7 +167,9 @@ export default function Chat({ nav, user, params }) {
       <div style={{ background:"#0F172A" }}><Nav nav={nav} user={user} /></div>
       <div style={{ textAlign:"center", padding:"80px" }}>
         <p style={{ fontSize:"52px" }}>💬</p>
-        <p style={{ fontWeight:800, color:"#0F172A", marginTop:"12px" }}>Solicitud no encontrada</p>
+        <p style={{ fontWeight:800, color:"#0F172A", marginTop:"12px" }}>
+          {chatError ? "No se pudo cargar esta conversación" : "Solicitud no encontrada"}
+        </p>
         <button onClick={() => nav(destinoPropio)}
           style={{ marginTop:"20px", background:"#F97316", color:"#fff", border:"none",
                    borderRadius:"10px", padding:"11px 22px", fontWeight:700, cursor:"pointer" }}>

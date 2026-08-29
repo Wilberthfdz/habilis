@@ -1,7 +1,7 @@
 // ─── FIREBASE SERVICE — Base de datos, auth y storage ────────────────────
 import { initializeApp }                   from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, OAuthProvider, signInWithPopup, sendPasswordResetEmail, sendEmailVerification, updateProfile } from "firebase/auth";
-import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, query, where, orderBy, limit, getDocs, addDoc, serverTimestamp, increment } from "firebase/firestore";
+import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, query, where, orderBy, limit, getDocs, addDoc, serverTimestamp, increment, runTransaction } from "firebase/firestore";
 // Storage SDK removed — profile photos use base64-in-Firestore (no Blaze plan needed)
 import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 import { firebaseConfig, APPCHECK_SITE_KEY }   from "./config.js";
@@ -304,16 +304,21 @@ export async function actualizarPlanCare(planId, datos) {
 }
 
 // ── COTIZACIONES ─────────────────────────────────────────────────────────
+// Transacción, no get()+set(): dos cotizaciones creadas casi al mismo tiempo
+// podían leer el mismo contador y salir con el mismo folio.
 export async function obtenerSiguienteFolio(tecnicoId) {
   const year = new Date().getFullYear();
   const ref  = doc(db, "cotizaciones_folio", tecnicoId);
-  const snap = await getDoc(ref);
-  let num = 1;
-  if (snap.exists()) {
-    const d = snap.data();
-    num = d.year === year ? (d.contador || 0) + 1 : 1;
-  }
-  await setDoc(ref, { contador: num, year });
+  const num = await runTransaction(db, async tx => {
+    const snap = await tx.get(ref);
+    let n = 1;
+    if (snap.exists()) {
+      const d = snap.data();
+      n = d.year === year ? (d.contador || 0) + 1 : 1;
+    }
+    tx.set(ref, { contador: n, year });
+    return n;
+  });
   return `HAB-${year}-${String(num).padStart(3, "0")}`;
 }
 

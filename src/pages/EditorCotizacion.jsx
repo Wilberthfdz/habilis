@@ -86,25 +86,30 @@ export default function EditorCotizacion({ nav, user, params }) {
     }).finally(() => setLoading(false));
   }, [cotId, user]);
 
+  // Una vez que el cliente responde, la cotización queda congelada — las
+  // reglas de Firestore ya lo rechazan, esto solo evita seguir "editando"
+  // en la UI sin que se guarde nada y confunda al técnico.
+  const bloqueada = cot?.estado === "aceptada" || cot?.estado === "rechazada";
+
   // Auto-save every 30s
   useEffect(() => {
-    if (!cotId || loading) return;
+    if (!cotId || loading || bloqueada) return;
     clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(() => guardar(false), 30000);
     return () => clearTimeout(autoSaveTimer.current);
-  }, [productos, manoObra, cliente, notas, iva, descPct, folio, fecha, validez, moneda, terminos, metodoPago]);
+  }, [productos, manoObra, cliente, notas, iva, descPct, folio, fecha, validez, moneda, terminos, metodoPago, bloqueada]);
 
   // Financial calculations
   const subtotalProds  = productos.reduce((s, p) => s + (Number(p.cantidad||1) * Number(p.precioUnitario||0)), 0);
   const subtotalObra   = manoObra.reduce((s, m) => s + Number(m.costo||0), 0);
   const subtotal       = subtotalProds + subtotalObra;
-  const descuentoMonto = subtotal * (Number(descPct||0) / 100);
+  const descuentoMonto = subtotal * (Math.min(100, Math.max(0, Number(descPct||0))) / 100);
   const base           = subtotal - descuentoMonto;
   const ivaMonto       = iva ? base * 0.16 : 0;
   const total          = base + ivaMonto;
 
   const guardar = async (showFeedback = true) => {
-    if (!cotId) return;
+    if (!cotId || bloqueada) return;
     if (showFeedback) setSaving(true);
     try {
       const data = {
@@ -135,18 +140,30 @@ export default function EditorCotizacion({ nav, user, params }) {
 
   const addProducto = () => {
     if (!newProd.descripcion.trim()) return;
-    setProductos(p => [...p, { ...newProd, cantidad:Number(newProd.cantidad)||1, precioUnitario:Number(newProd.precioUnitario)||0 }]);
+    setProductos(p => [...p, { ...newProd,
+      cantidad: Math.max(1, Number(newProd.cantidad) || 1),
+      precioUnitario: Math.max(0, Number(newProd.precioUnitario) || 0),
+    }]);
     setNewProd({ descripcion:"", cantidad:1, precioUnitario:"", nota:"" });
     setShowProdSug(false);
   };
 
   const addManoObra = () => {
     if (!newObra.descripcion.trim()) return;
-    setManoObra(m => [...m, { descripcion:newObra.descripcion.trim(), costo:Number(newObra.costo)||0 }]);
+    setManoObra(m => [...m, { descripcion:newObra.descripcion.trim(), costo: Math.max(0, Number(newObra.costo) || 0) }]);
     setNewObra({ descripcion:"", costo:"" });
   };
 
-  const setProd = (i, k, v) => setProductos(ps => ps.map((p, idx) => idx===i ? { ...p, [k]:v } : p));
+  // Cantidad/precio nunca negativos — un típo aquí (o "-100") arrastraba el
+  // total de la cotización a negativo sin ningún aviso.
+  const setProd = (i, k, v) => setProductos(ps => ps.map((p, idx) => {
+    if (idx !== i) return p;
+    if (k === "cantidad" || k === "precioUnitario") {
+      const n = Number(v);
+      return { ...p, [k]: v === "" ? v : Number.isFinite(n) ? Math.max(k === "cantidad" ? 1 : 0, n) : p[k] };
+    }
+    return { ...p, [k]: v };
+  }));
   const delProd = i => setProductos(ps => ps.filter((_, idx) => idx !== i));
   const delObra = i => setManoObra(ms => ms.filter((_, idx) => idx !== i));
 
@@ -192,20 +209,37 @@ export default function EditorCotizacion({ nav, user, params }) {
                        borderRadius:"8px", padding:"7px 14px", fontSize:"12px", fontWeight:600, cursor:"pointer" }}>
               Vista previa
             </button>
-            <button onClick={enviarWA}
-              style={{ background:"#25D366", color:"#fff", border:"none", borderRadius:"8px",
-                       padding:"7px 14px", fontSize:"12px", fontWeight:700, cursor:"pointer" }}>
-              📲 WhatsApp
-            </button>
-            <button onClick={() => guardar(true)} disabled={saving}
-              style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"8px",
-                       padding:"7px 16px", fontSize:"13px", fontWeight:700, cursor:"pointer",
-                       opacity: saving ? 0.75 : 1 }}>
-              {saving ? "Guardando..." : "Guardar"}
-            </button>
+            {!bloqueada && (
+              <>
+                <button onClick={enviarWA}
+                  style={{ background:"#25D366", color:"#fff", border:"none", borderRadius:"8px",
+                           padding:"7px 14px", fontSize:"12px", fontWeight:700, cursor:"pointer" }}>
+                  📲 WhatsApp
+                </button>
+                <button onClick={() => guardar(true)} disabled={saving}
+                  style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"8px",
+                           padding:"7px 16px", fontSize:"13px", fontWeight:700, cursor:"pointer",
+                           opacity: saving ? 0.75 : 1 }}>
+                  {saving ? "Guardando..." : "Guardar"}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
+
+      {bloqueada && (
+        <div style={{ background: cot.estado === "aceptada" ? "#F0FDF4" : "#FEF2F2",
+                      borderBottom: `1px solid ${cot.estado === "aceptada" ? "#A7F3D0" : "#FECACA"}`,
+                      padding:"12px 20px", textAlign:"center" }}>
+          <span style={{ fontSize:"13px", fontWeight:700,
+                         color: cot.estado === "aceptada" ? "#059669" : "#DC2626" }}>
+            {cot.estado === "aceptada"
+              ? "✅ El cliente ya aceptó esta cotización — queda congelada, no se puede modificar."
+              : "❌ El cliente rechazó esta cotización — queda congelada, no se puede modificar."}
+          </span>
+        </div>
+      )}
 
       <style>{`
         @media (max-width:720px) {
@@ -448,7 +482,12 @@ export default function EditorCotizacion({ nav, user, params }) {
             {/* Discount */}
             <div style={{ display:"flex", alignItems:"center", gap:"8px", marginBottom:"8px" }}>
               <span style={{ fontSize:"12px", color:"rgba(255,255,255,0.5)", flex:1 }}>Descuento %</span>
-              <input type="number" value={descPct} onChange={e => setDescPct(e.target.value)} min="0" max="100"
+              <input type="number" value={descPct}
+                onChange={e => {
+                  const v = e.target.value;
+                  const n = Number(v);
+                  setDescPct(v === "" ? v : Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : descPct);
+                }} min="0" max="100"
                 style={{ background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)",
                          borderRadius:"6px", padding:"5px 8px", color:"#fff", fontSize:"12px",
                          width:"60px", textAlign:"right", outline:"none" }} />

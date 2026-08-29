@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Nav from "../components/Nav.jsx";
-import { obtenerActivos, actualizarActivo, crearServicio, obtenerServicios, crearSolicitud } from "../lib/firebase.js";
+import { obtenerActivos, actualizarActivo, crearServicio, obtenerServicios, crearSolicitud, obtenerCliente } from "../lib/firebase.js";
 import { TIPOS_ACTIVO, calcularSalud, calcularProxima } from "./HabilisCare.jsx";
 
 // Re-export AnilloSalud if needed by other components
@@ -49,6 +49,8 @@ export default function DetalleActivo({ nav, user, params }) {
   const [servForm, setServForm] = useState({
     fecha:"", descripcion:"", costo:"", tecnico:"",
   });
+  const [cliente, setCliente] = useState(null);
+  const [solicError, setSolicError] = useState("");
 
   const activoId = params?.activoId;
 
@@ -64,8 +66,12 @@ export default function DetalleActivo({ nav, user, params }) {
       const a = todos.find(x => x.id === activoId);
       if (!a) { nav("habilisCare"); return; }
       setActivo(a);
-      const sv = await obtenerServicios(activoId);
+      const [sv, cli] = await Promise.all([
+        obtenerServicios(activoId),
+        obtenerCliente(user.uid).catch(() => null),
+      ]);
       setServicios(sv);
+      setCliente(cli);
     } finally { setLoading(false); }
   };
 
@@ -89,13 +95,22 @@ export default function DetalleActivo({ nav, user, params }) {
   };
 
   const solicitarMantenimiento = async () => {
+    // Los técnicos se filtran por ciudad al leer el Feed — mandar la
+    // solicitud sin ciudad la dejaba huérfana: se marcaba "enviada" pero
+    // ningún técnico la veía nunca.
+    const ciudad = cliente?.ciudad?.trim();
+    if (!ciudad) {
+      setSolicError("Agrega tu ciudad en Mi cuenta antes de solicitar mantenimiento, para que los técnicos de tu zona vean la solicitud.");
+      return;
+    }
+    setSolicError("");
     setSolicitando(true);
     try {
       await crearSolicitud({
         titulo:    `Mantenimiento: ${activo.nombre}`,
         categoria: activo.tipo,
         descripcion: `Solicitud de mantenimiento para ${activo.nombre} (${activo.marca || ""} ${activo.modelo || ""}). Último servicio: ${fmtDate(activo.ultimoMantenimiento)}.`,
-        ciudad:    "",
+        ciudad,
         urgencia:  calcularSalud(activo) < 50 ? "Alta" : "Normal",
         userId:    user.uid,
         activoId,
@@ -178,6 +193,18 @@ export default function DetalleActivo({ nav, user, params }) {
         </div>
 
         {/* Action buttons */}
+        {solicError && (
+          <div style={{ background:"#FEF2F2", border:"1px solid #FECACA", borderRadius:"10px",
+                        padding:"11px 16px", fontSize:"13px", color:"#DC2626", marginBottom:"10px",
+                        display:"flex", justifyContent:"space-between", alignItems:"center", gap:"10px", flexWrap:"wrap" }}>
+            <span>{solicError}</span>
+            <button onClick={() => nav("miCuenta")}
+              style={{ background:"#DC2626", color:"#fff", border:"none", borderRadius:"8px",
+                       padding:"6px 12px", fontSize:"12px", fontWeight:700, cursor:"pointer", flexShrink:0 }}>
+              Ir a Mi cuenta →
+            </button>
+          </div>
+        )}
         <div style={{ display:"flex", gap:"10px", marginBottom:"14px", flexWrap:"wrap" }}>
           {solicOk ? (
             <div style={{ flex:1, background:"#F0FDF4", border:"1px solid #A7F3D0", borderRadius:"10px",

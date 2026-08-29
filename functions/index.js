@@ -67,17 +67,22 @@ function requireAuth(request) {
   return request.auth.uid;
 }
 
+// Transacción, no get()+set(): con llamadas concurrentes, dos lecturas
+// podían ver el mismo conteo por debajo del límite y las dos pasaban, y el
+// segundo set() sobrescribía el historial del primero en vez de acumularlo.
 async function checkRateLimit(uid, action, maxPerHour = 20) {
   const ref = db.collection("rateLimits").doc(`${uid}_${action}`);
-  const doc = await ref.get();
-  const now = Date.now();
-  const hourAgo = now - 3600000;
-  const calls = doc.exists ? (doc.data().calls || []).filter((t) => t > hourAgo) : [];
-  if (calls.length >= maxPerHour) {
-    throw new HttpsError("resource-exhausted", "Límite de uso alcanzado. Intenta en 1 hora.");
-  }
-  calls.push(now);
-  await ref.set({ calls });
+  await db.runTransaction(async (tx) => {
+    const doc = await tx.get(ref);
+    const now = Date.now();
+    const hourAgo = now - 3600000;
+    const calls = doc.exists ? (doc.data().calls || []).filter((t) => t > hourAgo) : [];
+    if (calls.length >= maxPerHour) {
+      throw new HttpsError("resource-exhausted", "Límite de uso alcanzado. Intenta en 1 hora.");
+    }
+    calls.push(now);
+    tx.set(ref, { calls });
+  });
 }
 
 // Evidencia de decisión de agente — leída por el panel admin y por los jueces.

@@ -73,8 +73,14 @@ export default function AdminUsuarios() {
     if (!confirm("Confirma de nuevo: se borrará el perfil completo.")) return;
     setBusy(t.id);
     try {
+      // Sin esto, los trabajos del técnico quedaban huérfanos en el Feed
+      // público (visible para todos) apuntando a un tecnicoId que ya no
+      // existe — el clic terminaba en "perfil no encontrado".
+      const trabajosSnap = await getDocs(query(collection(db, "trabajos"), where("tecnicoId", "==", t.id)));
+      await Promise.all(trabajosSnap.docs.map((d) => deleteDoc(d.ref)));
       await deleteDoc(doc(db, "tecnicos", t.id));
-      logAdmin(auth.currentUser?.email, "ELIMINÓ técnico", `tecnicos/${t.id}`, t.nombre || t.email || "");
+      logAdmin(auth.currentUser?.email, "ELIMINÓ técnico", `tecnicos/${t.id}`,
+        `${t.nombre || t.email || ""} (${trabajosSnap.size} trabajos borrados)`);
       setTecnicos((prev) => prev.filter((x) => x.id !== t.id));
       setFicha(null);
     } catch (e) { setError("Error: " + e.message); }

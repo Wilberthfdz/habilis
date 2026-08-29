@@ -67,11 +67,14 @@ export default function Cotizaciones({ nav, user }) {
   };
 
   const duplicar = async (cot) => {
+    // Firestore rechaza campos en `undefined` (no los ignora) — spreadear
+    // ...cot con id/createdAt/updatedAt puestos a undefined tronaba addDoc()
+    // antes de escribir nada. Se excluyen del objeto en vez de anularlos.
+    const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...resto } = cot;
     const folio = await obtenerSiguienteFolio(user.uid);
     const id = await crearCotizacion({
-      ...cot, id: undefined, folio, estado: "borrador",
+      ...resto, folio, estado: "borrador",
       fecha: new Date().toISOString(),
-      createdAt: undefined, updatedAt: undefined,
     });
     nav("editorCotizacion", { cotizacionId: id });
   };
