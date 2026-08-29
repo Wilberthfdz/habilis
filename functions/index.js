@@ -426,6 +426,63 @@ exports.agenteRanking = onSchedule({ schedule: "every day 08:30", timeZone: "Ame
 });
 
 // ═══════════════════════════════════════════════════════════════
+// 📅 AGENTE RENOVACIONES — corre solo cada día 09:00
+// Solo mira cuentas con metodoPago:"manual" (pagaron una vez con
+// OXXO/SPEI/tarjeta vía Checkout Pro, sin cobro automático — ver
+// crearPagoUnico). Las de tarjeta recurrente (Preapproval) las maneja
+// Mercado Pago solo y no tienen este campo, así que no las toca.
+// DECIDE y EJECUTA: avisa 3 días antes de vencer, y baja a Gratis si ya
+// venció sin que se haya vuelto a pagar.
+// ═══════════════════════════════════════════════════════════════
+exports.agenteRenovaciones = onSchedule(
+  { schedule: "every day 09:00", timeZone: "America/Cancun", secrets: [RESEND_KEY] },
+  async () => {
+    const snap = await db.collection("tecnicos").where("metodoPago", "==", "manual").get();
+    const ahora = Date.now();
+    let recordados = 0, bajados = 0;
+
+    for (const doc of snap.docs) {
+      const t = doc.data();
+      if (!esPlanPagante(t.plan) || !t.planVenceEl) continue;
+      const venceMs = t.planVenceEl.toMillis();
+
+      if (venceMs < ahora) {
+        await doc.ref.update({ plan: "gratis", metodoPago: admin.firestore.FieldValue.delete() });
+        await db.collection("notificaciones").add({
+          userId: doc.id, tipo: "plan_vencido",
+          mensaje: `Tu Plan ${t.plan === "empresa" ? "Empresa" : "Pro"} venció y no se renovó — volviste al plan Gratis. Puedes reactivarlo cuando quieras.`,
+          leida: false, link: "suscripcionPro", fecha: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        bajados++;
+        continue;
+      }
+
+      const diasRestantes = Math.ceil((venceMs - ahora) / 86400000);
+      if (diasRestantes <= 3 && !t.recordatorioEnviado) {
+        await doc.ref.update({ recordatorioEnviado: true });
+        await db.collection("notificaciones").add({
+          userId: doc.id, tipo: "recordatorio_renovacion",
+          mensaje: `Tu Plan ${t.plan === "empresa" ? "Empresa" : "Pro"} vence en ${diasRestantes} día(s) — paga de nuevo para no perder tus beneficios.`,
+          leida: false, link: "suscripcionPro", fecha: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        if (t.email) {
+          const html = plantillaCorreo({
+            titulo: "Tu plan está por vencer",
+            cuerpo: `Tu Plan ${t.plan === "empresa" ? "Empresa" : "Pro"} vence en ${diasRestantes} día(s). Paga de nuevo para seguir con prioridad en búsquedas, herramientas de IA y todo lo demás.`,
+            botonTexto: "Renovar ahora",
+            botonUrl: "https://myhabilis.com/pro",
+          });
+          await enviarCorreoResend(RESEND_KEY.value(), t.email, "Tu Plan vence pronto — Habilis", html)
+            .catch((e) => console.error("agenteRenovaciones correo:", e.message));
+        }
+        recordados++;
+      }
+    }
+    await logDecision("renovaciones", `${recordados} recordatorio(s), ${bajados} bajado(s) a Gratis`, "batch", "");
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════
 // GEMINI PROXY (genérico) — usos síncronos que el usuario dispara a
 // propósito: sugerirRespuesta, generarTipsMantenimiento, clasificarSolicitud,
 // generarResumenChat, sugerirColaboradores. El prompt lo arma el cliente
@@ -793,6 +850,53 @@ exports.crearEmpleado = onCall(async (request) => {
 // ═══════════════════════════════════════════════════════════════
 const PRECIOS_PLAN = { pro: 149, empresa: 499 };
 
+// Compartido entre crearSuscripcion (tarjeta, recurrente) y crearPagoUnico
+// (OXXO/SPEI/tarjeta, un solo cobro) — la validación del código no debía
+// vivir duplicada en dos flujos de cobro.
+async function aplicarCodigoDescuento(codigo, precioBase) {
+  if (!codigo) return { monto: precioBase, promoId: null };
+  if (typeof codigo !== "string" || codigo.length > 30) {
+    throw new HttpsError("invalid-argument", "Código de descuento inválido.");
+  }
+  const snap = await db.collection("promos")
+    .where("codigo", "==", codigo.trim().toUpperCase()).limit(1).get();
+  if (snap.empty) throw new HttpsError("not-found", "Ese código de descuento no existe.");
+  const promoRef = snap.docs[0].ref;
+
+  // El uso se aparta aquí, no al confirmarse el pago. Comprobar el tope
+  // ahora e incrementarlo después dejaba el contador en cero mientras
+  // tanto: un código de un solo uso se podía canjear en paralelo cuantas
+  // veces se quisiera, y la preaprobación/preferencia con descuento seguía
+  // válida en Mercado Pago indefinidamente.
+  const pct = await db.runTransaction(async (tx) => {
+    const pSnap = await tx.get(promoRef);
+    const promo = pSnap.data();
+    if (!pSnap.exists || promo.activo === false) {
+      throw new HttpsError("not-found", "Ese código de descuento no está disponible.");
+    }
+    if (promo.usosMaximos && (promo.usosActuales || 0) >= promo.usosMaximos) {
+      throw new HttpsError("failed-precondition", "Ese código ya alcanzó su límite de usos.");
+    }
+    tx.update(promoRef, { usosActuales: admin.firestore.FieldValue.increment(1) });
+    return Math.min(99, Math.max(0, Number(promo.descuento) || 0));
+  });
+
+  // Mercado Pago no acepta cobros de $0: el tope de 99% de arriba lo evita
+  // (y también protege contra datos mal capturados).
+  const monto = Math.round(precioBase * (1 - pct / 100) * 100) / 100;
+  return { monto, promoId: promoRef.id };
+}
+
+// Si crearPreferencia/crearPreapproval falla tras apartar el código, el
+// cobro nunca llegó a existir — se devuelve el uso para no quemarlo por un
+// fallo que no fue del técnico. Compartido entre ambos flujos de cobro.
+async function devolverUsoPromo(promoId) {
+  if (!promoId) return;
+  await db.collection("promos").doc(promoId).update({
+    usosActuales: admin.firestore.FieldValue.increment(-1),
+  }).catch((e) => console.error("No se pudo devolver el uso del código:", e.message));
+}
+
 exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
   const uid = requireAuth(request);
   await checkRateLimit(uid, "crearSuscripcion", 10);
@@ -802,42 +906,7 @@ exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
     throw new HttpsError("invalid-argument", "Email requerido.");
   }
 
-  // Código de descuento (colección `promos` del admin de Marketing).
-  const precioBase = PRECIOS_PLAN[plan];
-  let monto = precioBase;
-  let promoId = null;
-  if (codigo) {
-    if (typeof codigo !== "string" || codigo.length > 30) {
-      throw new HttpsError("invalid-argument", "Código de descuento inválido.");
-    }
-    const snap = await db.collection("promos")
-      .where("codigo", "==", codigo.trim().toUpperCase()).limit(1).get();
-    if (snap.empty) throw new HttpsError("not-found", "Ese código de descuento no existe.");
-    const promoRef = snap.docs[0].ref;
-
-    // El uso se aparta aquí, no al confirmarse el pago. Comprobar el tope
-    // ahora e incrementarlo después dejaba el contador en cero mientras
-    // tanto: un código de un solo uso se podía canjear en paralelo cuantas
-    // veces se quisiera, y la preaprobación con descuento seguía válida en
-    // Mercado Pago para toda la vida de esa suscripción.
-    const pct = await db.runTransaction(async (tx) => {
-      const pSnap = await tx.get(promoRef);
-      const promo = pSnap.data();
-      if (!pSnap.exists || promo.activo === false) {
-        throw new HttpsError("not-found", "Ese código de descuento no está disponible.");
-      }
-      if (promo.usosMaximos && (promo.usosActuales || 0) >= promo.usosMaximos) {
-        throw new HttpsError("failed-precondition", "Ese código ya alcanzó su límite de usos.");
-      }
-      tx.update(promoRef, { usosActuales: admin.firestore.FieldValue.increment(1) });
-      return Math.min(99, Math.max(0, Number(promo.descuento) || 0));
-    });
-
-    // Mercado Pago no acepta suscripciones de $0: el tope de 99% de arriba
-    // lo evita (y también protege contra datos mal capturados).
-    monto = Math.round(precioBase * (1 - pct / 100) * 100) / 100;
-    promoId = promoRef.id;
-  }
+  const { monto, promoId } = await aplicarCodigoDescuento(codigo, PRECIOS_PLAN[plan]);
 
   const r = await fetch("https://api.mercadopago.com/preapproval", {
     method: "POST",
@@ -859,17 +928,61 @@ exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
   const destino = elegirCheckout(data, MP_TOKEN.value());
   if (!destino) {
     console.error("Mercado Pago preapproval error:", JSON.stringify(data).slice(0, 500));
-    // La suscripción no llegó a existir: se devuelve el uso del código para
-    // no quemarlo por un fallo que no fue del técnico.
-    if (promoId) {
-      await db.collection("promos").doc(promoId).update({
-        usosActuales: admin.firestore.FieldValue.increment(-1),
-      }).catch((e) => console.error("No se pudo devolver el uso del código:", e.message));
-    }
+    await devolverUsoPromo(promoId);
     throw new HttpsError("internal", "No se pudo crear la suscripción. Intenta de nuevo.");
   }
   await db.collection("suscripcionesPendientes").doc(uid).set({
     preapprovalId: data.id,
+    tipo: "recurrente",
+    monto,
+    plan,
+    promoId,
+    fecha: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  return { url: destino, monto, plan };
+});
+
+// Pago único (OXXO, SPEI o tarjeta) para quien no tiene o no quiere dar una
+// tarjeta para cobro automático. Sin renovación: agenteRenovaciones avisa
+// antes de que venza y baja a Gratis si no se vuelve a pagar a tiempo.
+exports.crearPagoUnico = onCall({ secrets: [MP_TOKEN] }, async (request) => {
+  const uid = requireAuth(request);
+  await checkRateLimit(uid, "crearPagoUnico", 10);
+  const { email, codigo } = request.data;
+  const plan = request.data.plan === "empresa" ? "empresa" : "pro";
+  if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new HttpsError("invalid-argument", "Email requerido.");
+  }
+
+  const { monto, promoId } = await aplicarCodigoDescuento(codigo, PRECIOS_PLAN[plan]);
+
+  const r = await fetch("https://api.mercadopago.com/checkout/preferences", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${MP_TOKEN.value()}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      items: [{
+        title: plan === "empresa" ? "Habilis Empresa (1 mes)" : "Habilis Pro (1 mes)",
+        quantity: 1, unit_price: monto, currency_id: "MXN",
+      }],
+      payer: { email },
+      external_reference: uid,
+      back_urls: {
+        success: "https://myhabilis.com/pro", failure: "https://myhabilis.com/pro", pending: "https://myhabilis.com/pro",
+      },
+      auto_return: "approved",
+      statement_descriptor: "HABILIS",
+    }),
+  });
+  const data = await r.json();
+  const destino = elegirCheckout(data, MP_TOKEN.value());
+  if (!destino) {
+    console.error("Mercado Pago preference error:", JSON.stringify(data).slice(0, 500));
+    await devolverUsoPromo(promoId);
+    throw new HttpsError("internal", "No se pudo crear el pago. Intenta de nuevo.");
+  }
+  await db.collection("suscripcionesPendientes").doc(uid).set({
+    preapprovalId: null,
+    tipo: "manual",
     monto,
     plan,
     promoId,
@@ -964,6 +1077,12 @@ async function aplicarEstadoSuscripcion(uid, sub) {
       suscripcionId: sub.id,
       suscripcionEstado: "authorized",
       fechaPago: admin.firestore.FieldValue.serverTimestamp(),
+      // Con tarjeta ya no aplica el ciclo de "pago único" — si venía de ahí
+      // (cambió de OXXO/SPEI a tarjeta), se limpia para que agenteRenovaciones
+      // deje de vigilarlo.
+      metodoPago: "recurrente",
+      planVenceEl: admin.firestore.FieldValue.delete(),
+      recordatorioEnviado: admin.firestore.FieldValue.delete(),
     });
     await consumirPromo(uid);
   } else if (sub.status === "paused" || sub.status === "cancelled") {
@@ -1038,6 +1157,53 @@ async function registrarPagoSuscripcion(uid, pago, preapprovalId) {
   }
 }
 
+// Pago único (OXXO/SPEI/tarjeta vía Checkout Pro, no Preapproval): activa
+// el plan por 1 mes desde hoy. `pago.id` hace único el doc de `pagos`, así
+// que un reintento del webhook no vuelve a extender planVenceEl — la
+// extensión solo corre la primera vez que se ve ese id de pago.
+async function registrarPagoUnico(uid, pago) {
+  const aprobado = pago.status === "approved";
+  const pendienteSnap = await db.collection("suscripcionesPendientes").doc(uid).get();
+  const plan = pendienteSnap.data()?.plan === "empresa" ? "empresa" : "pro";
+
+  const ref = db.collection("pagos").doc(`mp_${pago.id}`);
+  const tecnicoRef = db.collection("tecnicos").doc(uid);
+
+  const yaExistia = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const existia = snap.exists;
+    const datos = {
+      userId: uid,
+      monto: pago.transaction_amount ?? 0,
+      metodo: "mercadopago",
+      estado: aprobado ? "aprobado" : (pago.status || "desconocido"),
+      concepto: plan === "empresa" ? "Habilis Empresa (pago único)" : "Habilis Pro (pago único)",
+      pagoMP: String(pago.id),
+      fecha: pago.date_approved
+        ? admin.firestore.Timestamp.fromDate(new Date(pago.date_approved))
+        : admin.firestore.FieldValue.serverTimestamp(),
+    };
+    if (!existia) datos.facturada = false;
+    tx.set(ref, datos, { merge: true });
+
+    if (aprobado && !existia) {
+      const vence = new Date();
+      vence.setMonth(vence.getMonth() + 1);
+      tx.update(tecnicoRef, {
+        plan,
+        metodoPago: "manual",
+        planVenceEl: admin.firestore.Timestamp.fromDate(vence),
+        recordatorioEnviado: admin.firestore.FieldValue.delete(),
+        fechaPago: admin.firestore.FieldValue.serverTimestamp(),
+        suscripcionId: admin.firestore.FieldValue.delete(),
+      });
+    }
+    return existia;
+  });
+
+  if (aprobado && !yaExistia) await consumirPromo(uid);
+}
+
 // El body de un webhook NUNCA es de confianza por sí mismo: en vez de creerle
 // el status/monto que manda, solo tomamos el `id` para volver a preguntarle
 // a la API real de Mercado Pago (con nuestro token) cuál es el estado
@@ -1082,6 +1248,18 @@ exports.webhookMP = onRequest({ secrets: [MP_TOKEN, MP_WEBHOOK_SECRET] }, async 
         const preapprovalId = pago.metadata?.preapproval_id || pago.preapproval_id || null;
         const uid = await resolverUid(pago, preapprovalId);
         if (uid) await registrarPagoSuscripcion(uid, pago, preapprovalId);
+      }
+    }
+
+    // ── Pago único (OXXO/SPEI/tarjeta vía Checkout Pro) ─────────────────
+    // Distinto tipo de evento que el de arriba: Preference no manda
+    // subscription_authorized_payment, manda "payment" directo. Se ignoran
+    // los que sí traen preapproval_id (esos ya los maneja el bloque de
+    // arriba) para no procesar el mismo cobro dos veces.
+    if (type === "payment" && data?.id) {
+      const pago = await mpGet(`/v1/payments/${data.id}`);
+      if (pago && pago.external_reference && !pago.metadata?.preapproval_id && !pago.preapproval_id) {
+        await registrarPagoUnico(pago.external_reference, pago);
       }
     }
 

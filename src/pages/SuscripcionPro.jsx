@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Nav from "../components/Nav.jsx";
 import { obtenerTecnico, obtenerFacturas } from "../lib/firebase.js";
-import { iniciarSuscripcionPro, solicitarFactura, cancelarSuscripcionPro } from "../lib/gemini.js";
+import { iniciarSuscripcionPro, iniciarPagoUnico, solicitarFactura, cancelarSuscripcionPro } from "../lib/gemini.js";
 
 const BENEFICIOS_PRO = [
   "Prioridad alta en búsquedas",
@@ -48,6 +48,7 @@ export default function SuscripcionPro({ nav, user, params = {} }) {
   const [facturas, setFacturas] = useState([]);
   const [error, setError]       = useState("");
   const [cargando, setCargando] = useState(false);
+  const [cargandoUnico, setCargandoUnico] = useState(false);
 
   const [fx, setFx] = useState({ rfc:"", razonSocial:"", codigoPostal:"", regimenFiscal:"612", usoCFDI:"G03" });
   const [fxEstado, setFxEstado] = useState({ cargando:false, error:"", url:"" });
@@ -108,6 +109,22 @@ export default function SuscripcionPro({ nav, user, params = {} }) {
     }
   };
 
+  const pagarUnico = async () => {
+    const correo = emailPago.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
+      setError("Escribe un correo válido para el pago.");
+      return;
+    }
+    setError(""); setCargandoUnico(true);
+    try {
+      const { url } = await iniciarPagoUnico(correo, codigo.trim() || null, plan);
+      window.location.href = url;   // checkout de Mercado Pago (tarjeta, OXXO o SPEI)
+    } catch (e) {
+      setError(e.message || "No se pudo iniciar el pago. Intenta de nuevo.");
+      setCargandoUnico(false);
+    }
+  };
+
   const recargarFacturas = () => {
     if (!user) return;
     obtenerFacturas(user.uid).then(setFacturas).catch(() => setFacturas([]));
@@ -145,6 +162,10 @@ export default function SuscripcionPro({ nav, user, params = {} }) {
   };
 
   const esPro = tecnico?.plan === plan;
+  const esManual = tecnico?.metodoPago === "manual";
+  const venceFmt = tecnico?.planVenceEl?.toDate
+    ? tecnico.planVenceEl.toDate().toLocaleDateString("es-MX", { day:"2-digit", month:"long", year:"numeric" })
+    : null;
 
   return (
     <div style={{ minHeight:"100vh", background:"#F1F5F9" }}>
@@ -254,15 +275,32 @@ export default function SuscripcionPro({ nav, user, params = {} }) {
                           padding:"10px 14px", marginBottom:"12px" }}>{error}</p>
             )}
 
-            <button className="h-btn-orange" onClick={pagar} disabled={cargando}
+            <button className="h-btn-orange" onClick={pagar} disabled={cargando || cargandoUnico}
               style={{ width:"100%", padding:"14px", fontSize:"15px", opacity: cargando ? 0.6 : 1 }}>
-              {cargando ? "Conectando con Mercado Pago…" : "Pagar con Mercado Pago →"}
+              {cargando ? "Conectando con Mercado Pago…" : "Pagar con tarjeta (automático) →"}
             </button>
-            <p style={{ fontSize:"12px", color:"#94A3B8", marginTop:"12px", lineHeight:1.6, textAlign:"center" }}>
-              Mercado Pago te pedirá iniciar sesión para autorizar el cobro recurrente:
-              es un requisito suyo para las suscripciones, no un paso extra de Habilis.
-              Ahí registras tu tarjeta — Habilis nunca la ve. Se cobra cada mes hasta que
+            <p style={{ fontSize:"11.5px", color:"#94A3B8", margin:"8px 0 14px", lineHeight:1.6, textAlign:"center" }}>
+              Mercado Pago te pedirá iniciar sesión para autorizar el cobro recurrente —
+              ahí registras tu tarjeta, Habilis nunca la ve. Se cobra cada mes hasta que
               canceles, y puedes cancelar desde esta misma página cuando quieras.
+            </p>
+
+            <div style={{ display:"flex", alignItems:"center", gap:"10px", margin:"6px 0 14px" }}>
+              <div style={{ flex:1, height:"1px", background:"#E2E8F0" }} />
+              <span style={{ fontSize:"11px", color:"#94A3B8", fontWeight:700 }}>O</span>
+              <div style={{ flex:1, height:"1px", background:"#E2E8F0" }} />
+            </div>
+
+            <button onClick={pagarUnico} disabled={cargando || cargandoUnico}
+              style={{ width:"100%", padding:"14px", fontSize:"15px", fontWeight:700,
+                       background:"#fff", color:"#0F172A", border:"1.5px solid #E2E8F0",
+                       borderRadius:"10px", cursor:"pointer", opacity: cargandoUnico ? 0.6 : 1 }}>
+              {cargandoUnico ? "Conectando con Mercado Pago…" : "Pagar 1 mes con OXXO, SPEI o tarjeta →"}
+            </button>
+            <p style={{ fontSize:"11.5px", color:"#94A3B8", marginTop:"8px", lineHeight:1.6, textAlign:"center" }}>
+              Sin cobro automático: pagas este mes y te avisamos por correo unos días antes
+              de que venza para que vuelvas a pagar. Si no renuevas, vuelves al plan Gratis
+              sin que se te cobre nada.
             </p>
           </div>
         )}
@@ -276,8 +314,10 @@ export default function SuscripcionPro({ nav, user, params = {} }) {
                 Ya eres {nombrePlan}
               </h1>
               <p style={{ fontSize:"14px", color:"#64748B", lineHeight:1.7, marginBottom:"18px" }}>
-                Tu suscripción está activa y se renueva automáticamente cada mes.
-                El método de pago se administra desde tu cuenta de Mercado Pago.
+                {esManual
+                  ? <>Pagaste un mes con OXXO/SPEI/tarjeta, sin cobro automático.{" "}
+                      {venceFmt && <>Vence el <strong>{venceFmt}</strong> — te avisamos por correo antes.</>}</>
+                  : "Tu suscripción está activa y se renueva automáticamente cada mes. El método de pago se administra desde tu cuenta de Mercado Pago."}
               </p>
 
               {error && (
@@ -293,12 +333,21 @@ export default function SuscripcionPro({ nav, user, params = {} }) {
                 </button>
               )}
 
-              <button onClick={cancelar} disabled={cancelando}
-                style={{ background:"none", border:"1px solid #E2E8F0", borderRadius:"10px",
-                         padding:"10px 18px", fontSize:"13px", fontWeight:700,
-                         color:"#64748B", cursor:"pointer", opacity: cancelando ? 0.6 : 1 }}>
-                {cancelando ? "Cancelando…" : "Cancelar suscripción"}
-              </button>
+              {esManual ? (
+                <button onClick={pagarUnico} disabled={cargandoUnico}
+                  style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"10px",
+                           padding:"10px 20px", fontSize:"13px", fontWeight:700,
+                           cursor:"pointer", opacity: cargandoUnico ? 0.6 : 1 }}>
+                  {cargandoUnico ? "Conectando…" : "Renovar ahora →"}
+                </button>
+              ) : (
+                <button onClick={cancelar} disabled={cancelando}
+                  style={{ background:"none", border:"1px solid #E2E8F0", borderRadius:"10px",
+                           padding:"10px 18px", fontSize:"13px", fontWeight:700,
+                           color:"#64748B", cursor:"pointer", opacity: cancelando ? 0.6 : 1 }}>
+                  {cancelando ? "Cancelando…" : "Cancelar suscripción"}
+                </button>
+              )}
             </div>
 
             <div className="h-card" style={{ padding:"clamp(24px,5vw,32px)" }}>

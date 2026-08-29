@@ -191,6 +191,14 @@ export async function iniciarSuscripcionPro(email, codigo, plan = "pro") {
   return result.data;   // { url, monto, plan }
 }
 
+// Pago único (OXXO/SPEI/tarjeta vía Checkout Pro) — sin cobro automático,
+// se renueva pagando de nuevo cada mes. Ver agenteRenovaciones (backend).
+const crearPagoUnicoProxy = httpsCallable(fns, "crearPagoUnico");
+export async function iniciarPagoUnico(email, codigo, plan = "pro") {
+  const result = await crearPagoUnicoProxy({ email, codigo: codigo || null, plan });
+  return result.data;   // { url, monto, plan }
+}
+
 // ── 11. FACTURACIÓN CFDI (Facturapi) ─────────────────────────────────────
 const emitirFacturaProxy = httpsCallable(fns, "emitirFactura");
 export async function solicitarFactura(datosFiscales) {

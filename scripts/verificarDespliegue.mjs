@@ -11,7 +11,8 @@ const BASE = (process.argv[2] || "https://myhabilis.com").replace(/\/+$/, "");
 
 // Cada marca es un texto que SOLO existe en el código nuevo.
 const MARCAS = [
-  ["Página de pago /pro",            "Pagar con Mercado Pago"],
+  ["Página de pago /pro",            "Pagar con tarjeta (automático)"],
+  ["Pago con OXXO/SPEI",             "OXXO, SPEI o tarjeta"],
   ["Historial de facturas",          "Tus facturas"],
   ["Cancelar suscripción",           "Cancelar suscripción"],
   ["Intención de Pro al registrarse","Vas por el Plan Pro"],
