@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Nav from "../components/Nav.jsx";
-import { obtenerCotizaciones, eliminarCotizacion, crearCotizacion, obtenerSiguienteFolio, obtenerTecnico } from "../lib/firebase.js";
+import { obtenerCotizaciones, eliminarCotizacion, crearCotizacion, obtenerSiguienteFolio, obtenerTecnico, esPlanPagante } from "../lib/firebase.js";
 
 const ESTADO_CFG = {
   borrador:  { bg:"#F1F5F9", color:"#64748B",  label:"Borrador"  },
@@ -21,13 +21,16 @@ export default function Cotizaciones({ nav, user }) {
   const [filter,  setFilter]  = useState("todas");
   const [creating,setCreating]= useState(false);
   const [esTecnico, setEsTecnico] = useState(null);
+  const [tecnico, setTecnico] = useState(null);
 
   useEffect(() => {
     if (!user) { nav("login"); return; }
     obtenerTecnico(user.uid).then(t => {
       if (!t) { nav("misSolicitudes"); return; }
       setEsTecnico(true);
-      cargar();
+      setTecnico(t);
+      if (esPlanPagante(t.plan)) cargar();
+      else setLoading(false);
     });
   }, [user]);
 
@@ -101,6 +104,30 @@ export default function Cotizaciones({ nav, user }) {
   };
 
   if (!user || esTecnico !== true) return null;
+
+  if (!esPlanPagante(tecnico?.plan)) return (
+    <div style={{ background:"#F1F5F9", minHeight:"100vh" }}>
+      <div style={{ background:"#0F172A" }}><Nav nav={nav} user={user} /></div>
+      <div style={{ maxWidth:"480px", margin:"0 auto", padding:"48px 20px" }}>
+        <div style={{ background:"#fff", border:"1px solid #E2E8F0", borderRadius:"16px",
+                      padding:"36px", textAlign:"center" }}>
+          <div style={{ fontSize:"38px", marginBottom:"10px" }}>📄</div>
+          <h1 style={{ fontSize:"20px", fontWeight:900, color:"#0F172A", marginBottom:"8px" }}>
+            Cotizaciones es un beneficio Pro
+          </h1>
+          <p style={{ fontSize:"14px", color:"#64748B", marginBottom:"20px" }}>
+            Actualiza tu cuenta para generar cotizaciones profesionales con desglose de conceptos,
+            IVA, catálogo de productos y envío directo por WhatsApp.
+          </p>
+          <button onClick={() => nav("suscripcionPro")}
+            style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"10px",
+                     padding:"12px 24px", fontWeight:700, cursor:"pointer" }}>
+            Hacerme Pro →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div style={{ background:"#F1F5F9", minHeight:"100vh" }}>

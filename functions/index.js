@@ -401,7 +401,9 @@ exports.agenteRanking = onSchedule({ schedule: "every day 08:30", timeZone: "Ame
       (t.totalReviews || 0) * 1 +
       (t.experiencia || 0) * 0.5 +
       (t.verificado ? 5 : 0) +
-      (t.plan === "pro" ? 8 : 0);
+      // Empresa paga más que Pro ($499 vs $149) y también promete
+      // "prioridad alta en búsquedas" — antes solo "pro" recibía el bono.
+      (t.plan === "pro" || t.plan === "empresa" ? 8 : 0);
     await db.collection("tecnicos").doc(doc.id).update({ rankScore: score });
     n++;
   }

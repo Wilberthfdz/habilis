@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import Logo from "../components/Logo.jsx";
 import Nav from "../components/Nav.jsx";
-import { db, obtenerTecnico, marcarRespuestaSolicitud } from "../lib/firebase.js";
+import { db, obtenerTecnico, marcarRespuestaSolicitud, obtenerTrabajosDelTecnico, esPlanPagante } from "../lib/firebase.js";
+
+const MAX_TRABAJOS_GRATIS = 5;
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 const TIPOS   = ["Instalación","Reparación","Mantenimiento","Diagnóstico","Otro"];
@@ -34,12 +36,45 @@ export default function RegistrarTrabajo({ nav, user, params }) {
   const [error,   setError]   = useState("");
   const [touched, setTouched] = useState({});
   const [esTecnico, setEsTecnico] = useState(null);
+  // undefined = aún cargando; null = ya se puede documentar (Pro/Empresa,
+  // o Gratis bajo su tope de 5)
+  const [tope, setTope] = useState(undefined);
 
   useEffect(() => {
     if (!user) { nav("login"); return; }
-    obtenerTecnico(user.uid).then(t => { if (!t) { nav("misSolicitudes"); return; } setEsTecnico(true); });
+    obtenerTecnico(user.uid).then(async t => {
+      if (!t) { nav("misSolicitudes"); return; }
+      setEsTecnico(true);
+      if (esPlanPagante(t.plan)) { setTope(null); return; }
+      const trabajos = await obtenerTrabajosDelTecnico(user.uid).catch(() => []);
+      setTope(trabajos.length >= MAX_TRABAJOS_GRATIS ? trabajos.length : null);
+    });
   }, [user]);
   if (!user || esTecnico !== true) return null;
+
+  if (tope) return (
+    <div style={{ background:"#F1F5F9", minHeight:"100vh" }}>
+      <div style={{ background:"#0F172A" }}><Nav nav={nav} user={user} /></div>
+      <div style={{ maxWidth:"480px", margin:"0 auto", padding:"48px 20px" }}>
+        <div style={{ background:"#fff", border:"1px solid #E2E8F0", borderRadius:"16px",
+                      padding:"36px", textAlign:"center" }}>
+          <div style={{ fontSize:"38px", marginBottom:"10px" }}>📋</div>
+          <h1 style={{ fontSize:"20px", fontWeight:900, color:"#0F172A", marginBottom:"8px" }}>
+            Llegaste al máximo del Plan Gratis
+          </h1>
+          <p style={{ fontSize:"14px", color:"#64748B", marginBottom:"20px" }}>
+            Ya documentaste {tope} trabajos — el plan Gratis permite hasta {MAX_TRABAJOS_GRATIS}.
+            Actualiza a Pro para documentar trabajos ilimitados.
+          </p>
+          <button onClick={() => nav("suscripcionPro")}
+            style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"10px",
+                     padding:"12px 24px", fontWeight:700, cursor:"pointer" }}>
+            Hacerme Pro →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   const set = k => e => setForm(f => ({ ...f, [k]:e.target.value }));
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Nav from "../components/Nav.jsx";
-import { crearActivo, obtenerActivos, crearSolicitud } from "../lib/firebase.js";
+import { crearActivo, obtenerActivos, crearSolicitud, obtenerTecnico, esPlanPagante } from "../lib/firebase.js";
 import { generarTipsMantenimiento } from "../lib/gemini.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -208,9 +208,13 @@ export default function HabilisCare({ nav, user }) {
   const [activos,     setActivos]     = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [showModal,   setShowModal]   = useState(false);
+  // undefined = aún no sabemos; null = no es cuenta de técnico (cliente,
+  // Care queda gratis siempre) — solo un técnico en plan Gratis se bloquea.
+  const [tecnico, setTecnico] = useState(undefined);
 
   useEffect(() => {
     if (!user) { nav("login"); return; }
+    obtenerTecnico(user.uid).then(setTecnico).catch(() => setTecnico(null));
     cargar();
   }, [user]);
 
@@ -231,6 +235,33 @@ export default function HabilisCare({ nav, user }) {
     vencido: activos.filter(a => calcularSalud(a) < 50).length,
     proximo: activos.filter(a => { const p = calcularProxima(a); return p && diasHasta(p) <= 30 && diasHasta(p) >= 0; }).length,
   };
+
+  // Habilis Care es gratis siempre para clientes (dan seguimiento a sus
+  // propios equipos) — solo se restringe para cuentas de técnico, que lo
+  // tienen listado como beneficio del Plan Pro/Empresa.
+  if (tecnico && !esPlanPagante(tecnico.plan)) return (
+    <div style={{ background:"#F1F5F9", minHeight:"100vh" }}>
+      <div style={{ background:"#0F172A" }}><Nav nav={nav} user={user} /></div>
+      <div style={{ maxWidth:"480px", margin:"0 auto", padding:"48px 20px" }}>
+        <div style={{ background:"#fff", border:"1px solid #E2E8F0", borderRadius:"16px",
+                      padding:"36px", textAlign:"center" }}>
+          <div style={{ fontSize:"38px", marginBottom:"10px" }}>🛡️</div>
+          <h1 style={{ fontSize:"20px", fontWeight:900, color:"#0F172A", marginBottom:"8px" }}>
+            Habilis Care es un beneficio Pro
+          </h1>
+          <p style={{ fontSize:"14px", color:"#64748B", marginBottom:"20px" }}>
+            Actualiza tu cuenta para dar seguimiento al mantenimiento preventivo de tus equipos
+            y recibir recordatorios automáticos.
+          </p>
+          <button onClick={() => nav("suscripcionPro")}
+            style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"10px",
+                     padding:"12px 24px", fontWeight:700, cursor:"pointer" }}>
+            Hacerme Pro →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div style={{ background:"#F1F5F9", minHeight:"100vh" }}>
