@@ -136,6 +136,8 @@ function FormPagoManual({ tecnicos, onDone }) {
       batch.set(pagoRef, {
         userId: uid, monto: montoNum, metodo, estado: "aprobado", concepto,
         fecha: serverTimestamp(), registradoManualmente: true,
+        // El técnico puede pedir su CFDI de este cobro desde /pro.
+        facturada: false,
       });
       batch.update(doc(db, "tecnicos", uid), { plan: "pro", fechaPago: serverTimestamp() });
       await batch.commit();

@@ -86,8 +86,12 @@ https://us-central1-<TU-PROYECTO>.cloudfunctions.net/webhookMP
 En Mercado Pago → *Tus integraciones* → tu aplicación → *Webhooks*:
 
 1. Da de alta esa URL.
-2. Suscríbete al evento **Planes y suscripciones**
-   (`subscription_preapproval`).
+2. Suscríbete a **los dos** eventos, no solo al primero:
+   - **Planes y suscripciones** (`subscription_preapproval`) — alta, pausa y
+     cancelación: es lo que da y quita el plan Pro.
+   - **Pagos de suscripción** (`subscription_authorized_payment`) — el cobro
+     de cada mes. Sin este evento solo quedaría registrado el primer pago y
+     las renovaciones no aparecerían en Finanzas ni podrían facturarse.
 3. Copia la **clave secreta** que te da y guárdala como `MP_WEBHOOK_SECRET`
    (paso 2). Mientras no esté configurada, el backend acepta las
    notificaciones pero deja un aviso en los logs diciendo que no está

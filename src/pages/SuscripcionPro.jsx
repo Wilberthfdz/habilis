@@ -126,8 +126,9 @@ export default function SuscripcionPro({ nav, user }) {
               {cargando ? "Conectando con Mercado Pago…" : "Pagar con Mercado Pago →"}
             </button>
             <p style={{ fontSize:"12px", color:"#94A3B8", marginTop:"12px", lineHeight:1.6, textAlign:"center" }}>
-              El pago se procesa de forma segura en Mercado Pago; Habilis nunca ve tu tarjeta.
-              Tu plan se activa automáticamente al confirmarse el pago.
+              Suscripción mensual con renovación automática: se cobra cada mes hasta que
+              la canceles desde Mercado Pago. El pago se procesa de forma segura ahí —
+              Habilis nunca ve tu tarjeta — y tu plan se activa al confirmarse.
             </p>
           </div>
         )}
@@ -151,7 +152,8 @@ export default function SuscripcionPro({ nav, user }) {
                 Solicitar factura (CFDI)
               </h2>
               <p style={{ fontSize:"13px", color:"#64748B", marginBottom:"16px" }}>
-                De tu suscripción Pro del mes en curso.
+                Se factura tu cobro más reciente que aún no tenga CFDI. Cada mensualidad
+                se timbra una sola vez.
               </p>
 
               <label style={LBL}>RFC</label>

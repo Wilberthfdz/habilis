@@ -173,9 +173,13 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    // Códigos promocionales (Admin ERP → Marketing)
+    // Códigos promocionales (Admin ERP → Marketing).
+    // La lectura es solo del admin: en abierto, cualquiera podía listar la
+    // colección y quedarse con todos los códigos vigentes. La validación al
+    // suscribirse ocurre server-side en `crearSuscripcion`, así que el
+    // cliente no necesita leerlos.
     match /promos/{id} {
-      allow read: if true;
+      allow read:  if isAdmin();
       allow write: if isAdmin();
     }
 

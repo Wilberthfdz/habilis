@@ -475,6 +475,99 @@ exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
   return { url: data.init_point, monto };
 });
 
+// ── Helpers de suscripción ───────────────────────────────────────────────
+// Mercado Pago reintenta cada notificación hasta recibir un 200, y puede
+// mandar la misma varias veces. Por eso todo lo que escribe aquí es
+// idempotente: los documentos llevan id derivado del id de MP y el consumo
+// del código promocional se hace en una transacción que solo corre una vez.
+
+async function mpGet(ruta) {
+  const r = await fetch(`https://api.mercadopago.com${ruta}`, {
+    headers: { Authorization: `Bearer ${MP_TOKEN.value()}` },
+  });
+  if (!r.ok) {
+    console.error(`Mercado Pago ${ruta} respondió ${r.status}`);
+    return null;
+  }
+  return r.json();
+}
+
+// Un pago recurrente no siempre trae el uid: se busca en el pago, luego en
+// la preaprobación que lo originó y por último en el técnico que ya tiene
+// esa suscripción asociada.
+async function resolverUid(pago, preapprovalId) {
+  if (pago?.external_reference) return pago.external_reference;
+  if (preapprovalId) {
+    const sub = await mpGet(`/preapproval/${preapprovalId}`);
+    if (sub?.external_reference) return sub.external_reference;
+    const snap = await db.collection("tecnicos")
+      .where("suscripcionId", "==", preapprovalId).limit(1).get();
+    if (!snap.empty) return snap.docs[0].id;
+  }
+  return null;
+}
+
+// `authorized` da acceso Pro; `paused` (típicamente por un cobro que falló) y
+// `cancelled` lo retiran. Antes solo se contemplaban los dos extremos, así que
+// una suscripción pausada conservaba el plan Pro indefinidamente.
+async function aplicarEstadoSuscripcion(uid, sub) {
+  const ref = db.collection("tecnicos").doc(uid);
+  if (sub.status === "authorized") {
+    await ref.update({
+      plan: "pro",
+      suscripcionId: sub.id,
+      suscripcionEstado: "authorized",
+      fechaPago: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    await consumirPromo(uid);
+  } else if (sub.status === "paused" || sub.status === "cancelled") {
+    await ref.update({ plan: "gratis", suscripcionEstado: sub.status });
+  } else {
+    await ref.update({ suscripcionEstado: sub.status || "desconocido" });
+  }
+}
+
+// Suma el uso del código promocional una sola vez, aunque el webhook se
+// repita: la transacción marca la intención como consumida.
+async function consumirPromo(uid) {
+  const ref = db.collection("suscripcionesPendientes").doc(uid);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const datos = snap.data();
+    if (!snap.exists || !datos?.promoId || datos.promoConsumido) return;
+    tx.update(db.collection("promos").doc(datos.promoId), {
+      usosActuales: admin.firestore.FieldValue.increment(1),
+    });
+    tx.update(ref, { promoConsumido: true });
+  });
+}
+
+// Registra el cobro del mes. El id del documento es el del pago en Mercado
+// Pago, así que un reintento del webhook sobrescribe en lugar de duplicar.
+async function registrarPagoSuscripcion(uid, pago, preapprovalId) {
+  const aprobado = pago.status === "approved";
+  await db.collection("pagos").doc(`mp_${pago.id}`).set({
+    userId: uid,
+    monto: pago.transaction_amount ?? 0,
+    metodo: "mercadopago",
+    estado: aprobado ? "aprobado" : (pago.status || "desconocido"),
+    concepto: "Habilis Pro mensual",
+    pagoMP: String(pago.id),
+    suscripcionId: preapprovalId || null,
+    facturada: false,
+    fecha: pago.date_approved
+      ? admin.firestore.Timestamp.fromDate(new Date(pago.date_approved))
+      : admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+
+  if (aprobado) {
+    await db.collection("tecnicos").doc(uid).update({
+      plan: "pro",
+      fechaPago: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  }
+}
+
 // El body de un webhook NUNCA es de confianza por sí mismo: en vez de creerle
 // el status/monto que manda, solo tomamos el `id` para volver a preguntarle
 // a la API real de Mercado Pago (con nuestro token) cuál es el estado
@@ -497,40 +590,25 @@ exports.webhookMP = onRequest({ secrets: [MP_TOKEN, MP_WEBHOOK_SECRET] }, async 
       console.warn("webhookMP: MP_WEBHOOK_SECRET no configurado — firma no verificada");
     }
 
+    // ── Alta / cambio de estado de la suscripción ──────────────────────
     if (type === "subscription_preapproval" && data?.id) {
-      const r = await fetch(`https://api.mercadopago.com/preapproval/${data.id}`, {
-        headers: { Authorization: `Bearer ${MP_TOKEN.value()}` },
-      });
-      const sub = await r.json();
-      const uid = sub.external_reference;
-      if (uid && sub.status === "authorized") {
-        const pendiente = await db.collection("suscripcionesPendientes").doc(uid).get();
-        const montoReal = sub.auto_recurring?.transaction_amount
-          ?? pendiente.data()?.monto ?? 100;
-        await db.collection("tecnicos").doc(uid).update({
-          plan: "pro",
-          suscripcionId: sub.id,
-          fechaPago: admin.firestore.FieldValue.serverTimestamp(),
-        });
-        await db.collection("pagos").add({
-          userId: uid,
-          monto: montoReal,
-          metodo: "mercadopago",
-          estado: "aprobado",
-          concepto: "Habilis Pro mensual",
-          fecha: admin.firestore.FieldValue.serverTimestamp(),
-        });
-        const promoId = pendiente.data()?.promoId;
-        if (promoId) {
-          await db.collection("promos").doc(promoId).update({
-            usosActuales: admin.firestore.FieldValue.increment(1),
-          });
-        }
-      }
-      if (uid && sub.status === "cancelled") {
-        await db.collection("tecnicos").doc(uid).update({ plan: "gratis" });
+      const sub = await mpGet(`/preapproval/${data.id}`);
+      const uid = sub?.external_reference;
+      if (uid) await aplicarEstadoSuscripcion(uid, sub);
+    }
+
+    // ── Cobro recurrente: llega uno por cada mes cobrado ───────────────
+    // Sin esto solo quedaba registrado el primer pago y las renovaciones
+    // mensuales eran invisibles para Finanzas.
+    if (type === "subscription_authorized_payment" && data?.id) {
+      const pago = await mpGet(`/v1/payments/${data.id}`);
+      if (pago) {
+        const preapprovalId = pago.metadata?.preapproval_id || pago.preapproval_id || null;
+        const uid = await resolverUid(pago, preapprovalId);
+        if (uid) await registrarPagoSuscripcion(uid, pago, preapprovalId);
       }
     }
+
     res.status(200).send("OK");
   } catch (e) {
     console.error("webhookMP error:", e.message);
@@ -557,9 +635,26 @@ exports.emitirFactura = onCall({ secrets: [FACTURAPI_KEY] }, async (request) => 
   if (!regimenFiscal || typeof regimenFiscal !== "string" || !usoCFDI || typeof usoCFDI !== "string") {
     throw new HttpsError("invalid-argument", "Régimen fiscal y uso de CFDI son requeridos.");
   }
-  // Facturar lo que realmente paga (puede traer descuento por código promo).
-  const pendiente = await db.collection("suscripcionesPendientes").doc(uid).get();
-  const montoFactura = pendiente.data()?.monto ?? 100;
+  // Se factura un cobro concreto, no la intención de compra: en una
+  // suscripción hay un pago por mes y cada uno se timbra una sola vez.
+  const pendientes = await db.collection("pagos")
+    .where("userId", "==", uid)
+    .where("estado", "==", "aprobado")
+    .where("facturada", "==", false)
+    .orderBy("fecha", "desc")
+    .limit(1)
+    .get();
+
+  if (pendientes.empty) {
+    throw new HttpsError("failed-precondition",
+      "No tienes cobros pendientes de facturar. Si acabas de pagar, espera unos minutos a que se confirme.");
+  }
+  const pagoDoc = pendientes.docs[0];
+  const montoFactura = pagoDoc.data().monto || 0;
+  if (montoFactura <= 0) {
+    throw new HttpsError("failed-precondition", "El cobro registrado no tiene monto facturable.");
+  }
+
   const r = await fetch("https://www.facturapi.io/v2/invoices", {
     method: "POST",
     headers: { Authorization: `Bearer ${FACTURAPI_KEY.value()}`, "Content-Type": "application/json" },
@@ -586,12 +681,15 @@ exports.emitirFactura = onCall({ secrets: [FACTURAPI_KEY] }, async (request) => 
     console.error("Facturapi error:", JSON.stringify(inv.error).slice(0, 500));
     throw new HttpsError("internal", "No se pudo generar la factura. Verifica tus datos fiscales e intenta de nuevo.");
   }
+  // Marcar el cobro como facturado evita timbrar dos veces el mismo mes.
   await db.collection("facturas").add({
     userId: uid,
     facturaId: inv.id,
+    pagoId: pagoDoc.id,
     rfc,
     total: montoFactura,
     fecha: admin.firestore.FieldValue.serverTimestamp(),
   });
+  await pagoDoc.ref.update({ facturada: true });
   return { facturaId: inv.id, verificationUrl: inv.verification_url };
 });
