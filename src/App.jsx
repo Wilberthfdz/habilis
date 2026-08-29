@@ -29,6 +29,7 @@ import ComoFunciona                  from "./pages/ComoFunciona.jsx";
 import Soporte                       from "./pages/Soporte.jsx";
 import SuscripcionPro                from "./pages/SuscripcionPro.jsx";
 import Empleados                     from "./pages/Empleados.jsx";
+import HacerseTecnico                from "./pages/HacerseTecnico.jsx";
 
 // Carga diferida: el ERP admin y la página de inversión solo los ve un
 // puñado de personas — no tienen por qué pesar en el bundle de todos.
@@ -201,6 +202,7 @@ export default function App() {
       case "suscripcionPro":     return <SuscripcionPro     {...screenProps} params={params} />;
       case "suscripcionEmpresa": return <SuscripcionPro     {...screenProps} params={{ ...params, plan:"empresa" }} />;
       case "empleados":          return <Empleados          {...screenProps} />;
+      case "hacerseTecnico":     return <HacerseTecnico     {...screenProps} />;
       default: return <Landing {...screenProps} />;
     }
   };

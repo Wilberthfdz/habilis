@@ -116,6 +116,20 @@ export default function MiCuentaCliente({ nav, user }) {
             </button>
           </div>
         )}
+
+        {!loading && (
+          <div style={{ ...CARD, marginTop:"16px", textAlign:"center" }}>
+            <p style={{ fontSize:"13px", color:"#64748B", marginBottom:"12px" }}>
+              🔧 ¿También trabajas como técnico? Agrega ese perfil a esta misma cuenta.
+            </p>
+            <button onClick={() => nav("hacerseTecnico")}
+              style={{ background:"#fff", color:"#F97316", border:"1.5px solid #F97316",
+                       borderRadius:"10px", padding:"10px 20px", fontSize:"13.5px",
+                       fontWeight:700, cursor:"pointer" }}>
+              Ofrecer mis servicios como técnico →
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

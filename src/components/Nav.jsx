@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Logo from "./Logo.jsx";
 import NotifBell from "./NotifBell.jsx";
-import { obtenerTecnico, cerrarSesion } from "../lib/firebase.js";
+import { obtenerTecnico, obtenerCliente, cerrarSesion } from "../lib/firebase.js";
 import { enviarVerificacionEmailPropio } from "../lib/gemini.js";
 import { isAdminUser } from "../lib/admin.js";
 
@@ -19,16 +19,21 @@ export default function Nav({ nav, user }) {
   const [aboutOpen, setAboutOpen] = useState(false);
   // null = aún no sabemos (evita parpadear el botón equivocado); true/false una vez resuelto.
   const [esTecnico, setEsTecnico] = useState(null);
+  const [esCliente, setEsCliente] = useState(false);
   const [esEmpresa, setEsEmpresa] = useState(false);
   const [reenviando, setReenviando] = useState(false);
   const [reenviado,  setReenviado]  = useState(false);
 
+  // Una cuenta puede tener perfil de técnico Y de cliente a la vez (ver
+  // MiCuentaCliente.jsx → "Ofrece tus servicios como técnico"), así que se
+  // consultan los dos en vez de asumir que son excluyentes.
   useEffect(() => {
-    if (!user) { setEsTecnico(null); setEsEmpresa(false); return; }
+    if (!user) { setEsTecnico(null); setEsCliente(false); setEsEmpresa(false); return; }
     let cancelado = false;
-    obtenerTecnico(user.uid).then(t => {
+    Promise.all([obtenerTecnico(user.uid), obtenerCliente(user.uid)]).then(([t, c]) => {
       if (cancelado) return;
       setEsTecnico(!!t);
+      setEsCliente(!!c);
       setEsEmpresa(t?.plan === "empresa");
     });
     return () => { cancelado = true; };
@@ -49,7 +54,7 @@ export default function Nav({ nav, user }) {
     ...(user ? [{ label:"Care", route:"habilisCare" }] : []),
     ...(esTecnico === true ? [{ label:"Cotizaciones", route:"cotizaciones" }] : []),
     ...(esEmpresa ? [{ label:"Empleados", route:"empleados" }] : []),
-    ...(esTecnico === false ? [{ label:"Mi cuenta", route:"miCuenta" }] : []),
+    ...(esCliente ? [{ label:"Mi cuenta", route:"miCuenta" }] : []),
     ...(isAdminUser(user) ? [
       { label:"⚙️ Admin",  route:"admin" },
     ] : []),
@@ -172,11 +177,8 @@ export default function Nav({ nav, user }) {
         {user ? (
           <>
             <NotifBell nav={nav} user={user} />
-            {esTecnico !== null && (
-              esTecnico
-                ? <button className="nav-btn-panel" onClick={() => nav("panel")}>Mi Panel</button>
-                : <button className="nav-btn-panel" onClick={() => nav("misSolicitudes")}>Mis solicitudes</button>
-            )}
+            {esTecnico && <button className="nav-btn-panel" onClick={() => nav("panel")}>Mi Panel</button>}
+            {esCliente && <button className="nav-btn-panel" onClick={() => nav("misSolicitudes")}>Mis solicitudes</button>}
             <button className="nav-btn-logout" onClick={logout} style={{ marginLeft:"6px" }}>
               Salir
             </button>
@@ -242,10 +244,16 @@ export default function Nav({ nav, user }) {
           <div style={{ height:"1px", background:"rgba(255,255,255,0.08)", margin:"8px 0" }}/>
           {user ? (
             <>
-              {esTecnico !== null && (
+              {esTecnico && (
                 <button className="nav-link" style={{ width:"100%", justifyContent:"flex-start" }}
-                  onClick={() => { nav(esTecnico ? "panel" : "misSolicitudes"); setOpen(false); }}>
-                  {esTecnico ? "Mi Panel" : "Mis solicitudes"}
+                  onClick={() => { nav("panel"); setOpen(false); }}>
+                  Mi Panel
+                </button>
+              )}
+              {esCliente && (
+                <button className="nav-link" style={{ width:"100%", justifyContent:"flex-start" }}
+                  onClick={() => { nav("misSolicitudes"); setOpen(false); }}>
+                  Mis solicitudes
                 </button>
               )}
               <button className="nav-btn-logout" style={{ width:"100%", textAlign:"left", marginTop:"4px" }}
