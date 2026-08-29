@@ -144,7 +144,7 @@ export default function Terminos({ nav }) {
           <h3 style={H3}>4.2 Plan Pro para técnicos</h3>
           <ul style={{ paddingLeft:"20px" }}>
             <li style={LI}>El plan gratuito permite crear perfil y documentar hasta 5 trabajos.</li>
-            <li style={LI}>El plan Pro cuesta <strong>$100 MXN al mes</strong> (IVA incluido) y se cobra por suscripción recurrente a través de Mercado Pago, procesador independiente con sus propios términos.</li>
+            <li style={LI}>El plan Pro cuesta <strong>$149 MXN al mes</strong> (IVA incluido) y se cobra por suscripción recurrente a través de Mercado Pago, procesador independiente con sus propios términos.</li>
             <li style={LI}>La suscripción se renueva automáticamente cada mes hasta que la canceles. Puedes cancelar en cualquier momento desde Mercado Pago; conservas los beneficios hasta el fin del periodo pagado.</li>
             <li style={LI}>No hay reembolsos por periodos parciales, salvo los casos previstos por la ley aplicable.</li>
             <li style={LI}>El Titular puede modificar el precio del plan Pro notificándolo con al menos 15 días de anticipación; el nuevo precio aplica a partir de la siguiente renovación.</li>

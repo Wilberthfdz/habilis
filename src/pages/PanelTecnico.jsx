@@ -270,7 +270,7 @@ export default function PanelTecnico({ nav, user }) {
                           borderRadius:"10px", padding:"10px 16px", display:"flex",
                           justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:"10px" }}>
               <p style={{ fontSize:"13px", color:"rgba(255,255,255,0.7)" }}>
-                Actualiza a <b>Plan Pro por $100 MXN/mes</b> → apareces primero + IA completa + sin anuncios
+                Actualiza a <b>Plan Pro por $149 MXN/mes</b> → apareces primero + IA completa + sin anuncios
               </p>
               <button onClick={() => nav("suscripcionPro")}
                 style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"8px",
@@ -651,7 +651,7 @@ export default function PanelTecnico({ nav, user }) {
                             boxShadow:"0 8px 24px rgba(15,23,42,0.2)" }}>
                 <p style={{ fontWeight:900, fontSize:"20px", color:"#fff", marginBottom:"8px" }}>Actualiza a Plan Pro ⚡</p>
                 <p style={{ color:"rgba(255,255,255,0.5)", fontSize:"14px", marginBottom:"22px" }}>
-                  $100 MXN/mes · Apareces primero · Sin anuncios · IA completa
+                  $149 MXN/mes · Apareces primero · Sin anuncios · IA completa
                 </p>
                 <button style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"12px",
                                  padding:"13px 28px", fontSize:"15px", fontWeight:800, cursor:"pointer" }}

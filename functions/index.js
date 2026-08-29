@@ -432,7 +432,7 @@ exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
   }
 
   // Código de descuento (colección `promos` del admin de Marketing).
-  let monto = 100;
+  let monto = 149;
   let promoId = null;
   if (codigo) {
     if (typeof codigo !== "string" || codigo.length > 30) {
@@ -463,7 +463,7 @@ exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
 
     // Mercado Pago no acepta suscripciones de $0: el tope de 99% de arriba
     // lo evita (y también protege contra datos mal capturados).
-    monto = Math.round(100 * (1 - pct / 100) * 100) / 100;
+    monto = Math.round(149 * (1 - pct / 100) * 100) / 100;
     promoId = promoRef.id;
   }
 

@@ -184,7 +184,7 @@ export default function SuscripcionPro({ nav, user }) {
               Plan Pro
             </h1>
             <p style={{ fontSize:"14px", color:"#64748B", marginBottom:"18px" }}>
-              <strong style={{ color:"#0F172A", fontSize:"20px" }}>$100 MXN/mes</strong> · IVA incluido ·
+              <strong style={{ color:"#0F172A", fontSize:"20px" }}>$149 MXN/mes</strong> · IVA incluido ·
               cancela cuando quieras
             </p>
             <ul style={{ listStyle:"none", marginBottom:"20px" }}>

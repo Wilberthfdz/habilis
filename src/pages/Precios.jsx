@@ -24,7 +24,7 @@ const PRO = [
 
 const FAQ = [
   ["¿Puedo cancelar en cualquier momento?","Sí. Sin contratos de permanencia. Cancelas desde tu página de suscripción cuando quieras, y conservas los beneficios hasta el fin del mes pagado."],
-  ["¿Cómo se realiza el cobro?","Cobro mensual de $100 MXN por suscripción a través de Mercado Pago, con tarjeta de débito o crédito. Puedes solicitar factura CFDI con tus datos fiscales."],
+  ["¿Cómo se realiza el cobro?","Cobro mensual de $149 MXN por suscripción a través de Mercado Pago, con tarjeta de débito o crédito. Puedes solicitar factura CFDI con tus datos fiscales."],
   ["¿Qué son los leads garantizados?","Son solicitudes de clientes que coinciden con tu oficio y ciudad, enviadas directo a tu panel."],
   ["¿El plan Gratis es realmente gratis?","Sí, siempre. Los clientes también pueden buscar y contactar técnicos sin costo alguno."],
 ];
@@ -98,11 +98,11 @@ export default function Precios({ nav, user }) {
             <p style={{ fontSize:"11px", fontWeight:700, color:"rgba(249,115,22,0.8)", textTransform:"uppercase",
                         letterSpacing:"0.1em", marginBottom:"10px" }}>Plan Pro</p>
             <div style={{ display:"flex", alignItems:"flex-end", gap:"4px", marginBottom:"6px" }}>
-              <span style={{ fontSize:"44px", fontWeight:900, color:"#fff" }}>$100</span>
+              <span style={{ fontSize:"44px", fontWeight:900, color:"#fff" }}>$149</span>
               <span style={{ fontSize:"15px", color:"rgba(255,255,255,0.4)", marginBottom:"8px" }}>MXN/mes</span>
             </div>
             <p style={{ color:"rgba(255,255,255,0.45)", fontSize:"13px", marginBottom:"28px" }}>
-              ≈ $3.30 MXN al día · IVA incluido
+              ≈ $4.97 MXN al día · IVA incluido
             </p>
             <hr style={{ border:"none", borderTop:"1px solid rgba(255,255,255,0.08)", marginBottom:"24px" }} />
             <ul style={{ listStyle:"none", padding:0, marginBottom:"32px" }}>
