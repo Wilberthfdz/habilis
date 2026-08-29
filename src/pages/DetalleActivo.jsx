@@ -67,7 +67,7 @@ export default function DetalleActivo({ nav, user, params }) {
       if (!a) { nav("habilisCare"); return; }
       setActivo(a);
       const [sv, cli] = await Promise.all([
-        obtenerServicios(activoId),
+        obtenerServicios(activoId, user.uid),
         obtenerCliente(user.uid).catch(() => null),
       ]);
       setServicios(sv);

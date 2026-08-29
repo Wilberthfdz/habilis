@@ -274,3 +274,10 @@ export async function enviarResetPasswordPropio(email) {
   const result = await enviarResetPasswordEmailProxy({ email });
   return result.data; // { ok }
 }
+
+// ── 18. TRABAJOS DOCUMENTADOS — tope de 5 en el plan Gratis ──────────────
+const crearTrabajoProxy = httpsCallable(fns, "crearTrabajo");
+export async function crearTrabajo(datos) {
+  const result = await crearTrabajoProxy(datos);
+  return result.data; // { id }
+}

@@ -266,8 +266,12 @@ export async function crearServicio(datos) {
   return ref.id;
 }
 
-export async function obtenerServicios(activoId) {
-  const q    = query(collection(db, "servicios"), where("activoId", "==", activoId), limit(20));
+// Requiere userId: las reglas de Firestore exigen el filtro userId==uid en
+// la propia query para autorizar el list (no basta con que cada doc lo
+// cumpla) — sin esto la lectura se rechazaba entera con permission-denied.
+export async function obtenerServicios(activoId, userId) {
+  const q    = query(collection(db, "servicios"),
+    where("activoId", "==", activoId), where("userId", "==", userId), limit(20));
   const snap = await getDocs(q);
   const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   return docs.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));

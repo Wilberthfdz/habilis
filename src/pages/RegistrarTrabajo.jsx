@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import Logo from "../components/Logo.jsx";
 import Nav from "../components/Nav.jsx";
-import { db, obtenerTecnico, marcarRespuestaSolicitud, obtenerTrabajosDelTecnico, esPlanPagante } from "../lib/firebase.js";
+import { obtenerTecnico, obtenerTrabajosDelTecnico, esPlanPagante } from "../lib/firebase.js";
+import { crearTrabajo } from "../lib/gemini.js";
 
 const MAX_TRABAJOS_GRATIS = 5;
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 const TIPOS   = ["Instalación","Reparación","Mantenimiento","Diagnóstico","Otro"];
 const ESTADOS = [
@@ -137,7 +137,10 @@ export default function RegistrarTrabajo({ nav, user, params }) {
     setError(""); setLoading(true);
     try {
       const evidencias = [fotos.antes, fotos.despues].filter(Boolean).filter(x => x !== "__loading__");
-      await addDoc(collection(db, "trabajos"), {
+      // Vía Cloud Function (no addDoc directo): ahí se hace cumplir el tope
+      // de 5 trabajos del plan Gratis, y ya se encarga de marcar la
+      // solicitud como respondida — no hace falta llamarlo aparte.
+      await crearTrabajo({
         titulo:        form.titulo.trim(),
         tipo:          form.tipo,
         descripcion:   form.descripcion.trim(),
@@ -149,13 +152,9 @@ export default function RegistrarTrabajo({ nav, user, params }) {
         ciudad:        form.ciudad.trim(),
         clienteNombre: form.clienteNombre.trim(),
         estado:        form.estado,
-        tecnicoId:     user.uid,
         solicitudId,
         evidencias,
-        createdAt:     serverTimestamp(),
-        updatedAt:     serverTimestamp(),
       });
-      if (solicitudId) marcarRespuestaSolicitud(solicitudId).catch(() => {});
       nav("panel");
     } catch (e) {
       console.error("Error guardando trabajo:", e);

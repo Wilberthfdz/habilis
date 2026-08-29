@@ -65,6 +65,12 @@ async function callGemini(prompt, key, { maxTokens = 1500, temperature = 0.4 } =
   return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 }
 
+// Pro y Empresa comparten los beneficios pagos — un helper único evita que
+// una función nueva chequee solo "pro" y deje fuera a Empresa por olvido
+// (ya pasó una vez hoy en agenteRanking). Espejo de esPlanPagante en
+// src/lib/firebase.js.
+const esPlanPagante = (plan) => plan === "pro" || plan === "empresa";
+
 function parseJsonLoose(text, fallback) {
   try {
     return JSON.parse(text.replace(/```json|```/g, "").trim());
@@ -155,7 +161,7 @@ Responde SOLO JSON, ordenado del más al menos relevante: {"elegibles":[{"id":".
     const periodo = new Date().toISOString().slice(0, 7); // "2026-08"
     const bajoCupo = (s) => {
       const t = mapTec[s.id];
-      if (t.plan !== "pro" && t.plan !== "empresa") return false;
+      if (!esPlanPagante(t.plan)) return false;
       const usados = t.leadsMesPeriodo === periodo ? (t.leadsMes || 0) : 0;
       return usados < MAX_LEADS_MES_GARANTIZADOS;
     };
@@ -182,11 +188,16 @@ Responde SOLO JSON, ordenado del más al menos relevante: {"elegibles":[{"id":".
         fecha: admin.firestore.FieldValue.serverTimestamp(),
       });
       if (bajoCupo(sel)) {
-        const t = mapTec[sel.id];
-        const usados = t.leadsMesPeriodo === periodo ? (t.leadsMes || 0) : 0;
-        await db.collection("tecnicos").doc(sel.id).update({
-          leadsMes: usados + 1,
-          leadsMesPeriodo: periodo,
+        // Transacción, no el snapshot inicial de `t`: dos solicitudes
+        // creadas casi al mismo tiempo pueden disparar dos ejecuciones
+        // concurrentes de agenteMatching para el mismo técnico, y ambas
+        // partiendo del mismo conteo perderían un incremento (mismo bug
+        // que ya se corrigió hoy en checkRateLimit).
+        const ref = db.collection("tecnicos").doc(sel.id);
+        await db.runTransaction(async (tx) => {
+          const cur = (await tx.get(ref)).data();
+          const usados = cur?.leadsMesPeriodo === periodo ? (cur.leadsMes || 0) : 0;
+          tx.update(ref, { leadsMes: usados + 1, leadsMesPeriodo: periodo });
         });
       }
     }
@@ -407,7 +418,7 @@ exports.agenteRanking = onSchedule({ schedule: "every day 08:30", timeZone: "Ame
       (t.verificado ? 5 : 0) +
       // Empresa paga más que Pro ($499 vs $149) y también promete
       // "prioridad alta en búsquedas" — antes solo "pro" recibía el bono.
-      (t.plan === "pro" || t.plan === "empresa" ? 8 : 0);
+      (esPlanPagante(t.plan) ? 8 : 0);
     await db.collection("tecnicos").doc(doc.id).update({ rankScore: score });
     n++;
   }
@@ -484,7 +495,7 @@ exports.analisisMercado = onCall(async (request) => {
 
   const tecnicoDoc = await db.collection("tecnicos").doc(uid).get();
   const tecnico = tecnicoDoc.data();
-  if (!tecnico || (tecnico.plan !== "pro" && tecnico.plan !== "empresa")) {
+  if (!tecnico || !esPlanPagante(tecnico.plan)) {
     throw new HttpsError("permission-denied", "El análisis de mercado es un beneficio Pro/Empresa.");
   }
   const ciudad = (tecnico.ciudad || "").trim();
@@ -538,7 +549,7 @@ exports.crearTicketSoporte = onCall(async (request) => {
   ]);
   const tecnico = tecnicoDoc.data();
   const cliente = clienteDoc.data();
-  const prioridad = tecnico?.plan === "pro" || tecnico?.plan === "empresa";
+  const prioridad = esPlanPagante(tecnico?.plan);
 
   const ref = await db.collection("soporteTickets").add({
     userId: uid,
@@ -659,6 +670,69 @@ exports.enviarResetPasswordEmail = onCall({ secrets: [RESEND_KEY] }, async (requ
 });
 
 // ═══════════════════════════════════════════════════════════════
+// 📋 TRABAJOS DOCUMENTADOS — tope de 5 en el plan Gratis (Precios.jsx).
+// Se crea vía Admin SDK, igual que crearEmpleado más abajo: las reglas de
+// Firestore no pueden contar documentos existentes de forma confiable, así
+// que antes el tope solo lo aplicaba la UI de RegistrarTrabajo.jsx — un
+// addDoc directo desde el navegador documentaba trabajos ilimitados gratis.
+// ═══════════════════════════════════════════════════════════════
+const MAX_TRABAJOS_GRATIS = 5;
+
+exports.crearTrabajo = onCall(async (request) => {
+  const uid = requireAuth(request);
+  await checkRateLimit(uid, "crearTrabajo", 20);
+  const d = request.data || {};
+  if (!d.titulo || typeof d.titulo !== "string" || !d.titulo.trim()) {
+    throw new HttpsError("invalid-argument", "Falta el título del trabajo.");
+  }
+  if (!d.problema || typeof d.problema !== "string" || !d.problema.trim()) {
+    throw new HttpsError("invalid-argument", "Falta describir el problema.");
+  }
+  if (!d.solucion || typeof d.solucion !== "string" || !d.solucion.trim()) {
+    throw new HttpsError("invalid-argument", "Falta describir la solución aplicada.");
+  }
+
+  const tecnicoRef = db.collection("tecnicos").doc(uid);
+  const nuevoRef = db.collection("trabajos").doc();
+  await db.runTransaction(async (tx) => {
+    const tecnicoSnap = await tx.get(tecnicoRef);
+    const tecnico = tecnicoSnap.data();
+    if (!tecnico) throw new HttpsError("failed-precondition", "No se encontró tu perfil técnico.");
+    if (!esPlanPagante(tecnico.plan)) {
+      const existentesSnap = await tx.get(db.collection("trabajos").where("tecnicoId", "==", uid));
+      if (existentesSnap.size >= MAX_TRABAJOS_GRATIS) {
+        throw new HttpsError("resource-exhausted",
+          `Ya documentaste ${MAX_TRABAJOS_GRATIS} trabajos — es el máximo del Plan Gratis.`);
+      }
+    }
+    tx.set(nuevoRef, {
+      titulo:        d.titulo.trim(),
+      tipo:          d.tipo || "Otro",
+      descripcion:   (d.descripcion || "").trim(),
+      problema:      d.problema.trim(),
+      solucion:      d.solucion.trim(),
+      materiales:    (d.materiales || "").trim(),
+      tiempoHoras:   parseFloat(d.tiempoHoras) || 0,
+      costoTotal:    parseFloat(d.costoTotal) || 0,
+      ciudad:        (d.ciudad || "").trim(),
+      clienteNombre: (d.clienteNombre || "").trim(),
+      estado:        d.estado || "terminado",
+      tecnicoId:     uid,
+      solicitudId:   d.solicitudId || null,
+      evidencias:    Array.isArray(d.evidencias) ? d.evidencias.slice(0, 4) : [],
+      createdAt:     admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt:     admin.firestore.FieldValue.serverTimestamp(),
+    });
+  });
+
+  if (d.solicitudId) {
+    await db.collection("solicitudes").doc(d.solicitudId)
+      .update({ respuestas: admin.firestore.FieldValue.increment(1) }).catch(() => {});
+  }
+  return { id: nuevoRef.id };
+});
+
+// ═══════════════════════════════════════════════════════════════
 // EMPLEADOS (cuentas Empresa) — tope de 10 por cuenta
 // Se crea vía Admin SDK, no como escritura directa del cliente: las
 // reglas de Firestore no pueden contar cuántos documentos ya existen de
@@ -675,35 +749,43 @@ exports.crearEmpleado = onCall(async (request) => {
     throw new HttpsError("invalid-argument", "El nombre del empleado es requerido.");
   }
 
-  const empresaDoc = await db.collection("tecnicos").doc(uid).get();
-  if (empresaDoc.data()?.plan !== "empresa") {
-    throw new HttpsError("permission-denied", "Solo las cuentas Empresa pueden agregar empleados.");
-  }
+  const empresaRef = db.collection("tecnicos").doc(uid);
+  const nuevoRef = db.collection("tecnicos").doc();
 
-  const conteo = await db.collection("tecnicos").where("empresaId", "==", uid).count().get();
-  if (conteo.data().count >= MAX_EMPLEADOS_EMPRESA) {
-    throw new HttpsError("resource-exhausted",
-      `Ya tienes ${MAX_EMPLEADOS_EMPRESA} empleados — es el máximo del Plan Empresa.`);
-  }
-
-  const ref = await db.collection("tecnicos").add({
-    nombre: nombre.trim(),
-    oficio: oficio || "",
-    categoriaId: categoriaId || null,
-    ciudad: (ciudad || "").trim(),
-    experiencia: parseInt(experiencia) || 0,
-    bio: (bio || "").trim(),
-    empresaId: uid,
-    plan: "empresa",
-    verificado: false,
-    rating: 0,
-    totalReviews: 0,
-    totalTrabajos: 0,
-    disponible: true,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  // Transacción con lecturas normales (no count() agregado): dos llamadas
+  // simultáneas a crearEmpleado (doble clic, reintento) podían leer el
+  // mismo conteo por debajo de 10 y las dos pasar, dejando 11+ empleados.
+  // Una lectura normal sí participa en la detección de conflictos de
+  // Firestore, así que la segunda transacción reintenta con el conteo real.
+  await db.runTransaction(async (tx) => {
+    const empresaSnap = await tx.get(empresaRef);
+    if (empresaSnap.data()?.plan !== "empresa") {
+      throw new HttpsError("permission-denied", "Solo las cuentas Empresa pueden agregar empleados.");
+    }
+    const empleadosSnap = await tx.get(db.collection("tecnicos").where("empresaId", "==", uid));
+    if (empleadosSnap.size >= MAX_EMPLEADOS_EMPRESA) {
+      throw new HttpsError("resource-exhausted",
+        `Ya tienes ${MAX_EMPLEADOS_EMPRESA} empleados — es el máximo del Plan Empresa.`);
+    }
+    tx.set(nuevoRef, {
+      nombre: nombre.trim(),
+      oficio: oficio || "",
+      categoriaId: categoriaId || null,
+      ciudad: (ciudad || "").trim(),
+      experiencia: parseInt(experiencia) || 0,
+      bio: (bio || "").trim(),
+      empresaId: uid,
+      plan: "empresa",
+      verificado: false,
+      rating: 0,
+      totalReviews: 0,
+      totalTrabajos: 0,
+      disponible: true,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
   });
-  return { id: ref.id };
+  return { id: nuevoRef.id };
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -915,11 +997,19 @@ async function consumirPromo(uid) {
 async function registrarPagoSuscripcion(uid, pago, preapprovalId) {
   const aprobado = pago.status === "approved";
   const tecnicoRef = db.collection("tecnicos").doc(uid);
-  // No asumir "pro": una cuenta Empresa que renueva no debe degradarse en
-  // cada cobro mensual solo porque este webhook no sabe qué plan contrató.
-  const tecnicoSnap = await tecnicoRef.get();
+  // La fuente de verdad del plan contratado es `suscripcionesPendientes`
+  // (la misma que usa aplicarEstadoSuscripcion) — leer el plan ACTUAL del
+  // técnico no es confiable aquí: Mercado Pago no garantiza que el webhook
+  // de autorización llegue antes que el del primer cobro, así que ese campo
+  // puede seguir en "gratis" cuando este código corre, degradando (o
+  // dejando sin subir) a un comprador de Empresa al plan Pro.
+  const [tecnicoSnap, pendienteSnap] = await Promise.all([
+    tecnicoRef.get(),
+    db.collection("suscripcionesPendientes").doc(uid).get(),
+  ]);
+  const planPendiente = pendienteSnap.data()?.plan;
   const planActual = tecnicoSnap.data()?.plan;
-  const plan = planActual === "empresa" ? "empresa" : "pro";
+  const plan = planPendiente === "empresa" || planActual === "empresa" ? "empresa" : "pro";
 
   const ref = db.collection("pagos").doc(`mp_${pago.id}`);
   await db.runTransaction(async (tx) => {

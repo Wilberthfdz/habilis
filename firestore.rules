@@ -17,7 +17,18 @@ service cloud.firestore {
       // se hace cumplir el tope de 10 por cuenta Empresa. Las reglas no
       // pueden contar documentos existentes de forma confiable, así que
       // dejar un create directo aquí abría la puerta a saltarse el tope.
-      allow create: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      // El auto-registro debe nacer "gratis"/sin verificar — sin este freno
+      // faltaba en `create` el mismo candado que ya tiene `update`, y un
+      // setDoc directo desde el cliente podía nacer con plan:"empresa" o
+      // verificado:true gratis (crearEmpleado en el backend confía en el
+      // campo `plan` que quede aquí guardado).
+      allow create: if isAdmin() || (
+        request.auth != null && request.auth.uid == uid &&
+        request.resource.data.plan == "gratis" &&
+        request.resource.data.verificado == false &&
+        request.resource.data.rating == 0 &&
+        request.resource.data.totalTrabajos == 0
+      );
       // El dueño solo puede tocar campos de perfil "seguros" — plan, verificado,
       // rating, rankScore, etc. son SOLO backend (agentes / webhook de pago).
       // Antes cualquier usuario podía hacer updateDoc({plan:"pro"}) directo
@@ -31,7 +42,7 @@ service cloud.firestore {
         // "seguros" que un técnico independiente editaría de sí mismo).
         request.auth != null && resource.data.empresaId == request.auth.uid &&
         request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['nombre','oficio','ciudad','experiencia','bio','fotoUrl','disponible','updatedAt'])
+          .hasOnly(['nombre','oficio','categoriaId','ciudad','experiencia','bio','fotoUrl','disponible','updatedAt'])
       );
       allow delete: if isAdmin()
         || (request.auth != null && resource.data.empresaId == request.auth.uid);
@@ -52,7 +63,10 @@ service cloud.firestore {
 
     match /trabajos/{trabajoId} {
       allow read:   if true;
-      allow create: if request.auth != null && request.resource.data.tecnicoId == request.auth.uid;
+      // Se crea SOLO vía la Cloud Function crearTrabajo (Admin SDK, que
+      // ignora esta regla) — ahí se hace cumplir el tope de 5 trabajos del
+      // plan Gratis, que las reglas no pueden contar de forma confiable.
+      allow create: if isAdmin();
       // El dueño solo puede tocar evidencias/estado del propio trabajo — antes
       // podía reescribir cualquier campo (incluido costoTotal, ya usado en
       // reportes de Finanzas, o reasignar tecnicoId a otra cuenta).
@@ -76,10 +90,16 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Habilis Care — equipment assets (owner only, admin can view/manage all)
+    // Habilis Care — equipment assets (owner only, admin can view/manage all).
+    // Gratis siempre para clientes; para cuentas de técnico exige Pro/Empresa
+    // (antes solo lo bloqueaba la UI en HabilisCare.jsx — un setDoc directo
+    // desde el navegador lo saltaba sin problema).
     match /activos/{activoId} {
       allow read:   if (request.auth != null && resource.data.userId == request.auth.uid) || isAdmin();
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid && (
+        !exists(/databases/$(database)/documents/tecnicos/$(request.auth.uid)) ||
+        get(/databases/$(database)/documents/tecnicos/$(request.auth.uid)).data.plan in ['pro', 'empresa']
+      );
       allow update: if (request.auth != null && resource.data.userId == request.auth.uid) || isAdmin();
       allow delete: if (request.auth != null && resource.data.userId == request.auth.uid) || isAdmin();
     }
@@ -110,7 +130,10 @@ service cloud.firestore {
     // precio, datos del técnico o cualquier campo del documento completo.
     match /cotizaciones/{cotId} {
       allow read:   if true;
-      allow create: if request.auth != null && request.resource.data.tecnicoId == request.auth.uid;
+      // Beneficio Pro/Empresa (antes solo lo bloqueaba la UI de
+      // Cotizaciones.jsx — un addDoc directo desde el navegador lo saltaba).
+      allow create: if request.auth != null && request.resource.data.tecnicoId == request.auth.uid &&
+        get(/databases/$(database)/documents/tecnicos/$(request.auth.uid)).data.plan in ['pro', 'empresa'];
       // El técnico solo puede seguir editando MIENTRAS el cliente no haya
       // respondido — antes podía cambiar precios de una cotización ya
       // aceptada/rechazada, sin que el cliente lo supiera ni la reconfirmara.
@@ -118,6 +141,10 @@ service cloud.firestore {
         || (request.auth != null && resource.data.tecnicoId == request.auth.uid &&
             !(resource.data.estado in ['aceptada','rechazada']))
         || (
+          // Solo decide UNA vez: antes se podía voltear aceptada↔rechazada
+          // sin límite ni autenticación con solo tener el link, incluso
+          // después de que EditorCotizacion ya la trataba como congelada.
+          !(resource.data.estado in ['aceptada','rechazada']) &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado','updatedAt'])
           && request.resource.data.estado in ['aceptada','rechazada']
         );
