@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Nav from "../components/Nav.jsx";
-import { obtenerTecnico } from "../lib/firebase.js";
+import { obtenerTecnico, obtenerFacturas } from "../lib/firebase.js";
 import { iniciarSuscripcionPro, solicitarFactura, cancelarSuscripcionPro } from "../lib/gemini.js";
 
 const BENEFICIOS = [
@@ -36,6 +36,7 @@ export default function SuscripcionPro({ nav, user }) {
   const [emailPago, setEmailPago] = useState("");
   const [editarEmail, setEditarEmail] = useState(false);
   const [verCodigo, setVerCodigo] = useState(false);
+  const [facturas, setFacturas] = useState([]);
   const [error, setError]       = useState("");
   const [cargando, setCargando] = useState(false);
 
@@ -98,6 +99,12 @@ export default function SuscripcionPro({ nav, user }) {
     }
   };
 
+  const recargarFacturas = () => {
+    if (!user) return;
+    obtenerFacturas(user.uid).then(setFacturas).catch(() => setFacturas([]));
+  };
+  useEffect(recargarFacturas, [user, tecnico?.plan]);
+
   const facturar = async () => {
     setFxEstado({ cargando:true, error:"", url:"" });
     try {
@@ -105,6 +112,7 @@ export default function SuscripcionPro({ nav, user }) {
                                          razonSocial: fx.razonSocial.trim(),
                                          codigoPostal: fx.codigoPostal.trim() });
       setFxEstado({ cargando:false, error:"", url: r?.verificationUrl || "ok" });
+      recargarFacturas();
     } catch (e) {
       setFxEstado({ cargando:false, error: e.message || "No se pudo generar la factura.", url:"" });
     }
@@ -327,6 +335,38 @@ export default function SuscripcionPro({ nav, user }) {
                          opacity: fxEstado.cargando ? 0.6 : 1 }}>
                 {fxEstado.cargando ? "Generando…" : "Generar factura"}
               </button>
+
+              {/* Historial: antes el enlace del CFDI solo aparecía una vez y
+                  se perdía al recargar la página. */}
+              {facturas.length > 0 && (
+                <div style={{ marginTop:"26px", borderTop:"1px solid #F1F5F9", paddingTop:"18px" }}>
+                  <h3 style={{ fontSize:"13px", fontWeight:800, color:"#0F172A", marginBottom:"12px" }}>
+                    Tus facturas
+                  </h3>
+                  {facturas.map(f => (
+                    <div key={f.id} style={{ display:"flex", justifyContent:"space-between",
+                                             alignItems:"center", gap:"10px", flexWrap:"wrap",
+                                             padding:"9px 0", borderBottom:"1px solid #F8FAFC" }}>
+                      <div>
+                        <p style={{ fontSize:"13px", fontWeight:700, color:"#0F172A" }}>
+                          ${(f.total ?? 0).toLocaleString("es-MX")} MXN
+                          <span style={{ fontWeight:500, color:"#94A3B8" }}> · {f.rfc}</span>
+                        </p>
+                        <p style={{ fontSize:"11.5px", color:"#94A3B8" }}>
+                          {f.fecha?.toDate ? f.fecha.toDate().toLocaleDateString("es-MX",
+                            { day:"2-digit", month:"long", year:"numeric" }) : "—"}
+                        </p>
+                      </div>
+                      {f.verificationUrl && (
+                        <a href={f.verificationUrl} target="_blank" rel="noreferrer"
+                          style={{ fontSize:"12.5px", fontWeight:800, color:"#F97316", flexShrink:0 }}>
+                          Ver CFDI →
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </>
         )}

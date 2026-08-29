@@ -70,6 +70,14 @@ export async function crearPerfilTecnico(uid, datos) {
   });
 }
 
+// Facturas del propio técnico. Las reglas ya permiten que el dueño lea las
+// suyas; sin esto solo el admin podía verlas.
+export async function obtenerFacturas(uid) {
+  const q = query(collection(db, "facturas"), where("userId", "==", uid), orderBy("fecha", "desc"), limit(24));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
 export async function obtenerTecnico(uid) {
   const snap = await getDoc(doc(db, "tecnicos", uid));
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;

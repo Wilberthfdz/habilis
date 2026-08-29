@@ -87,13 +87,20 @@ firebase functions:secrets:access MP_ACCESS_TOKEN   # solo si necesitas leerlo
 firebase functions:secrets:prune                    # limpia versiones sin usar
 ```
 
-Desplegar para que las funciones tomen los secretos, junto con las reglas y
-el índice compuesto que usa la facturación:
+Desplegar. **Los tres, no solo las funciones** — es el error más fácil de
+cometer y deja la impresión de que nada funciona:
 
 ```bash
-firebase deploy --only functions
-firebase deploy --only firestore
+npm run build                                        # compila el frontend a dist/
+firebase deploy --only functions,firestore,hosting
 ```
+
+- `functions`: el backend (cobros, facturación, soporte con IA, agentes).
+- `firestore`: reglas de seguridad e índices compuestos.
+- `hosting`: **el sitio en sí**. Sin esto, myhabilis.com sigue sirviendo la
+  compilación anterior: no existen las páginas nuevas ni la de pago (`/pro`),
+  así que el botón "Obtener Plan Pro" no lleva a ningún checkout por más que
+  el backend esté al día.
 
 ---
 

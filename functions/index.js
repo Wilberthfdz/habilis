@@ -789,6 +789,9 @@ exports.emitirFactura = onCall({ secrets: [FACTURAPI_KEY] }, async (request) => 
     pagoId: pagoRef.id,
     rfc,
     total: montoFactura,
+    // Se guarda para que el técnico pueda volver a abrir su CFDI: antes el
+    // enlace solo existía en la respuesta y se perdía al cerrar la página.
+    verificationUrl: inv.verification_url || null,
     fecha: admin.firestore.FieldValue.serverTimestamp(),
   });
   return { facturaId: inv.id, verificationUrl: inv.verification_url };
