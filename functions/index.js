@@ -439,15 +439,30 @@ exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
     const snap = await db.collection("promos")
       .where("codigo", "==", codigo.trim().toUpperCase()).limit(1).get();
     if (snap.empty) throw new HttpsError("not-found", "Ese código de descuento no existe.");
-    const promo = snap.docs[0].data();
-    if (promo.usosMaximos && (promo.usosActuales || 0) >= promo.usosMaximos) {
-      throw new HttpsError("failed-precondition", "Ese código ya alcanzó su límite de usos.");
-    }
-    const pct = Math.min(99, Math.max(0, Number(promo.descuento) || 0));
-    // Mercado Pago no acepta suscripciones de $0: los códigos de 100% no
-    // pasan por aquí (el tope de 99% de arriba también protege datos malos).
+    const promoRef = snap.docs[0].ref;
+
+    // El uso se aparta aquí, no al confirmarse el pago. Comprobar el tope
+    // ahora e incrementarlo después dejaba el contador en cero mientras
+    // tanto: un código de un solo uso se podía canjear en paralelo cuantas
+    // veces se quisiera, y la preaprobación con descuento seguía válida en
+    // Mercado Pago para toda la vida de esa suscripción.
+    const pct = await db.runTransaction(async (tx) => {
+      const pSnap = await tx.get(promoRef);
+      const promo = pSnap.data();
+      if (!pSnap.exists || promo.activo === false) {
+        throw new HttpsError("not-found", "Ese código de descuento no está disponible.");
+      }
+      if (promo.usosMaximos && (promo.usosActuales || 0) >= promo.usosMaximos) {
+        throw new HttpsError("failed-precondition", "Ese código ya alcanzó su límite de usos.");
+      }
+      tx.update(promoRef, { usosActuales: admin.firestore.FieldValue.increment(1) });
+      return Math.min(99, Math.max(0, Number(promo.descuento) || 0));
+    });
+
+    // Mercado Pago no acepta suscripciones de $0: el tope de 99% de arriba
+    // lo evita (y también protege contra datos mal capturados).
     monto = Math.round(100 * (1 - pct / 100) * 100) / 100;
-    promoId = snap.docs[0].id;
+    promoId = promoRef.id;
   }
 
   const r = await fetch("https://api.mercadopago.com/preapproval", {
@@ -467,7 +482,12 @@ exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
     }),
   });
   const data = await r.json();
-  if (!data.init_point) {
+  // Con credenciales de prueba hay que mandar al checkout de sandbox: el
+  // init_point de producción no reconoce a los usuarios de prueba y deja al
+  // pagador atorado pidiéndole la cuenta una y otra vez.
+  const esPrueba = MP_TOKEN.value().startsWith("TEST-");
+  const destino = (esPrueba && data.sandbox_init_point) || data.init_point;
+  if (!destino) {
     console.error("Mercado Pago preapproval error:", JSON.stringify(data).slice(0, 500));
     throw new HttpsError("internal", "No se pudo crear la suscripción. Intenta de nuevo.");
   }
@@ -477,7 +497,7 @@ exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
     promoId,
     fecha: admin.firestore.FieldValue.serverTimestamp(),
   });
-  return { url: data.init_point, monto };
+  return { url: destino, monto };
 });
 
 // Cancelar la suscripción desde la propia app. Antes había que buscarla en
@@ -565,36 +585,45 @@ async function aplicarEstadoSuscripcion(uid, sub) {
 
 // Suma el uso del código promocional una sola vez, aunque el webhook se
 // repita: la transacción marca la intención como consumida.
+// El uso del código ya se apartó al crear la suscripción; aquí solo se deja
+// constancia de que ese apartado terminó en un pago confirmado.
 async function consumirPromo(uid) {
   const ref = db.collection("suscripcionesPendientes").doc(uid);
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     const datos = snap.data();
     if (!snap.exists || !datos?.promoId || datos.promoConsumido) return;
-    tx.update(db.collection("promos").doc(datos.promoId), {
-      usosActuales: admin.firestore.FieldValue.increment(1),
-    });
     tx.update(ref, { promoConsumido: true });
   });
 }
 
 // Registra el cobro del mes. El id del documento es el del pago en Mercado
 // Pago, así que un reintento del webhook sobrescribe en lugar de duplicar.
+//
+// `facturada` es propiedad de emitirFactura, no de aquí: solo se inicializa
+// al crear el documento. Escribirla en cada entrega volvía a marcar como no
+// facturado un cobro ya timbrado, y bastaba una reentrega de Mercado Pago
+// para poder emitir un segundo CFDI del mismo pago.
 async function registrarPagoSuscripcion(uid, pago, preapprovalId) {
   const aprobado = pago.status === "approved";
-  await db.collection("pagos").doc(`mp_${pago.id}`).set({
-    userId: uid,
-    monto: pago.transaction_amount ?? 0,
-    metodo: "mercadopago",
-    estado: aprobado ? "aprobado" : (pago.status || "desconocido"),
-    concepto: "Habilis Pro mensual",
-    pagoMP: String(pago.id),
-    suscripcionId: preapprovalId || null,
-    facturada: false,
-    fecha: pago.date_approved
-      ? admin.firestore.Timestamp.fromDate(new Date(pago.date_approved))
-      : admin.firestore.FieldValue.serverTimestamp(),
-  }, { merge: true });
+  const ref = db.collection("pagos").doc(`mp_${pago.id}`);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const datos = {
+      userId: uid,
+      monto: pago.transaction_amount ?? 0,
+      metodo: "mercadopago",
+      estado: aprobado ? "aprobado" : (pago.status || "desconocido"),
+      concepto: "Habilis Pro mensual",
+      pagoMP: String(pago.id),
+      suscripcionId: preapprovalId || null,
+      fecha: pago.date_approved
+        ? admin.firestore.Timestamp.fromDate(new Date(pago.date_approved))
+        : admin.firestore.FieldValue.serverTimestamp(),
+    };
+    if (!snap.exists) datos.facturada = false;
+    tx.set(ref, datos, { merge: true });
+  });
 
   if (aprobado) {
     await db.collection("tecnicos").doc(uid).update({
@@ -685,11 +714,25 @@ exports.emitirFactura = onCall({ secrets: [FACTURAPI_KEY] }, async (request) => 
     throw new HttpsError("failed-precondition",
       "No tienes cobros pendientes de facturar. Si acabas de pagar, espera unos minutos a que se confirme.");
   }
-  const pagoDoc = pendientes.docs[0];
-  const montoFactura = pagoDoc.data().monto || 0;
-  if (montoFactura <= 0) {
-    throw new HttpsError("failed-precondition", "El cobro registrado no tiene monto facturable.");
-  }
+  const pagoRef = pendientes.docs[0].ref;
+
+  // El cobro se aparta ANTES de timbrar. Consultar y marcar después dejaba
+  // una ventana del tamaño de la llamada a Facturapi: varias peticiones
+  // simultáneas leían el mismo cobro sin facturar y cada una emitía un CFDI
+  // real del mismo pago, con RFC elegido por quien llamara.
+  const montoFactura = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(pagoRef);
+    const datos = snap.data();
+    if (!snap.exists || datos.facturada !== false) {
+      throw new HttpsError("failed-precondition", "Ese cobro ya tiene factura.");
+    }
+    const monto = datos.monto || 0;
+    if (monto <= 0) {
+      throw new HttpsError("failed-precondition", "El cobro registrado no tiene monto facturable.");
+    }
+    tx.update(pagoRef, { facturada: true });
+    return monto;
+  });
 
   const r = await fetch("https://www.facturapi.io/v2/invoices", {
     method: "POST",
@@ -714,18 +757,21 @@ exports.emitirFactura = onCall({ secrets: [FACTURAPI_KEY] }, async (request) => 
   });
   const inv = await r.json();
   if (inv.error) {
+    // No se timbró nada: se devuelve el cobro a la cola para que el técnico
+    // pueda reintentar tras corregir sus datos fiscales.
+    await pagoRef.update({ facturada: false }).catch((e) =>
+      console.error("No se pudo liberar el cobro tras fallar Facturapi:", e.message));
     console.error("Facturapi error:", JSON.stringify(inv.error).slice(0, 500));
     throw new HttpsError("internal", "No se pudo generar la factura. Verifica tus datos fiscales e intenta de nuevo.");
   }
-  // Marcar el cobro como facturado evita timbrar dos veces el mismo mes.
+  // El cobro ya quedó apartado arriba; aquí solo se guarda el comprobante.
   await db.collection("facturas").add({
     userId: uid,
     facturaId: inv.id,
-    pagoId: pagoDoc.id,
+    pagoId: pagoRef.id,
     rfc,
     total: montoFactura,
     fecha: admin.firestore.FieldValue.serverTimestamp(),
   });
-  await pagoDoc.ref.update({ facturada: true });
   return { facturaId: inv.id, verificationUrl: inv.verification_url };
 });

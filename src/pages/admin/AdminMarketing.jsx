@@ -120,7 +120,7 @@ function Promos() {
           {(promos || []).map((p) => <tr key={p.id}><td style={TD}>{p.codigo}</td><td style={TD}>{p.descuento}%</td><td style={TD}>{p.usosActuales || 0}/{p.usosMaximos || "∞"}</td></tr>)}
         </tbody>
       </table>
-      <p style={{ fontSize: 11.5, color: "#94A3B8" }}>Los códigos se aplican en el checkout de /pro: `crearSuscripcion` valida el código, cobra con el descuento y suma el uso cuando el pago se confirma. Máximo 99% (Mercado Pago no acepta suscripciones de $0).</p>
+      <p style={{ fontSize: 11.5, color: "#94A3B8" }}>Los códigos se aplican en el checkout de /pro: `crearSuscripcion` valida el código y aparta el uso en ese momento, antes de mandar a pagar, para que el tope no se pueda rebasar. Un checkout abandonado consume el uso. Máximo 99% (Mercado Pago no acepta suscripciones de $0).</p>
     </div>
   );
 }
