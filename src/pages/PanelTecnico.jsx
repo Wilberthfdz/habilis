@@ -6,6 +6,7 @@ import { obtenerTecnico, obtenerTrabajosDelTecnico, cerrarSesion, subirFotoPerfi
          crearCotizacion, obtenerSiguienteFolio } from "../lib/firebase.js";
 import Avatar from "../components/Avatar.jsx";
 import { sugerirRespuesta, analizarMercado } from "../lib/gemini.js";
+import { TAXONOMIA } from "../lib/taxonomia.js";
 
 const fmt = n => `$${(n||0).toLocaleString("es-MX")}`;
 const initials = n => ((n||"").trim().charAt(0).toUpperCase()) || "T";
@@ -36,6 +37,10 @@ export default function PanelTecnico({ nav, user }) {
   const [mercado,           setMercado]           = useState(null);
   const [mercadoLoading,    setMercadoLoading]    = useState(false);
   const [mercadoError,      setMercadoError]      = useState("");
+  const [editandoPerfil,    setEditandoPerfil]    = useState(false);
+  const [formPerfil,        setFormPerfil]        = useState(null);
+  const [guardandoPerfil,   setGuardandoPerfil]   = useState(false);
+  const [errorPerfil,       setErrorPerfil]       = useState("");
 
   useEffect(() => {
     if (!user) { nav("login"); return; }
@@ -120,6 +125,35 @@ export default function PanelTecnico({ nav, user }) {
       console.error(err);
       setPhotoError("Error al subir la foto. Intenta de nuevo.");
     } finally { setUploadingPhoto(false); }
+  };
+
+  const abrirEdicionPerfil = () => {
+    setFormPerfil({
+      nombre: tecnico.nombre || "", oficio: tecnico.oficio || "", ciudad: tecnico.ciudad || "",
+      experiencia: String(tecnico.experiencia ?? ""), bio: tecnico.bio || "",
+    });
+    setErrorPerfil("");
+    setEditandoPerfil(true);
+  };
+
+  const guardarEdicionPerfil = async () => {
+    if (!formPerfil.nombre.trim() || !formPerfil.oficio.trim() || !formPerfil.ciudad.trim()) {
+      setErrorPerfil("Nombre, oficio y ciudad no pueden quedar vacíos.");
+      return;
+    }
+    setErrorPerfil(""); setGuardandoPerfil(true);
+    try {
+      const cambios = {
+        nombre: formPerfil.nombre.trim(), oficio: formPerfil.oficio.trim(),
+        ciudad: formPerfil.ciudad.trim(), experiencia: parseInt(formPerfil.experiencia) || 0,
+        bio: formPerfil.bio.trim(),
+      };
+      await actualizarTecnico(user.uid, cambios);
+      setTecnico(t => ({ ...t, ...cambios }));
+      setEditandoPerfil(false);
+    } catch (e) {
+      setErrorPerfil(e.message || "No se pudo guardar. Intenta de nuevo.");
+    } finally { setGuardandoPerfil(false); }
   };
 
   const genAI = async () => {
@@ -685,26 +719,79 @@ export default function PanelTecnico({ nav, user }) {
 
             <div style={CARD}>
               <h3 style={{ fontWeight:800, fontSize:"15px", color:"#0F172A", marginBottom:"16px" }}>Mi información</h3>
-              {[
-                ["Nombre",       tecnico.nombre],
-                ["Oficio",       tecnico.oficio],
-                ["Ciudad",       tecnico.ciudad],
-                ["Experiencia",  `${tecnico.experiencia} años`],
-                ["Plan actual",  esEmpresa ? "🏢 Empresa" : esPro ? "⚡ Pro" : "Gratuito"],
-                ["Calificación", tecnico.rating > 0 ? `⭐ ${tecnico.rating}` : "Sin calificaciones aún"],
-              ].map(([k, v]) => (
-                <div key={k} style={{ display:"flex", justifyContent:"space-between", padding:"9px 0", borderBottom:"1px solid #F1F5F9" }}>
-                  <span style={{ color:"#64748B", fontSize:"13px" }}>{k}</span>
-                  <span style={{ fontWeight:600, fontSize:"13px", color:"#0F172A" }}>{v}</span>
-                </div>
-              ))}
-              <div style={{ display:"flex", gap:"10px", marginTop:"16px" }}>
-                <button style={{ ...BTN, flex:1 }} onClick={() => alert("Edición de perfil próximamente")}>Editar perfil</button>
-                <button style={{ flex:1, background:"#F1F5F9", color:"#0F172A", border:"1px solid #E2E8F0", borderRadius:"9px", padding:"9px 16px", fontSize:"13px", fontWeight:600, cursor:"pointer" }}
-                  onClick={() => nav("perfil", { tecnicoId:user?.uid })}>
-                  Ver perfil público →
-                </button>
-              </div>
+
+              {!editandoPerfil ? (
+                <>
+                  {[
+                    ["Nombre",       tecnico.nombre],
+                    ["Oficio",       tecnico.oficio],
+                    ["Ciudad",       tecnico.ciudad],
+                    ["Experiencia",  `${tecnico.experiencia} años`],
+                    ["Plan actual",  esEmpresa ? "🏢 Empresa" : esPro ? "⚡ Pro" : "Gratuito"],
+                    ["Calificación", tecnico.rating > 0 ? `⭐ ${tecnico.rating}` : "Sin calificaciones aún"],
+                  ].map(([k, v]) => (
+                    <div key={k} style={{ display:"flex", justifyContent:"space-between", padding:"9px 0", borderBottom:"1px solid #F1F5F9" }}>
+                      <span style={{ color:"#64748B", fontSize:"13px" }}>{k}</span>
+                      <span style={{ fontWeight:600, fontSize:"13px", color:"#0F172A" }}>{v}</span>
+                    </div>
+                  ))}
+                  {tecnico.bio && (
+                    <p style={{ color:"#374151", fontSize:"13px", lineHeight:1.6, marginTop:"12px", padding:"10px 12px", background:"#F8FAFC", borderRadius:"8px" }}>
+                      {tecnico.bio}
+                    </p>
+                  )}
+                  <div style={{ display:"flex", gap:"10px", marginTop:"16px" }}>
+                    <button style={{ ...BTN, flex:1 }} onClick={abrirEdicionPerfil}>Editar perfil</button>
+                    <button style={{ flex:1, background:"#F1F5F9", color:"#0F172A", border:"1px solid #E2E8F0", borderRadius:"9px", padding:"9px 16px", fontSize:"13px", fontWeight:600, cursor:"pointer" }}
+                      onClick={() => nav("perfil", { tecnicoId:user?.uid })}>
+                      Ver perfil público →
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <label style={{ fontSize:"11px", fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:"5px" }}>Nombre</label>
+                  <input value={formPerfil.nombre} onChange={e => setFormPerfil(f => ({ ...f, nombre:e.target.value }))}
+                    style={{ width:"100%", border:"1px solid #E2E8F0", borderRadius:"9px", padding:"9px 12px", fontSize:"13px", marginBottom:"12px", boxSizing:"border-box" }} />
+
+                  <label style={{ fontSize:"11px", fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:"5px" }}>Oficio</label>
+                  <input value={formPerfil.oficio} onChange={e => setFormPerfil(f => ({ ...f, oficio:e.target.value }))}
+                    list="oficios-tax-panel"
+                    style={{ width:"100%", border:"1px solid #E2E8F0", borderRadius:"9px", padding:"9px 12px", fontSize:"13px", marginBottom:"12px", boxSizing:"border-box" }} />
+                  <datalist id="oficios-tax-panel">
+                    {TAXONOMIA.flatMap(c => [c.nombre, ...(c.subcategorias || []).map(s => s.nombre)]).map(n => <option key={n} value={n} />)}
+                  </datalist>
+
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"12px", marginBottom:"12px" }}>
+                    <div>
+                      <label style={{ fontSize:"11px", fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:"5px" }}>Ciudad</label>
+                      <input value={formPerfil.ciudad} onChange={e => setFormPerfil(f => ({ ...f, ciudad:e.target.value }))}
+                        style={{ width:"100%", border:"1px solid #E2E8F0", borderRadius:"9px", padding:"9px 12px", fontSize:"13px", boxSizing:"border-box" }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize:"11px", fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:"5px" }}>Años de experiencia</label>
+                      <input type="number" min="0" value={formPerfil.experiencia} onChange={e => setFormPerfil(f => ({ ...f, experiencia:e.target.value }))}
+                        style={{ width:"100%", border:"1px solid #E2E8F0", borderRadius:"9px", padding:"9px 12px", fontSize:"13px", boxSizing:"border-box" }} />
+                    </div>
+                  </div>
+
+                  <label style={{ fontSize:"11px", fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:"5px" }}>Bio (se muestra en tu perfil público)</label>
+                  <textarea value={formPerfil.bio} onChange={e => setFormPerfil(f => ({ ...f, bio:e.target.value }))}
+                    style={{ width:"100%", border:"1px solid #E2E8F0", borderRadius:"9px", padding:"9px 12px", fontSize:"13px", minHeight:"70px", resize:"vertical", boxSizing:"border-box", marginBottom:"12px", fontFamily:"inherit" }} />
+
+                  {errorPerfil && <p style={{ color:"#DC2626", fontSize:"12.5px", marginBottom:"12px" }}>{errorPerfil}</p>}
+
+                  <div style={{ display:"flex", gap:"10px" }}>
+                    <button style={{ ...BTN, flex:1, opacity: guardandoPerfil ? 0.6 : 1 }} disabled={guardandoPerfil} onClick={guardarEdicionPerfil}>
+                      {guardandoPerfil ? "Guardando…" : "💾 Guardar cambios"}
+                    </button>
+                    <button style={{ flex:1, background:"#F1F5F9", color:"#0F172A", border:"1px solid #E2E8F0", borderRadius:"9px", padding:"9px 16px", fontSize:"13px", fontWeight:600, cursor:"pointer" }}
+                      disabled={guardandoPerfil} onClick={() => setEditandoPerfil(false)}>
+                      Cancelar
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
 
             <div style={CARD}>

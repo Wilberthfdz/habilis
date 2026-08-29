@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /inversion
+
+Sitemap: https://myhabilis.com/sitemap.xml

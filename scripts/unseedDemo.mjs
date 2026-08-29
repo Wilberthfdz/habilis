@@ -1,7 +1,9 @@
 // ─── OCULTAR DATOS DEMO DESPUÉS DE GRABAR EL VIDEO ─────────────────────────
-// Firestore rules bloquean "delete" en tecnicos/trabajos a propósito
-// (allow delete: if false), así que esto NO borra los documentos —
-// los oculta de las vistas públicas:
+// Nota (29 ago 2026): firestore.rules SÍ permite hoy que un admin borre
+// tecnicos/trabajos (`allow delete: if isAdmin()`) — el comentario original
+// de que estaba bloqueado con `if false` ya no es cierto, las reglas
+// cambiaron en una sesión posterior. Este script sigue sin borrar nada a
+// propósito (decisión de producto, no limitación técnica) — solo oculta:
 //   - tecnicos: disponible=false → desaparecen de Buscar.jsx (filtra disponible==true)
 //   - trabajos: no se pueden ocultar del Feed con datos solamente (Feed.jsx no
 //     filtra por esDemo todavía). Si quieres que también desaparezcan del Feed,

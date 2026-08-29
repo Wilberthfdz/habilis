@@ -11,17 +11,13 @@ import PanelTecnico                  from "./pages/PanelTecnico.jsx";
 import RegistrarTrabajo              from "./pages/RegistrarTrabajo.jsx";
 import Bienvenida                    from "./pages/Bienvenida.jsx";
 import CompletarPerfil               from "./pages/CompletarPerfil.jsx";
-import HabilisCare                   from "./pages/HabilisCare.jsx";
 import DetalleActivo                 from "./pages/DetalleActivo.jsx";
 import PlanCare                      from "./pages/PlanCare.jsx";
-import Cotizaciones                  from "./pages/Cotizaciones.jsx";
-import EditorCotizacion              from "./pages/EditorCotizacion.jsx";
 import VistaCotizacion               from "./pages/VistaCotizacion.jsx";
 import SolicitarServicio             from "./pages/SolicitarServicio.jsx";
 import Chat                          from "./pages/Chat.jsx";
 import MiRed                         from "./pages/MiRed.jsx";
 import MisSolicitudes                from "./pages/MisSolicitudes.jsx";
-import MiCuentaCliente               from "./pages/MiCuentaCliente.jsx";
 import Privacidad                    from "./pages/Privacidad.jsx";
 import Terminos                      from "./pages/Terminos.jsx";
 import QuienesSomos                  from "./pages/QuienesSomos.jsx";
@@ -30,13 +26,22 @@ import Soporte                       from "./pages/Soporte.jsx";
 import SuscripcionPro                from "./pages/SuscripcionPro.jsx";
 import Empleados                     from "./pages/Empleados.jsx";
 import HacerseTecnico                from "./pages/HacerseTecnico.jsx";
-import Verificacion                  from "./pages/Verificacion.jsx";
-import Agenda                        from "./pages/Agenda.jsx";
+import NotFound                      from "./pages/NotFound.jsx";
 
 // Carga diferida: el ERP admin y la página de inversión solo los ve un
 // puñado de personas — no tienen por qué pesar en el bundle de todos.
 const Admin     = lazy(() => import("./pages/Admin.jsx"));
 const Inversion = lazy(() => import("./pages/Inversion.jsx"));
+
+// Carga diferida: pantallas grandes o poco usadas por la mayoría de las
+// visitas (verificación de identidad, agenda, cuenta cliente, cotizaciones,
+// Habilis Care) — no tienen por qué pesar en el bundle inicial de todos.
+const Verificacion     = lazy(() => import("./pages/Verificacion.jsx"));
+const Agenda           = lazy(() => import("./pages/Agenda.jsx"));
+const MiCuentaCliente  = lazy(() => import("./pages/MiCuentaCliente.jsx"));
+const Cotizaciones     = lazy(() => import("./pages/Cotizaciones.jsx"));
+const EditorCotizacion = lazy(() => import("./pages/EditorCotizacion.jsx"));
+const HabilisCare      = lazy(() => import("./pages/HabilisCare.jsx"));
 
 const globalCSS = `
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -123,6 +128,12 @@ const screenInicial = () => {
   if (path.startsWith("/t/") && path.length > 3) return "perfil";
   // Links compartidos de cotizaciones (WhatsApp, etc.) usan ?vista=<id>
   if (new URLSearchParams(window.location.search).get("vista")) return "vistaCotizacion";
+  // Cualquier otra ruta con contenido real es una URL rota/inventada — el
+  // resto de las pantallas de la app nunca cambian la URL (nav() solo
+  // actualiza el historial para las rutas de RUTAS_URL de abajo), así que
+  // si llegamos aquí con un path no vacío, no es una pantalla interna
+  // válida esperando su turno, es de verdad una 404.
+  if (path !== "") return "notFound";
   return "landing";
 };
 
@@ -210,6 +221,7 @@ export default function App() {
       case "suscripcionEmpresa": return <SuscripcionPro     {...screenProps} params={{ ...params, plan:"empresa" }} />;
       case "empleados":          return <Empleados          {...screenProps} />;
       case "hacerseTecnico":     return <HacerseTecnico     {...screenProps} />;
+      case "notFound":           return <NotFound           {...screenProps} />;
       case "verificacion":       return <Verificacion       {...screenProps} />;
       case "agenda":             return <Agenda             {...screenProps} />;
       default: return <Landing {...screenProps} />;

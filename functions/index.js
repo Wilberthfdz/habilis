@@ -1158,20 +1158,27 @@ async function registrarPagoSuscripcion(uid, pago, preapprovalId) {
 }
 
 // Pago único (OXXO/SPEI/tarjeta vía Checkout Pro, no Preapproval): activa
-// el plan por 1 mes desde hoy. `pago.id` hace único el doc de `pagos`, así
-// que un reintento del webhook no vuelve a extender planVenceEl — la
-// extensión solo corre la primera vez que se ve ese id de pago.
+// el plan por 1 mes desde hoy. `pago.id` hace único el doc de `pagos`, pero
+// OJO: para OXXO/SPEI Mercado Pago notifica el MISMO id dos veces — primero
+// "pending" (al generarse el voucher) y luego "approved" (cuando se paga en
+// tienda). Si la extensión del plan dependiera de "primera vez que existe
+// el doc" (`!existia`), la notificación "pending" ya lo habría creado, y la
+// notificación "approved" posterior nunca extendería el plan pese a que el
+// pago sí se completó. Por eso la extensión depende de "primera vez que
+// vemos estado aprobado" (`!yaAprobado`), no de la existencia del doc.
 async function registrarPagoUnico(uid, pago) {
   const aprobado = pago.status === "approved";
+  const revertido = pago.status === "refunded" || pago.status === "charged_back";
   const pendienteSnap = await db.collection("suscripcionesPendientes").doc(uid).get();
   const plan = pendienteSnap.data()?.plan === "empresa" ? "empresa" : "pro";
 
   const ref = db.collection("pagos").doc(`mp_${pago.id}`);
   const tecnicoRef = db.collection("tecnicos").doc(uid);
 
-  const yaExistia = await db.runTransaction(async (tx) => {
+  const yaAprobado = await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     const existia = snap.exists;
+    const yaAprobadoAntes = existia && snap.data().estado === "aprobado";
     const datos = {
       userId: uid,
       monto: pago.transaction_amount ?? 0,
@@ -1186,7 +1193,7 @@ async function registrarPagoUnico(uid, pago) {
     if (!existia) datos.facturada = false;
     tx.set(ref, datos, { merge: true });
 
-    if (aprobado && !existia) {
+    if (aprobado && !yaAprobadoAntes) {
       const vence = new Date();
       vence.setMonth(vence.getMonth() + 1);
       tx.update(tecnicoRef, {
@@ -1198,10 +1205,24 @@ async function registrarPagoUnico(uid, pago) {
         suscripcionId: admin.firestore.FieldValue.delete(),
       });
     }
-    return existia;
+
+    // Un reembolso/contracargo de este mismo pago retira el plan que había
+    // otorgado. Antes ningún código reaccionaba a estos estados y el
+    // técnico se quedaba con el plan pagado indefinidamente pese al
+    // reembolso — solo aplica si este pago sí llegó a estar aprobado
+    // (si nunca se aprobó, nunca otorgó nada que revertir).
+    if (revertido && yaAprobadoAntes) {
+      tx.update(tecnicoRef, {
+        plan: "gratis",
+        metodoPago: admin.firestore.FieldValue.delete(),
+        planVenceEl: admin.firestore.FieldValue.delete(),
+      });
+    }
+
+    return yaAprobadoAntes;
   });
 
-  if (aprobado && !yaExistia) await consumirPromo(uid);
+  if (aprobado && !yaAprobado) await consumirPromo(uid);
 }
 
 // El body de un webhook NUNCA es de confianza por sí mismo: en vez de creerle

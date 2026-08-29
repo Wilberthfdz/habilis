@@ -35,12 +35,17 @@ export default function Buscar({ nav, user, params }) {
     return map;
   }, [todos]);
 
+  // `experiencia` lo puede editar el propio técnico libremente (campo
+  // permitido en firestore.rules) — sin el tope, un perfil Gratis podía
+  // poner "999 años de experiencia" y superar en el orden a un Pro/Empresa
+  // real. El plan ya no se sopesa aquí como un punto más de la fórmula:
+  // se usa como criterio de orden PRIMARIO más abajo (ver `filtrar`), así
+  // ningún valor de este score puede hacer que un Gratis rebase a un pagante.
   const score = t =>
     (t.totalTrabajos || 0) * 2 +
     (t.validaciones  || 0) * 1.5 +
-    (t.experiencia   || 0) * 1 +
-    (t.verificado    ? 3 : 0) +
-    (t.plan === "pro" || t.plan === "empresa" ? 5 : 0);
+    Math.min(t.experiencia || 0, 40) * 1 +
+    (t.verificado    ? 3 : 0);
 
   const filtrar = (lista, f) => {
     const l = f.trim().toLowerCase();
@@ -67,8 +72,14 @@ export default function Buscar({ nav, user, params }) {
       }
       return true;
     });
-    // Sort by score descending
-    return conAlcance.sort((a, b) => score(b) - score(a));
+    // Plan pagante primero SIEMPRE (criterio primario, no manipulable por
+    // el técnico), y solo dentro del mismo grupo se ordena por el score.
+    return conAlcance.sort((a, b) => {
+      const pagA = a.plan === "pro" || a.plan === "empresa";
+      const pagB = b.plan === "pro" || b.plan === "empresa";
+      if (pagA !== pagB) return pagA ? -1 : 1;
+      return score(b) - score(a);
+    });
   };
 
   // Aplica la búsqueda inicial (ej. desde una tarjeta de categoría en Landing)

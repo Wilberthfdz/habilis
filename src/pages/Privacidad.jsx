@@ -3,7 +3,7 @@ import Logo from "../components/Logo.jsx";
 // Aviso de privacidad conforme a la LFPDPPP (México).
 // La SAPI está en proceso de constitución: al quedar inscrita, quitar la
 // mención transitoria a la persona física de la sección 1.
-const ACTUALIZADO = "23 de agosto de 2026";
+const ACTUALIZADO = "29 de agosto de 2026";
 
 const H2 = { fontSize:"17px", fontWeight:800, color:"#0F172A", margin:"28px 0 10px" };
 const P  = { fontSize:"14px", color:"#475569", lineHeight:1.75, marginBottom:"10px" };
@@ -47,6 +47,7 @@ export default function Privacidad({ nav }) {
             <li style={LI}><strong>Habilis Care:</strong> datos de los equipos que registras (tipo, marca, modelo, fechas de mantenimiento).</li>
             <li style={LI}><strong>Facturación (opcional):</strong> RFC, razón social, código postal y régimen fiscal, solo si solicitas factura.</li>
             <li style={LI}><strong>Voz (opcional):</strong> si usas el registro por voz, el audio se procesa para transcribir tu perfil y no se almacena.</li>
+            <li style={LI}><strong>Verificación de identidad (opcional):</strong> si decides verificarte, recabamos la fotografía de tu identificación oficial (INE) y, si la agregas, un comprobante de tu oficio (certificación, diploma o licencia). Estos son <strong>datos personales sensibles</strong> conforme a la LFPDPPP — su tratamiento requiere tu consentimiento expreso, que otorgas al subirlos voluntariamente desde tu panel. Solo el equipo de Habilis los revisa para aprobar o rechazar tu verificación; nunca se muestran públicamente.</li>
           </ul>
 
           <h2 style={H2}>3. Finalidades del tratamiento</h2>
@@ -86,6 +87,14 @@ export default function Privacidad({ nav }) {
             Conservamos tus datos mientras tu cuenta esté activa. La información se almacena en
             infraestructura de Google Cloud con acceso restringido por reglas de seguridad. Las
             contraseñas nunca se almacenan en texto plano.
+          </p>
+          <p style={P}>
+            Los documentos de verificación de identidad (INE y comprobante de oficio) reciben
+            tratamiento reforzado por ser datos sensibles: solo son visibles para ti y para el
+            equipo de Habilis encargado de revisarlos, se conservan mientras tu verificación esté
+            vigente, y puedes solicitar su eliminación en cualquier momento ejerciendo tus
+            derechos ARCO (sección 6) — al hacerlo, perderás la insignia de verificado hasta que
+            vuelvas a completar el proceso.
           </p>
 
           <h2 style={H2}>8. Cambios a este aviso</h2>

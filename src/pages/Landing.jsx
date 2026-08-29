@@ -348,8 +348,16 @@ export default function Landing({ nav, user }) {
                     letter-spacing:0.02em; border:1px solid rgba(255,255,255,0.08);
                     flex-shrink:0; }
 
+        .hero-grid { min-height:calc(100vh - 60px); }
+
         @media(max-width:767px) {
-          .hero-grid { flex-direction:column !important; }
+          /* Sin esto, el minHeight de casi toda la pantalla se quedaba
+             forzado en móvil aunque .hero-illus ya no ocupara esa columna
+             (los estilos inline nunca los puede vencer una regla de acá,
+             por eso el minHeight se movió arriba en vez de quedarse inline)
+             — el resultado era un hueco vacío enorme arriba/abajo del
+             título en pantallas de celular. */
+          .hero-grid { flex-direction:column !important; min-height:auto !important; }
           .hero-illus { display:none !important; }
         }
       `}</style>
@@ -374,7 +382,7 @@ export default function Landing({ nav, user }) {
         <div className="hero-grid" style={{
           display:"flex", alignItems:"center", justifyContent:"center",
           gap:"clamp(32px,5vw,80px)", padding:"64px clamp(20px,5vw,64px) 80px",
-          maxWidth:"1160px", margin:"0 auto", minHeight:"calc(100vh - 60px)"
+          maxWidth:"1160px", margin:"0 auto"
         }}>
           {/* Left: copy */}
           <div style={{ flex:"1 1 460px", animation:"fadeUp 0.8s ease forwards" }}>

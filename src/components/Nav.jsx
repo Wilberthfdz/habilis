@@ -23,6 +23,7 @@ export default function Nav({ nav, user }) {
   const [esEmpresa, setEsEmpresa] = useState(false);
   const [reenviando, setReenviando] = useState(false);
   const [reenviado,  setReenviado]  = useState(false);
+  const [errorReenvio, setErrorReenvio] = useState("");
 
   // Una cuenta puede tener perfil de técnico Y de cliente a la vez (ver
   // MiCuentaCliente.jsx → "Ofrece tus servicios como técnico"), así que se
@@ -42,9 +43,10 @@ export default function Nav({ nav, user }) {
   const logout = async () => { await cerrarSesion(); nav("landing"); };
 
   const reenviarVerificacion = async () => {
-    setReenviando(true);
+    setReenviando(true); setErrorReenvio("");
     try { await enviarVerificacionEmailPropio(); setReenviado(true); }
-    catch {} finally { setReenviando(false); }
+    catch (e) { setErrorReenvio(e.message || "No se pudo enviar. Intenta de nuevo en un momento."); }
+    finally { setReenviando(false); }
   };
 
   const primaryLinks = [
@@ -288,6 +290,9 @@ export default function Nav({ nav, user }) {
                    fontWeight:800, cursor: reenviado ? "default" : "pointer", flexShrink:0 }}>
           {reenviando ? "Enviando..." : reenviado ? "✓ Correo enviado" : "Reenviar correo →"}
         </button>
+        {errorReenvio && (
+          <span style={{ fontSize:"12px", fontWeight:700, color:"#7F1D1D" }}>{errorReenvio}</span>
+        )}
       </div>
     )}
     </>

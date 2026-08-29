@@ -20,7 +20,11 @@ const MARCAS = [
   ["Modelo de plataforma",           "no el prestador del servicio"],
   ["Soporte con IA",                 "Asistente Habilis"],
   ["Menú Acerca de",                 "Cómo funciona la app"],
-  ["Verificación de identidad",      "Verifica tu identidad"],
+  // "Verifica tu identidad" vive en Verificacion.jsx, que ahora carga
+  // diferido (code-splitting) y no está en el bundle principal — se
+  // verifica en su lugar el punto de entrada en el panel, que sí es
+  // parte del bundle eager.
+  ["Verificación de identidad",      "Verificación de identidad"],
   ["Link bonito de perfil",          "Comparte tu perfil"],
   ["Agenda de citas",                "Mi agenda"],
 ];
