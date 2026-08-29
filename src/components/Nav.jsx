@@ -17,13 +17,18 @@ export default function Nav({ nav, user }) {
   const [aboutOpen, setAboutOpen] = useState(false);
   // null = aún no sabemos (evita parpadear el botón equivocado); true/false una vez resuelto.
   const [esTecnico, setEsTecnico] = useState(null);
+  const [esEmpresa, setEsEmpresa] = useState(false);
   const [reenviando, setReenviando] = useState(false);
   const [reenviado,  setReenviado]  = useState(false);
 
   useEffect(() => {
-    if (!user) { setEsTecnico(null); return; }
+    if (!user) { setEsTecnico(null); setEsEmpresa(false); return; }
     let cancelado = false;
-    obtenerTecnico(user.uid).then(t => { if (!cancelado) setEsTecnico(!!t); });
+    obtenerTecnico(user.uid).then(t => {
+      if (cancelado) return;
+      setEsTecnico(!!t);
+      setEsEmpresa(t?.plan === "empresa");
+    });
     return () => { cancelado = true; };
   }, [user]);
 
@@ -41,6 +46,7 @@ export default function Nav({ nav, user }) {
     { label:"Precios",     route:"precios" },
     ...(user ? [{ label:"Care", route:"habilisCare" }] : []),
     ...(esTecnico === true ? [{ label:"Cotizaciones", route:"cotizaciones" }] : []),
+    ...(esEmpresa ? [{ label:"Empleados", route:"empleados" }] : []),
     ...(esTecnico === false ? [{ label:"Mi cuenta", route:"miCuenta" }] : []),
     ...(user?.email === "wilberthfdz@gmail.com" ? [
       { label:"⚙️ Admin",  route:"admin" },

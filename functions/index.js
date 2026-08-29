@@ -423,16 +423,22 @@ exports.transcribirRegistro = onCall({ secrets: [GEMINI_KEY] }, async (request) 
 // ═══════════════════════════════════════════════════════════════
 // MERCADO PAGO — suscripción Habilis Pro
 // ═══════════════════════════════════════════════════════════════
+// Precio base por tipo de plan. "empresa" agrega la gestión de empleados
+// sobre los mismos beneficios de Pro — ver crearEmpleado en el frontend.
+const PRECIOS_PLAN = { pro: 149, empresa: 499 };
+
 exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
   const uid = requireAuth(request);
   await checkRateLimit(uid, "crearSuscripcion", 10);
   const { email, codigo } = request.data;
+  const plan = request.data.plan === "empresa" ? "empresa" : "pro";
   if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new HttpsError("invalid-argument", "Email requerido.");
   }
 
   // Código de descuento (colección `promos` del admin de Marketing).
-  let monto = 149;
+  const precioBase = PRECIOS_PLAN[plan];
+  let monto = precioBase;
   let promoId = null;
   if (codigo) {
     if (typeof codigo !== "string" || codigo.length > 30) {
@@ -463,7 +469,7 @@ exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
 
     // Mercado Pago no acepta suscripciones de $0: el tope de 99% de arriba
     // lo evita (y también protege contra datos mal capturados).
-    monto = Math.round(149 * (1 - pct / 100) * 100) / 100;
+    monto = Math.round(precioBase * (1 - pct / 100) * 100) / 100;
     promoId = promoRef.id;
   }
 
@@ -471,7 +477,7 @@ exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
     method: "POST",
     headers: { Authorization: `Bearer ${MP_TOKEN.value()}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      reason: "Habilis Pro",
+      reason: plan === "empresa" ? "Habilis Empresa" : "Habilis Pro",
       external_reference: uid,
       auto_recurring: { frequency: 1, frequency_type: "months", transaction_amount: monto, currency_id: "MXN" },
       // Vuelve al checkout, que muestra el estado real del pago en vez de
@@ -499,10 +505,11 @@ exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
   await db.collection("suscripcionesPendientes").doc(uid).set({
     preapprovalId: data.id,
     monto,
+    plan,
     promoId,
     fecha: admin.firestore.FieldValue.serverTimestamp(),
   });
-  return { url: destino, monto };
+  return { url: destino, monto, plan };
 });
 
 // Cancelar la suscripción desde la propia app. Antes había que buscarla en
@@ -575,14 +582,19 @@ async function resolverUid(pago, preapprovalId) {
   return null;
 }
 
-// `authorized` da acceso Pro; `paused` (típicamente por un cobro que falló) y
-// `cancelled` lo retiran. Antes solo se contemplaban los dos extremos, así que
-// una suscripción pausada conservaba el plan Pro indefinidamente.
+// `authorized` da acceso Pro/Empresa; `paused` (típicamente por un cobro que
+// falló) y `cancelled` lo retiran. Antes solo se contemplaban los dos
+// extremos, así que una suscripción pausada conservaba el plan indefinidamente.
 async function aplicarEstadoSuscripcion(uid, sub) {
   const ref = db.collection("tecnicos").doc(uid);
   if (sub.status === "authorized") {
+    // El tipo de plan contratado vive en la suscripción pendiente creada al
+    // iniciar el checkout — sin esto, toda alta activaba "pro" sin importar
+    // qué haya pagado la cuenta.
+    const pendiente = await db.collection("suscripcionesPendientes").doc(uid).get();
+    const plan = pendiente.data()?.plan === "empresa" ? "empresa" : "pro";
     await ref.update({
-      plan: "pro",
+      plan,
       suscripcionId: sub.id,
       suscripcionEstado: "authorized",
       fechaPago: admin.firestore.FieldValue.serverTimestamp(),
@@ -618,6 +630,13 @@ async function consumirPromo(uid) {
 // para poder emitir un segundo CFDI del mismo pago.
 async function registrarPagoSuscripcion(uid, pago, preapprovalId) {
   const aprobado = pago.status === "approved";
+  const tecnicoRef = db.collection("tecnicos").doc(uid);
+  // No asumir "pro": una cuenta Empresa que renueva no debe degradarse en
+  // cada cobro mensual solo porque este webhook no sabe qué plan contrató.
+  const tecnicoSnap = await tecnicoRef.get();
+  const planActual = tecnicoSnap.data()?.plan;
+  const plan = planActual === "empresa" ? "empresa" : "pro";
+
   const ref = db.collection("pagos").doc(`mp_${pago.id}`);
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
@@ -626,7 +645,7 @@ async function registrarPagoSuscripcion(uid, pago, preapprovalId) {
       monto: pago.transaction_amount ?? 0,
       metodo: "mercadopago",
       estado: aprobado ? "aprobado" : (pago.status || "desconocido"),
-      concepto: "Habilis Pro mensual",
+      concepto: plan === "empresa" ? "Habilis Empresa mensual" : "Habilis Pro mensual",
       pagoMP: String(pago.id),
       suscripcionId: preapprovalId || null,
       fecha: pago.date_approved
@@ -638,8 +657,8 @@ async function registrarPagoSuscripcion(uid, pago, preapprovalId) {
   });
 
   if (aprobado) {
-    await db.collection("tecnicos").doc(uid).update({
-      plan: "pro",
+    await tecnicoRef.update({
+      plan,
       fechaPago: admin.firestore.FieldValue.serverTimestamp(),
     });
   }

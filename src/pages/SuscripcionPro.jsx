@@ -3,7 +3,7 @@ import Nav from "../components/Nav.jsx";
 import { obtenerTecnico, obtenerFacturas } from "../lib/firebase.js";
 import { iniciarSuscripcionPro, solicitarFactura, cancelarSuscripcionPro } from "../lib/gemini.js";
 
-const BENEFICIOS = [
+const BENEFICIOS_PRO = [
   "Prioridad alta en búsquedas",
   "Sin anuncios en tu perfil",
   "Trabajos documentados ilimitados",
@@ -11,6 +11,11 @@ const BENEFICIOS = [
   "Cotizaciones profesionales",
   "Habilis Care y soporte prioritario",
 ];
+const BENEFICIOS_EMPRESA = [
+  ...BENEFICIOS_PRO,
+  "Agrega empleados: cada uno con su propio perfil, visible en las búsquedas",
+];
+const PRECIOS = { pro: 149, empresa: 499 };
 
 const REGIMENES = [
   ["612", "Personas Físicas con Actividades Empresariales"],
@@ -30,7 +35,11 @@ const INP = { width:"100%", border:"1px solid #E2E8F0", borderRadius:"10px",
               padding:"11px 14px", fontSize:"14px", marginBottom:"12px" };
 const LBL = { fontSize:"12px", fontWeight:700, color:"#64748B", marginBottom:"5px", display:"block" };
 
-export default function SuscripcionPro({ nav, user }) {
+export default function SuscripcionPro({ nav, user, params = {} }) {
+  const plan = params.plan === "empresa" ? "empresa" : "pro";
+  const precio = PRECIOS[plan];
+  const nombrePlan = plan === "empresa" ? "Empresa" : "Pro";
+  const beneficios = plan === "empresa" ? BENEFICIOS_EMPRESA : BENEFICIOS_PRO;
   const [tecnico, setTecnico]   = useState(undefined);
   const [codigo, setCodigo]     = useState("");
   const [emailPago, setEmailPago] = useState("");
@@ -65,7 +74,7 @@ export default function SuscripcionPro({ nav, user }) {
         const t = await obtenerTecnico(user.uid);
         if (cancelado) return;
         setTecnico(t || null);
-        if (t?.plan === "pro") { setConfirmando(false); return; }
+        if (t?.plan === plan) { setConfirmando(false); return; }
         if (vueltaDePago && intentos < 20) {          // ~60 s de espera
           intentos++;
           setConfirmando(true);
@@ -91,7 +100,7 @@ export default function SuscripcionPro({ nav, user }) {
     }
     setError(""); setCargando(true);
     try {
-      const { url } = await iniciarSuscripcionPro(correo, codigo.trim() || null);
+      const { url } = await iniciarSuscripcionPro(correo, codigo.trim() || null, plan);
       window.location.href = url;   // checkout de Mercado Pago
     } catch (e) {
       setError(e.message || "No se pudo iniciar el pago. Intenta de nuevo.");
@@ -135,7 +144,7 @@ export default function SuscripcionPro({ nav, user }) {
     }
   };
 
-  const esPro = tecnico?.plan === "pro";
+  const esPro = tecnico?.plan === plan;
 
   return (
     <div style={{ minHeight:"100vh", background:"#F1F5F9" }}>
@@ -181,14 +190,14 @@ export default function SuscripcionPro({ nav, user }) {
             <p style={{ fontSize:"11px", fontWeight:800, color:"#F97316", letterSpacing:"0.1em",
                         textTransform:"uppercase", marginBottom:"8px" }}>Suscripción</p>
             <h1 style={{ fontSize:"24px", fontWeight:900, color:"#0F172A", marginBottom:"4px" }}>
-              Plan Pro
+              Plan {nombrePlan}
             </h1>
             <p style={{ fontSize:"14px", color:"#64748B", marginBottom:"18px" }}>
-              <strong style={{ color:"#0F172A", fontSize:"20px" }}>$149 MXN/mes</strong> · IVA incluido ·
+              <strong style={{ color:"#0F172A", fontSize:"20px" }}>${precio} MXN/mes</strong> · IVA incluido ·
               cancela cuando quieras
             </p>
             <ul style={{ listStyle:"none", marginBottom:"20px" }}>
-              {BENEFICIOS.map(b => (
+              {beneficios.map(b => (
                 <li key={b} style={{ display:"flex", gap:"10px", fontSize:"14px", color:"#475569",
                                      lineHeight:1.6, marginBottom:"8px" }}>
                   <span style={{ color:"#16A34A", fontWeight:800 }}>✓</span>{b}
@@ -262,9 +271,9 @@ export default function SuscripcionPro({ nav, user }) {
           <>
             <div className="h-card" style={{ padding:"clamp(24px,5vw,32px)", marginBottom:"18px",
                                              textAlign:"center" }}>
-              <div style={{ fontSize:"34px", marginBottom:"8px" }}>⚡</div>
+              <div style={{ fontSize:"34px", marginBottom:"8px" }}>{plan === "empresa" ? "🏢" : "⚡"}</div>
               <h1 style={{ fontSize:"22px", fontWeight:900, color:"#0F172A", marginBottom:"6px" }}>
-                Ya eres Pro
+                Ya eres {nombrePlan}
               </h1>
               <p style={{ fontSize:"14px", color:"#64748B", lineHeight:1.7, marginBottom:"18px" }}>
                 Tu suscripción está activa y se renueva automáticamente cada mes.
@@ -274,6 +283,14 @@ export default function SuscripcionPro({ nav, user }) {
               {error && (
                 <p style={{ fontSize:"13px", color:"#DC2626", background:"#FEE2E2", borderRadius:"8px",
                             padding:"10px 14px", marginBottom:"12px" }}>{error}</p>
+              )}
+
+              {plan === "empresa" && (
+                <button onClick={() => nav("empleados")}
+                  style={{ ...INP, background:"#F97316", color:"#fff", border:"none", fontWeight:800,
+                           textAlign:"center", cursor:"pointer", marginBottom:"10px" }}>
+                  Gestionar empleados →
+                </button>
               )}
 
               <button onClick={cancelar} disabled={cancelando}

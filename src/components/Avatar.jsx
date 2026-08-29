@@ -4,7 +4,7 @@ export default function Avatar({ nombre, fotoUrl, size = 48, plan = "gratis", up
   const r   = Math.round(size * 0.28);
   const fs  = Math.round(size * 0.40);
   const letter = ((nombre || "").trim().charAt(0).toUpperCase()) || "T";
-  const isPro  = plan === "pro";
+  const isPro  = plan === "pro" || plan === "empresa";
 
   return (
     <div style={{

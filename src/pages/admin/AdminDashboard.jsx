@@ -75,7 +75,7 @@ export default function AdminDashboard({ onChangeModule }) {
         totalUsuarios: tecnicos.length,
         registrosSemana,
         deltaRegistros: registrosSemana - registrosAnterior,
-        pros: tecnicos.filter((t) => t.plan === "pro").length,
+        pros: tecnicos.filter((t) => t.plan === "pro" || t.plan === "empresa").length,
         ingresosMes,
         trabajos: trabajos.length,
         solicitudesAbiertas: solicitudesSnap.size,

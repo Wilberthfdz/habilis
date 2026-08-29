@@ -271,7 +271,7 @@ function ReporteXPrize() {
   const totalGastos = gastos.reduce((a, g) => a + (parseFloat(g.monto) || 0), 0);
   const utilidad = totalIngresos - totalGastos;
   const usuariosAdquiridos = tecnicos.length;
-  const usuariosPagando = tecnicos.filter((t) => t.plan === "pro").length;
+  const usuariosPagando = tecnicos.filter((t) => t.plan === "pro" || t.plan === "empresa").length;
 
   const agregarGasto = async () => {
     if (!nuevoGasto.concepto.trim()) return;

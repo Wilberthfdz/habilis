@@ -572,11 +572,11 @@ export default function Landing({ nav, user }) {
                     {t.ciudad}{t.rating > 0 ? ` · ★ ${t.rating}` : " · Nuevo"}
                   </p>
                   <div style={{ display:"flex", gap:"6px", flexWrap:"wrap" }}>
-                    {t.plan === "pro" && (
+                    {(t.plan === "pro" || t.plan === "empresa") && (
                       <span style={{ background:"#FFF5EB", color:"#C2410C", fontSize:"10px",
                                      fontWeight:700, padding:"3px 8px", borderRadius:"5px",
                                      border:"1px solid #FECAAA" }}>
-                        PRO
+                        {t.plan === "empresa" ? "EMPRESA" : "PRO"}
                       </span>
                     )}
                     {t.verificado && (

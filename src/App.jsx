@@ -28,6 +28,7 @@ import QuienesSomos                  from "./pages/QuienesSomos.jsx";
 import ComoFunciona                  from "./pages/ComoFunciona.jsx";
 import Soporte                       from "./pages/Soporte.jsx";
 import SuscripcionPro                from "./pages/SuscripcionPro.jsx";
+import Empleados                     from "./pages/Empleados.jsx";
 
 // Carga diferida: el ERP admin y la página de inversión solo los ve un
 // puñado de personas — no tienen por qué pesar en el bundle de todos.
@@ -114,6 +115,7 @@ const screenInicial = () => {
   if (path === "/como-funciona") return "comoFunciona";
   if (path === "/soporte") return "soporte";
   if (path === "/pro") return "suscripcionPro";
+  if (path === "/empresa") return "suscripcionEmpresa";
   // Links compartidos de cotizaciones (WhatsApp, etc.) usan ?vista=<id>
   if (new URLSearchParams(window.location.search).get("vista")) return "vistaCotizacion";
   return "landing";
@@ -128,7 +130,7 @@ const paramsIniciales = () => {
 const RUTAS_URL = {
   admin: "/admin", inversion: "/inversion", privacidad: "/privacidad", terminos: "/terminos",
   quienesSomos: "/quienes-somos", comoFunciona: "/como-funciona", soporte: "/soporte",
-  suscripcionPro: "/pro",
+  suscripcionPro: "/pro", suscripcionEmpresa: "/empresa",
 };
 
 export default function App() {
@@ -196,7 +198,9 @@ export default function App() {
       case "quienesSomos":       return <QuienesSomos       {...screenProps} params={params} />;
       case "comoFunciona":       return <ComoFunciona       {...screenProps} />;
       case "soporte":            return <Soporte            {...screenProps} />;
-      case "suscripcionPro":     return <SuscripcionPro     {...screenProps} />;
+      case "suscripcionPro":     return <SuscripcionPro     {...screenProps} params={params} />;
+      case "suscripcionEmpresa": return <SuscripcionPro     {...screenProps} params={{ ...params, plan:"empresa" }} />;
+      case "empleados":          return <Empleados          {...screenProps} />;
       default: return <Landing {...screenProps} />;
     }
   };

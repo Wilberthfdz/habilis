@@ -4,7 +4,7 @@ import Logo from "../components/Logo.jsx";
 import { soporteIA } from "../lib/gemini.js";
 
 const FAQ = [
-  ["¿Cuánto cuesta Habilis?", "Buscar y contactar técnicos es gratis, siempre. Para técnicos hay plan Gratis (perfil + 5 trabajos documentados) y plan Pro de $149 MXN/mes con IVA incluido: prioridad en búsquedas, sin anuncios, trabajos ilimitados, herramientas de IA, cotizaciones y Habilis Care."],
+  ["¿Cuánto cuesta Habilis?", "Buscar y contactar técnicos es gratis, siempre. Para técnicos hay plan Gratis (perfil + 5 trabajos documentados), plan Pro de $149 MXN/mes con IVA incluido (prioridad en búsquedas, sin anuncios, trabajos ilimitados, herramientas de IA, cotizaciones y Habilis Care), y plan Empresa de $499 MXN/mes con todo lo de Pro más la posibilidad de agregar empleados a tu cuenta."],
   ["¿Habilis cobra comisión por trabajo?", "No. Habilis no intermedia pagos ni cobra comisión: el precio, la fecha y la garantía los acuerdan técnico y cliente directamente. Solo cobramos la suscripción Pro por visibilidad y herramientas."],
   ["¿Habilis se hace responsable de los trabajos?", "No. Habilis es una plataforma de intermediación tecnológica: conecta a técnicos independientes con clientes, pero no presta los servicios ni emplea a los técnicos, y no responde por el trabajo realizado. Cada técnico responde por su propio servicio. La plataforma te ayuda a elegir bien con historial documentado, validaciones y moderación con IA."],
   ["¿Cómo cancelo mi plan Pro?", "Cuando quieras, desde Mercado Pago (donde se gestiona la suscripción). Conservas los beneficios hasta el fin del periodo pagado; no hay reembolsos por periodos parciales."],

@@ -162,7 +162,7 @@ export default function AdminUsuarios() {
                   </td>
                   <td style={TD}>{t.oficio || "—"}</td>
                   <td style={TD}>{t.ciudad || "—"}</td>
-                  <td style={TD}><span style={badge(t.plan === "pro" ? "#FFEDD5" : "#F1F5F9", t.plan === "pro" ? "#C2410C" : "#64748B")}>{t.plan === "pro" ? "Pro" : "Gratis"}</span></td>
+                  <td style={TD}><span style={badge(t.plan === "empresa" ? "#DBEAFE" : t.plan === "pro" ? "#FFEDD5" : "#F1F5F9", t.plan === "empresa" ? "#1D4ED8" : t.plan === "pro" ? "#C2410C" : "#64748B")}>{t.plan === "empresa" ? "Empresa" : t.plan === "pro" ? "Pro" : "Gratis"}</span></td>
                   <td style={TD}>
                     {t.suspendido
                       ? <span style={badge("#FEE2E2", "#B91C1C")}>Suspendido</span>
@@ -230,7 +230,7 @@ function FichaTecnico({ tecnico, busy, onClose, onGuardar, onTogglePlan, onToggl
 
         <div style={{ ...CARD, marginBottom: 12 }}>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-            <span style={badge(tecnico.plan === "pro" ? "#FFEDD5" : "#F1F5F9", tecnico.plan === "pro" ? "#C2410C" : "#64748B")}>{tecnico.plan === "pro" ? "⚡ Pro" : "Gratis"}</span>
+            <span style={badge(tecnico.plan === "empresa" ? "#DBEAFE" : tecnico.plan === "pro" ? "#FFEDD5" : "#F1F5F9", tecnico.plan === "empresa" ? "#1D4ED8" : tecnico.plan === "pro" ? "#C2410C" : "#64748B")}>{tecnico.plan === "empresa" ? "🏢 Empresa" : tecnico.plan === "pro" ? "⚡ Pro" : "Gratis"}</span>
             {tecnico.verificado && <span style={badge("#DCFCE7", "#15803D")}>✅ Verificado</span>}
             {tecnico.suspendido && <span style={badge("#FEE2E2", "#B91C1C")}>⛔ Suspendido</span>}
             <span style={badge("#F1F5F9", "#64748B")}>Registro: {fechaCorta(tecnico.createdAt)}</span>

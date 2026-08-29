@@ -149,7 +149,13 @@ export default function Terminos({ nav }) {
             <li style={LI}>No hay reembolsos por periodos parciales, salvo los casos previstos por la ley aplicable.</li>
             <li style={LI}>El Titular puede modificar el precio del plan Pro notificándolo con al menos 15 días de anticipación; el nuevo precio aplica a partir de la siguiente renovación.</li>
           </ul>
-          <h3 style={H3}>4.3 Facturación</h3>
+          <h3 style={H3}>4.3 Plan Empresa</h3>
+          <ul style={{ paddingLeft:"20px" }}>
+            <li style={LI}>El plan Empresa cuesta <strong>$499 MXN al mes</strong> (IVA incluido), mismo mecanismo de cobro recurrente que el plan Pro, e incluye todos sus beneficios.</li>
+            <li style={LI}>Además, permite dar de alta perfiles de empleados bajo la cuenta de la empresa; cada perfil aparece en las búsquedas de la plataforma como un técnico independiente, administrado por el Titular de la cuenta Empresa.</li>
+            <li style={LI}>La empresa es responsable de la veracidad de los datos de los perfiles de sus empleados que da de alta, y de retirarlos cuando corresponda.</li>
+          </ul>
+          <h3 style={H3}>4.4 Facturación</h3>
           <p style={P}>
             Si necesitas factura (CFDI), puedes solicitarla desde tu panel proporcionando tus datos
             fiscales (RFC, razón social, código postal, régimen fiscal y uso de CFDI).

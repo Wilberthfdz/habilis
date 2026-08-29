@@ -25,9 +25,10 @@ function AppleIcon() {
 }
 
 export default function Login({ nav, user, params = {} }) {
-  // Igual que en el registro: si llegó aquí desde "Obtener Plan Pro", al
-  // iniciar sesión debe caer en el checkout, no en el panel.
-  const quierePro = params.plan === "pro";
+  // Igual que en el registro: si llegó aquí desde "Obtener Plan Pro/Empresa",
+  // al iniciar sesión debe caer en el checkout, no en el panel.
+  const planDeseado = params.plan === "empresa" ? "empresa" : params.plan === "pro" ? "pro" : null;
+  const pantallaDelPlan = planDeseado === "empresa" ? "suscripcionEmpresa" : "suscripcionPro";
   const [email,         setEmail]         = useState("");
   const [password,      setPassword]      = useState("");
   const [loading,       setLoading]       = useState(false);
@@ -50,7 +51,7 @@ export default function Login({ nav, user, params = {} }) {
   // Si llegó queriendo el Plan Pro, el checkout tiene prioridad sobre el
   // panel normal — de lo contrario perdería la intención de comprar.
   const routeAfterLogin = async uid => {
-    if (quierePro) { nav("suscripcionPro"); return; }
+    if (planDeseado) { nav(pantallaDelPlan); return; }
     const perfil = await obtenerTecnico(uid);
     if (perfil) { nav("panel"); return; }
     const cliente = await obtenerCliente(uid);
@@ -235,7 +236,7 @@ export default function Login({ nav, user, params = {} }) {
           <div style={{ borderTop:"1px solid rgba(255,255,255,0.07)", marginTop:"22px", paddingTop:"18px",
                         textAlign:"center", fontSize:"14px", color:"rgba(255,255,255,0.4)" }}>
             ¿Sin cuenta?{" "}
-            <button onClick={() => nav("registro", quierePro ? { plan:"pro" } : {})}
+            <button onClick={() => nav("registro", planDeseado ? { plan:planDeseado } : {})}
               style={{ background:"none", border:"none", color:"#F97316",
                        fontWeight:700, cursor:"pointer", fontSize:"14px" }}>
               Regístrate gratis

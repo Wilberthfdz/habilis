@@ -40,7 +40,7 @@ export default function Buscar({ nav, user, params }) {
     (t.validaciones  || 0) * 1.5 +
     (t.experiencia   || 0) * 1 +
     (t.verificado    ? 3 : 0) +
-    (t.plan === "pro"? 5 : 0);
+    (t.plan === "pro" || t.plan === "empresa" ? 5 : 0);
 
   const filtrar = (lista, f) => {
     const l = f.trim().toLowerCase();
@@ -199,6 +199,7 @@ export default function Buscar({ nav, user, params }) {
                       <div style={{ display:"flex", alignItems:"center", gap:"8px", flexWrap:"wrap", marginBottom:"3px" }}>
                         <span style={{ fontWeight:800, fontSize:"15px", color:"#0F172A" }}>{t.nombre || "Técnico"}</span>
                         {t.plan === "pro" && <span style={{ background:"#FFF7ED", color:"#EA580C", fontSize:"10px", fontWeight:700, padding:"2px 7px", borderRadius:"6px" }}>⚡ PRO</span>}
+                        {t.plan === "empresa" && <span style={{ background:"#EFF6FF", color:"#1D4ED8", fontSize:"10px", fontWeight:700, padding:"2px 7px", borderRadius:"6px" }}>🏢 EMPRESA</span>}
                         {t.verificado && <span style={{ background:"#F0FDF4", color:"#059669", fontSize:"10px", fontWeight:700, padding:"2px 7px", borderRadius:"6px" }}>✅ Verificado</span>}
                       </div>
                       <p style={{ color:"#F97316", fontSize:"13px", fontWeight:600, marginBottom:"3px" }}>{t.oficio}</p>

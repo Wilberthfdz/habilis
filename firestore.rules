@@ -11,7 +11,15 @@ service cloud.firestore {
       // isAdmin() puede crear con cualquier id (onboarding en persona desde
       // el ERP, antes de que la persona tenga cuenta propia) — ver #8 de la
       // auditoría del 16 ago.
-      allow create: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      allow create: if isAdmin()
+        || (request.auth != null && request.auth.uid == uid)
+        // Una cuenta con plan "empresa" da de alta perfiles de empleados con
+        // id propio (no ligado a su uid) — `empresaId` los vincula a quien
+        // paga y los administra. Se exige que el creador YA tenga ese plan
+        // (no basta con que el doc nuevo declare empresaId=su uid), para que
+        // no sea una forma gratis de crear perfiles extra.
+        || (request.auth != null && request.resource.data.empresaId == request.auth.uid &&
+            get(/databases/$(database)/documents/tecnicos/$(request.auth.uid)).data.plan == "empresa");
       // El dueño solo puede tocar campos de perfil "seguros" — plan, verificado,
       // rating, rankScore, etc. son SOLO backend (agentes / webhook de pago).
       // Antes cualquier usuario podía hacer updateDoc({plan:"pro"}) directo
@@ -20,8 +28,15 @@ service cloud.firestore {
         request.auth != null && request.auth.uid == uid &&
         request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['nombre','oficio','ciudad','experiencia','bio','fotoUrl','alcance','disponible','updatedAt'])
+      ) || (
+        // La empresa dueña administra el perfil de su empleado (mismos campos
+        // "seguros" que un técnico independiente editaría de sí mismo).
+        request.auth != null && resource.data.empresaId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['nombre','oficio','ciudad','experiencia','bio','fotoUrl','disponible','updatedAt'])
       );
-      allow delete: if isAdmin();
+      allow delete: if isAdmin()
+        || (request.auth != null && resource.data.empresaId == request.auth.uid);
     }
 
     // Perfiles de cliente — a diferencia de tecnicos, NO son públicos: solo

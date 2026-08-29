@@ -8,10 +8,11 @@ const inp = { width:"100%", border:"1px solid #E2E8F0", borderRadius:"10px",
               background:"#F8FAFC", color:"#0F172A", boxSizing:"border-box" };
 
 export default function Registro({ nav, params = {} }) {
-  // "Obtener Plan Pro" en Precios manda aquí cuando no hay sesión. Sin esto
-  // la intención se perdía: el técnico se registraba y aterrizaba en la
-  // bienvenida, sin llegar nunca al checkout que había pedido.
-  const quierePro = params.plan === "pro";
+  // "Obtener Plan Pro/Empresa" en Precios manda aquí cuando no hay sesión.
+  // Sin esto la intención se perdía: el técnico se registraba y aterrizaba
+  // en la bienvenida, sin llegar nunca al checkout que había pedido.
+  const planDeseado = params.plan === "empresa" ? "empresa" : params.plan === "pro" ? "pro" : null;
+  const pantallaDelPlan = planDeseado === "empresa" ? "suscripcionEmpresa" : "suscripcionPro";
   const [step,    setStep]    = useState(1);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState("");
@@ -71,7 +72,7 @@ export default function Registro({ nav, params = {} }) {
           herramientas:  form.herramientas,
           tipo:"tecnico", plan:"gratis", rating:0, totalTrabajos:0, disponible:true,
         });
-        nav(quierePro ? "suscripcionPro" : "bienvenida");
+        nav(planDeseado ? pantallaDelPlan : "bienvenida");
       }
     } catch (e) {
       if (e.code === "auth/email-already-in-use") setError("Ese correo ya está registrado.");
@@ -99,11 +100,11 @@ export default function Registro({ nav, params = {} }) {
       <div style={{ flex:1, display:"flex", alignItems:"flex-start", justifyContent:"center",
                     padding:"8px 20px 40px", position:"relative", zIndex:1 }}>
         <div style={{ width:"100%", maxWidth:"520px" }}>
-          {quierePro && (
+          {planDeseado && (
             <div style={{ background:"rgba(249,115,22,0.12)", border:"1px solid rgba(249,115,22,0.3)",
                           borderRadius:"12px", padding:"14px 18px", marginBottom:"20px" }}>
               <p style={{ fontSize:"13.5px", fontWeight:800, color:"#F97316", marginBottom:"4px" }}>
-                ⚡ Vas por el Plan Pro
+                {planDeseado === "empresa" ? "🏢 Vas por el Plan Empresa" : "⚡ Vas por el Plan Pro"}
               </p>
               <p style={{ fontSize:"13px", color:"rgba(255,255,255,0.6)", lineHeight:1.6 }}>
                 Necesitamos tu perfil de técnico antes de cobrar — es la cuenta a la que se
@@ -199,7 +200,7 @@ export default function Registro({ nav, params = {} }) {
                 </button>
                 <p style={{ textAlign:"center", fontSize:"13px", color:"rgba(255,255,255,0.35)" }}>
                   ¿Ya tienes cuenta?{" "}
-                  <button onClick={() => nav("login", quierePro ? { plan:"pro" } : {})} style={{ background:"none", border:"none", color:"#F97316", fontWeight:700, cursor:"pointer", fontSize:"13px" }}>Inicia sesión</button>
+                  <button onClick={() => nav("login", planDeseado ? { plan:planDeseado } : {})} style={{ background:"none", border:"none", color:"#F97316", fontWeight:700, cursor:"pointer", fontSize:"13px" }}>Inicia sesión</button>
                 </p>
               </div>
             )}

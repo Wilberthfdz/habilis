@@ -22,11 +22,18 @@ const PRO = [
   [true, "Soporte prioritario en español"],
 ];
 
+const EMPRESA = [
+  ...PRO,
+  [true, "🏢 Agrega empleados a tu equipo"],
+  [true, "Cada empleado con su propio perfil visible en búsquedas"],
+];
+
 const FAQ = [
   ["¿Puedo cancelar en cualquier momento?","Sí. Sin contratos de permanencia. Cancelas desde tu página de suscripción cuando quieras, y conservas los beneficios hasta el fin del mes pagado."],
-  ["¿Cómo se realiza el cobro?","Cobro mensual de $149 MXN por suscripción a través de Mercado Pago, con tarjeta de débito o crédito. Puedes solicitar factura CFDI con tus datos fiscales."],
+  ["¿Cómo se realiza el cobro?","Cobro mensual a través de Mercado Pago, con tarjeta de débito o crédito ($149 MXN Plan Pro, $499 MXN Plan Empresa). Puedes solicitar factura CFDI con tus datos fiscales."],
   ["¿Qué son los leads garantizados?","Son solicitudes de clientes que coinciden con tu oficio y ciudad, enviadas directo a tu panel."],
   ["¿El plan Gratis es realmente gratis?","Sí, siempre. Los clientes también pueden buscar y contactar técnicos sin costo alguno."],
+  ["¿Qué diferencia al Plan Empresa del Pro?","Todo lo del Plan Pro, más la posibilidad de agregar empleados a tu cuenta: cada uno con su propio perfil, visible en las búsquedas de Habilis, administrado desde tu panel."],
 ];
 
 export default function Precios({ nav, user }) {
@@ -118,6 +125,35 @@ export default function Precios({ nav, user }) {
               style={{ width:"100%", background:"#F97316", color:"#fff", border:"none",
                        borderRadius:"12px", padding:"14px", fontSize:"15px", fontWeight:700, cursor:"pointer" }}>
               Obtener Plan Pro ⚡
+            </button>
+          </div>
+
+          {/* EMPRESA */}
+          <div style={{ background:"#fff", border:"2px solid #1D4ED8", borderRadius:"24px", padding:"36px",
+                        boxShadow:"0 1px 3px rgba(0,0,0,0.06)" }}>
+            <p style={{ fontSize:"11px", fontWeight:700, color:"#1D4ED8", textTransform:"uppercase",
+                        letterSpacing:"0.1em", marginBottom:"10px" }}>🏢 Plan Empresa</p>
+            <div style={{ display:"flex", alignItems:"flex-end", gap:"4px", marginBottom:"6px" }}>
+              <span style={{ fontSize:"44px", fontWeight:900, color:"#0F172A" }}>$499</span>
+              <span style={{ fontSize:"15px", color:"#94A3B8", marginBottom:"8px" }}>MXN/mes</span>
+            </div>
+            <p style={{ color:"#64748B", fontSize:"13px", marginBottom:"28px" }}>
+              Todo lo de Pro, más tu equipo de trabajo · IVA incluido
+            </p>
+            <hr style={{ border:"none", borderTop:"1px solid #F1F5F9", marginBottom:"24px" }} />
+            <ul style={{ listStyle:"none", padding:0, marginBottom:"32px" }}>
+              {EMPRESA.map(([, text]) => (
+                <li key={text} style={{ display:"flex", alignItems:"flex-start", gap:"10px",
+                                        marginBottom:"12px", fontSize:"14px" }}>
+                  <span style={{ color:"#1D4ED8", fontWeight:700, flexShrink:0, marginTop:"1px" }}>✓</span>
+                  <span style={{ color:"#374151" }}>{text}</span>
+                </li>
+              ))}
+            </ul>
+            <button onClick={() => nav(user ? "suscripcionEmpresa" : "registro", user ? {} : { plan:"empresa" })}
+              style={{ width:"100%", background:"#1D4ED8", color:"#fff", border:"none",
+                       borderRadius:"12px", padding:"14px", fontSize:"15px", fontWeight:700, cursor:"pointer" }}>
+              Obtener Plan Empresa 🏢
             </button>
           </div>
         </div>

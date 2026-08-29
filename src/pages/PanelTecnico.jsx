@@ -127,7 +127,10 @@ export default function PanelTecnico({ nav, user }) {
     finally { setAiLoading(false); }
   };
 
-  const esPro = tecnico?.plan === "pro";
+  const esEmpresa = tecnico?.plan === "empresa";
+  // Empresa incluye todos los beneficios de Pro (IA, cotizaciones, Care,
+  // prioridad) además de poder agregar empleados.
+  const esPro = tecnico?.plan === "pro" || esEmpresa;
   const stats = {
     trabajos:    trabajos.length,
     completados: trabajos.filter(t => ["terminado","validado"].includes(t.estado)).length,
@@ -276,6 +279,21 @@ export default function PanelTecnico({ nav, user }) {
                 style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"8px",
                          padding:"6px 14px", fontWeight:700, fontSize:"12px", cursor:"pointer", flexShrink:0 }}>
                 Hacerme Pro →
+              </button>
+            </div>
+          )}
+
+          {esEmpresa && (
+            <div style={{ marginTop:"16px", background:"rgba(29,78,216,0.12)", border:"1px solid rgba(29,78,216,0.3)",
+                          borderRadius:"10px", padding:"10px 16px", display:"flex",
+                          justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:"10px" }}>
+              <p style={{ fontSize:"13px", color:"rgba(255,255,255,0.7)" }}>
+                🏢 Cuenta <b>Empresa</b> — agrega empleados a tu equipo
+              </p>
+              <button onClick={() => nav("empleados")}
+                style={{ background:"#1D4ED8", color:"#fff", border:"none", borderRadius:"8px",
+                         padding:"6px 14px", fontWeight:700, fontSize:"12px", cursor:"pointer", flexShrink:0 }}>
+                Gestionar equipo →
               </button>
             </div>
           )}
@@ -629,7 +647,7 @@ export default function PanelTecnico({ nav, user }) {
                 ["Oficio",       tecnico.oficio],
                 ["Ciudad",       tecnico.ciudad],
                 ["Experiencia",  `${tecnico.experiencia} años`],
-                ["Plan actual",  esPro ? "⚡ Pro" : "Gratuito"],
+                ["Plan actual",  esEmpresa ? "🏢 Empresa" : esPro ? "⚡ Pro" : "Gratuito"],
                 ["Calificación", tecnico.rating > 0 ? `⭐ ${tecnico.rating}` : "Sin calificaciones aún"],
               ].map(([k, v]) => (
                 <div key={k} style={{ display:"flex", justifyContent:"space-between", padding:"9px 0", borderBottom:"1px solid #F1F5F9" }}>

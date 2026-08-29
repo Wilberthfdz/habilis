@@ -1,7 +1,7 @@
 // ─── FIREBASE SERVICE — Base de datos, auth y storage ────────────────────
 import { initializeApp }                   from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, OAuthProvider, signInWithPopup, sendPasswordResetEmail, sendEmailVerification, updateProfile } from "firebase/auth";
-import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, where, orderBy, limit, getDocs, addDoc, serverTimestamp, increment } from "firebase/firestore";
+import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, query, where, orderBy, limit, getDocs, addDoc, serverTimestamp, increment } from "firebase/firestore";
 // Storage SDK removed — profile photos use base64-in-Firestore (no Blaze plan needed)
 import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 import { firebaseConfig, APPCHECK_SITE_KEY }   from "./config.js";
@@ -113,18 +113,58 @@ export async function actualizarTecnico(uid, datos) {
   });
 }
 
+// Pro y Empresa comparten los beneficios de visibilidad — solo Empresa
+// además puede dar de alta empleados (ver crearEmpleado).
+export const esPlanPagante = plan => plan === "pro" || plan === "empresa";
+
 export async function buscarTecnicos({ limite = 100 } = {}) {
   // No oficio/ciudad filters here — they require composite indexes that may
   // not exist. Buscar.jsx applies case-insensitive client-side filtering.
   const q = query(collection(db, "tecnicos"), where("disponible", "==", true), limit(limite));
   const snap = await getDocs(q);
   const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  // Sort Pro first, then by rating descending, client-side
+  // Sort Pro/Empresa first, then by rating descending, client-side
   return docs.sort((a, b) => {
-    if (a.plan === "pro" && b.plan !== "pro") return -1;
-    if (b.plan === "pro" && a.plan !== "pro") return  1;
+    if (esPlanPagante(a.plan) && !esPlanPagante(b.plan)) return -1;
+    if (esPlanPagante(b.plan) && !esPlanPagante(a.plan)) return  1;
     return (b.rating || 0) - (a.rating || 0);
   });
+}
+
+// ── EMPLEADOS (cuentas Empresa) ──────────────────────────────────────────
+// Un perfil con plan "empresa" puede dar de alta perfiles de empleados como
+// técnicos propios: comparten el mismo esquema y aparecen en las mismas
+// búsquedas/matching, solo llevan `empresaId` apuntando al dueño que paga.
+export async function crearEmpleado(empresaId, datos) {
+  const ref = doc(collection(db, "tecnicos"));
+  await setDoc(ref, {
+    ...datos,
+    uid: ref.id,
+    empresaId,
+    plan: "empresa",
+    verificado: false,
+    rating: 0,
+    totalReviews: 0,
+    totalTrabajos: 0,
+    disponible: true,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function obtenerEmpleados(empresaId) {
+  const q = query(collection(db, "tecnicos"), where("empresaId", "==", empresaId));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function actualizarEmpleado(id, datos) {
+  await updateDoc(doc(db, "tecnicos", id), { ...datos, updatedAt: serverTimestamp() });
+}
+
+export async function eliminarEmpleado(id) {
+  await deleteDoc(doc(db, "tecnicos", id));
 }
 
 // ── TRABAJOS (Expedientes) ───────────────────────────────────────────────
