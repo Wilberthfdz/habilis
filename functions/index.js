@@ -23,6 +23,7 @@ const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const { firmaMPValida } = require("./mpFirma");
+const { elegirCheckout } = require("./mpCheckout");
 admin.initializeApp();
 
 const GEMINI_KEY = defineSecret("GEMINI_KEY");
@@ -483,13 +484,16 @@ exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
     }),
   });
   const data = await r.json();
-  // Con credenciales de prueba hay que mandar al checkout de sandbox: el
-  // init_point de producción no reconoce a los usuarios de prueba y deja al
-  // pagador atorado pidiéndole la cuenta una y otra vez.
-  const esPrueba = MP_TOKEN.value().startsWith("TEST-");
-  const destino = (esPrueba && data.sandbox_init_point) || data.init_point;
+  const destino = elegirCheckout(data, MP_TOKEN.value());
   if (!destino) {
     console.error("Mercado Pago preapproval error:", JSON.stringify(data).slice(0, 500));
+    // La suscripción no llegó a existir: se devuelve el uso del código para
+    // no quemarlo por un fallo que no fue del técnico.
+    if (promoId) {
+      await db.collection("promos").doc(promoId).update({
+        usosActuales: admin.firestore.FieldValue.increment(-1),
+      }).catch((e) => console.error("No se pudo devolver el uso del código:", e.message));
+    }
     throw new HttpsError("internal", "No se pudo crear la suscripción. Intenta de nuevo.");
   }
   await db.collection("suscripcionesPendientes").doc(uid).set({
