@@ -11,9 +11,10 @@
 // trabajos/solicitudes, `tipo` en trabajos) NO se tocan — los agentes
 // escriben en campos nuevos con sufijo IA para no romper flujos existentes.
 //
-// Setup (one-time):
+// Setup (one-time) — ver SETUP_PAGOS.md para el procedimiento completo:
 //   firebase functions:secrets:set GEMINI_KEY
 //   firebase functions:secrets:set MP_ACCESS_TOKEN
+//   firebase functions:secrets:set MP_WEBHOOK_SECRET
 //   firebase functions:secrets:set FACTURAPI_KEY
 
 const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");

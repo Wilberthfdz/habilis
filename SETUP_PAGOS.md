@@ -67,10 +67,12 @@ firebase functions:secrets:access MP_ACCESS_TOKEN   # solo si necesitas leerlo
 firebase functions:secrets:prune                    # limpia versiones sin usar
 ```
 
-Desplegar para que las funciones tomen los secretos:
+Desplegar para que las funciones tomen los secretos, junto con las reglas y
+el índice compuesto que usa la facturación:
 
 ```bash
 firebase deploy --only functions
+firebase deploy --only firestore
 ```
 
 ---
@@ -101,17 +103,28 @@ En Mercado Pago → *Tus integraciones* → tu aplicación → *Webhooks*:
 
 ## 4. Probar en modo sandbox
 
-Con las credenciales `TEST-`, Mercado Pago no cobra dinero real:
+Con las credenciales `TEST-`, Mercado Pago no cobra dinero real. El backend
+detecta solo que el access token empieza con `TEST-` y redirige al checkout
+de **sandbox** (`sandbox_init_point`): el checkout de producción no reconoce
+a los usuarios de prueba y deja la pantalla pidiendo la cuenta una y otra
+vez. No hay que configurar nada para eso.
+
+Antes de probar, crea **usuarios de prueba** en Mercado Pago → *Tus
+integraciones* → tu aplicación → *Cuentas de prueba*. Necesitas uno de tipo
+comprador: **no puedes pagar con tu cuenta real ni con la del vendedor** —
+Mercado Pago rechaza que el mismo usuario sea las dos partes, y esa es la
+causa más común de que el checkout parezca no avanzar.
 
 1. Entra a `/pro` en la app con una cuenta de técnico.
-2. Pulsa *Pagar con Mercado Pago*.
-3. Paga con una [tarjeta de prueba](https://www.mercadopago.com.mx/developers/es/docs/your-integrations/test/cards)
-   usando un **usuario de prueba comprador** (no tu cuenta real; MP rechaza
-   que el mismo usuario sea vendedor y comprador).
-4. Verifica el resultado:
+2. En *Correo de tu cuenta de Mercado Pago*, pon el correo del **usuario de
+   prueba comprador**, no el de tu cuenta de Habilis.
+3. Pulsa *Pagar con Mercado Pago* e inicia sesión con ese usuario de prueba.
+4. Paga con una [tarjeta de prueba](https://www.mercadopago.com.mx/developers/es/docs/your-integrations/test/cards).
+5. Verifica el resultado:
    - En Firestore, el documento del técnico en `tecnicos` pasa a `plan: "pro"`.
    - Se crea un registro en `pagos` con el monto real cobrado.
-   - Si usaste un código de descuento, sube `usosActuales` en `promos`.
+   - Si usaste un código de descuento, `usosActuales` en `promos` ya subió al
+     iniciar el checkout (el uso se aparta ahí para que el tope no se rebase).
    - En los logs (`firebase functions:log --only webhookMP`) no debe aparecer
      el aviso de firma no verificada.
 

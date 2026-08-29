@@ -61,14 +61,16 @@ Aceptaba cualquier tamaño de `audioBase64`.
 ### 9. `apiKey` de Firebase hardcodeada en `src/lib/config.js`
 **Esto NO es una vulnerabilidad** — el `apiKey` del config de Firebase Web está diseñado por Google para vivir en el cliente; no protege nada por sí solo (la seguridad real la dan las Firestore Rules + Firebase Auth, que ya están endurecidas). Se documenta para que quede claro que no hace falta "esconderla". *Opcional:* restringir esa key en Google Cloud Console a los APIs/dominios específicos que usa, como capa extra.
 
-### 10. No existe flujo de "olvidé mi contraseña"
-No hay ningún `sendPasswordResetEmail` en todo el código. No es una vulnerabilidad, pero la auditoría pidió verificar que "funciona" y la respuesta honesta es que **no existe**. Es un hueco de producto, no de seguridad — no se construyó en esta pasada porque el pedido era una auditoría, no una feature nueva.
+### 10. No existe flujo de "olvidé mi contraseña" — ✅ RESUELTO (12 ago 2026)
+Cuando se hizo la auditoría no había ningún `sendPasswordResetEmail` en el código. No era una vulnerabilidad sino un hueco de producto, y ya se cubrió: `enviarResetPassword()` en `src/lib/firebase.js`, conectado desde la pantalla de inicio de sesión (`src/pages/Login.jsx`).
 
 ### 11. `servicios` (historial de servicio de equipos) sin scope de dueño
 Cualquier autenticado puede leer/crear/editar registros de servicio de **cualquier** `activoId`, no solo los propios. No se corrigió porque el flujo real probablemente necesita que un técnico (con un uid distinto al dueño del equipo) registre un servicio en el equipo de un cliente — restringir por dueño rompería ese caso de uso legítimo sin más contexto de producto. Queda como pendiente de decisión, no de seguridad pura.
 
-### 12. `webhookMP` no valida la firma (`x-signature`) de Mercado Pago
-Lo que SÍ hace bien: nunca confía en el `status`/monto que manda el body del webhook — siempre vuelve a preguntarle a la API real de Mercado Pago (con nuestro token) antes de escribir algo en Firestore. Eso ya mitiga el riesgo principal. Añadir validación de firma HMAC sería una capa extra, pero requiere el secreto de webhook que Mercado Pago te da en su dashboard (no lo tengo).
+### 12. `webhookMP` no valida la firma (`x-signature`) de Mercado Pago — ✅ RESUELTO (29 ago 2026)
+Lo que ya hacía bien: nunca confía en el `status`/monto que manda el body del webhook — siempre vuelve a preguntarle a la API real de Mercado Pago (con nuestro token) antes de escribir algo en Firestore. Eso mitigaba el riesgo principal.
+
+Se añadió la capa extra: `functions/mpFirma.js` valida el HMAC-SHA256 de `x-signature` con comparación en tiempo constante, cubierto por 12 pruebas (`npm test`). Requiere configurar el secreto `MP_WEBHOOK_SECRET` que Mercado Pago entrega al dar de alta el webhook; mientras no esté configurado, la función registra un aviso en los logs en lugar de romper el flujo.
 
 ---
 
@@ -96,12 +98,33 @@ La key `AIzaSyAAw_l0_rBshf_9kc5yjvWtaFtB0ZdnNHc` sigue apareciendo en el histori
 
 ## Acciones pendientes de tu lado
 
+*Actualizado al 29 de agosto de 2026.*
+
 - [ ] Rotar/confirmar revocación de la key vieja de Gemini (punto anterior).
-- [ ] Configurar los secrets reales antes de desplegar funciones: `firebase functions:secrets:set GEMINI_KEY / MP_ACCESS_TOKEN / FACTURAPI_KEY`.
 - [ ] Activar el plan Blaze de Firebase (requerido para Cloud Functions con triggers/schedulers).
-- [ ] `firebase deploy --only functions` — las correcciones de rate limiting y mensajes de error de esta auditoría están en el repo pero **no están desplegadas todavía** (a diferencia de `firestore.rules`, que ya se desplegó).
-- [ ] Decidir si quieres construir el flujo de "olvidé mi contraseña" (hallazgo #10).
+- [ ] Configurar los cuatro secrets: `GEMINI_KEY`, `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `FACTURAPI_KEY` — procedimiento en `SETUP_PAGOS.md`.
+- [ ] `firebase deploy --only functions` y `firebase deploy --only firestore` — todo el backend (cobros, facturación, soporte con IA, agentes), las reglas nuevas y el índice compuesto están en el repo pero **sin desplegar**.
+- [ ] Dar de alta el webhook en Mercado Pago con **los dos** eventos (`subscription_preapproval` y `subscription_authorized_payment`).
 - [ ] Decidir el scope correcto de `servicios` (hallazgo #11) — necesita tu input de producto, no es un fix de seguridad directo.
+- [ ] Revisión de los textos legales (Términos y Aviso de Privacidad) por un abogado antes de operar en producción.
+
+### Resueltos desde la auditoría original
+
+- ✅ Flujo de "olvidé mi contraseña" (hallazgo #10) — construido el 12 ago 2026.
+- ✅ Validación de firma del webhook de Mercado Pago (hallazgo #12) — 29 ago 2026.
+- ✅ Cobro real de la suscripción Pro de punta a punta: checkout, códigos de descuento, renovación mensual, cancelación desde la app y CFDI.
+- ✅ Primeras pruebas automatizadas del proyecto y CI en GitHub Actions.
+
+### Segunda revisión de seguridad — 29 de agosto de 2026
+
+Revisión enfocada en el flujo de cobros nuevo. Dos hallazgos verificados como reales, ambos ya corregidos; ambos permitían emitir **CFDIs duplicados** (documentos fiscales con RFC elegido por quien llamara) contra un solo cobro:
+
+1. **Concurrencia en `emitirFactura`.** Consultaba el cobro sin facturar, llamaba a Facturapi y marcaba `facturada` hasta el final; varias peticiones simultáneas timbraban el mismo cobro. Ahora el cobro se aparta en una transacción antes de timbrar, y se libera si Facturapi falla.
+2. **Reentrega del webhook.** `registrarPagoSuscripcion` escribía `facturada: false` en cada entrega, rehabilitando un cobro ya timbrado. Ese campo ahora solo se inicializa al crear el documento.
+
+De menor impacto, también corregido: el tope de usos de un código de descuento se comprobaba al pagar pero se incrementaba al confirmarse el pago, así que un código de un solo uso se podía canjear en paralelo y la preaprobación con descuento quedaba válida para toda la vida de la suscripción. El uso se aparta ahora en el checkout, y se respeta el campo `activo`.
+
+Descartado como falso positivo: la firma del webhook sin verificar cuando `MP_WEBHOOK_SECRET` no está configurado. El webhook nunca confía en el cuerpo y re-consulta el estado real a la API de Mercado Pago, así que lo máximo que se lograría es forzar una resincronización de información verdadera.
 
 ## Ya desplegado en producción
 
