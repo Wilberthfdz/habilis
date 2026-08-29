@@ -3,10 +3,27 @@ import { initializeApp }                   from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, OAuthProvider, signInWithPopup, sendPasswordResetEmail } from "firebase/auth";
 import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, where, orderBy, limit, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 // Storage SDK removed — profile photos use base64-in-Firestore (no Blaze plan needed)
-import { firebaseConfig }                  from "./config.js";
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
+import { firebaseConfig, APPCHECK_SITE_KEY }   from "./config.js";
 
 // Inicializar Firebase (Google Cloud — satisface requisito de competencia)
 const app     = initializeApp(firebaseConfig);
+
+// App Check: acredita que quien llama es esta app y no un script ajeno.
+// Sin él, cualquiera con la URL de `geminiProxy` puede crear cuentas y
+// quemar crédito de Gemini. Solo se activa si hay clave configurada, así
+// que mientras esté vacía la app se comporta igual que siempre.
+if (APPCHECK_SITE_KEY) {
+  try {
+    initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(APPCHECK_SITE_KEY),
+      isTokenAutoRefreshEnabled: true,
+    });
+  } catch (e) {
+    // Nunca dejar la app inservible por un fallo de App Check.
+    console.error("App Check no pudo inicializarse:", e.message);
+  }
+}
 const auth    = getAuth(app);
 const db      = getFirestore(app);
 

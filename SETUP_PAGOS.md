@@ -79,11 +79,19 @@ firebase deploy --only firestore
 
 ## 3. Registrar el webhook en Mercado Pago
 
-Después del primer deploy, la URL del webhook es:
+**Hazlo antes de desplegar.** Las funciones declaran `MP_WEBHOOK_SECRET`, así
+que el deploy pide ese secreto; y la URL no cambia al redesplegar, por lo que
+no hace falta desplegar primero para conocerla.
+
+Estas funciones son de 2ª generación y corren sobre Cloud Run, así que la URL
+**no** tiene la forma `…cloudfunctions.net`. La del proyecto es:
 
 ```
-https://us-central1-<TU-PROYECTO>.cloudfunctions.net/webhookMP
+https://webhookmp-zrfph6daoa-uc.a.run.app
 ```
+
+(Si algún día cambia, se consulta con `firebase functions:list` o en la
+consola de Cloud Run.)
 
 En Mercado Pago → *Tus integraciones* → tu aplicación → *Webhooks*:
 
@@ -151,3 +159,46 @@ causa más común de que el checkout parezca no avanzar.
 3. `firebase deploy --only functions` para que las funciones tomen la
    versión nueva.
 4. `firebase functions:secrets:prune` para retirar las versiones viejas.
+
+---
+
+## App Check — cerrar `geminiProxy` a scripts ajenos
+
+`geminiProxy` exige sesión iniciada, pero cualquiera puede crear una cuenta:
+el límite real son 60 llamadas por hora y por usuario, así que quien abra
+muchas cuentas puede quemar crédito de Gemini. App Check añade la
+comprobación que falta —que quien llama sea *esta* app y no un script.
+
+El código ya está integrado y **apagado por defecto**: mientras
+`APPCHECK_SITE_KEY` (en `src/lib/config.js`) esté vacía, la app se comporta
+exactamente igual. Para activarlo sin arriesgar el servicio:
+
+1. **Registrar la app.** Consola de Firebase → *Compilación* → *App Check* →
+   pestaña *Apps* → registra la app web con **reCAPTCHA v3**. Copia la clave
+   de sitio.
+2. **Ponerla en el código.** `APPCHECK_SITE_KEY = "6Lc..."` en
+   `src/lib/config.js`, y publica el frontend. Es pública por diseño (viaja
+   en el navegador, igual que el `apiKey` de Firebase); lo que protege es el
+   secreto que se queda en Google.
+3. **Observar antes de exigir.** En *App Check* → *APIs* verás cuántas
+   llamadas llegan verificadas. Espera a que casi todo el tráfico real
+   aparezca como verificado — si exiges antes, dejas fuera a usuarios con la
+   versión vieja del sitio en caché.
+4. **Exigir.** Cuando las métricas estén limpias, pulsa *Aplicar* en
+   *Cloud Functions*. A partir de ahí, una llamada sin token válido se
+   rechaza.
+
+No hay prisa: el paso 4 se puede hacer días después del lanzamiento.
+
+---
+
+## Vigilar la facturación
+
+El plan Blaze está activo mediante la **prueba gratuita de Google Cloud**.
+Cuando se agote el crédito o venza el periodo, si no hay una cuenta de
+facturación real enlazada el proyecto **cae a Spark y las Cloud Functions
+dejan de responder** — es decir, se caen los cobros, la facturación, el
+soporte con IA y los cinco agentes, todo a la vez.
+
+Enlaza una cuenta de facturación real bastante antes de que venza, y revisa
+el saldo de vez en cuando en la consola de Google Cloud → *Facturación*.
