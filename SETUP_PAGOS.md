@@ -39,6 +39,26 @@ De Mercado Pago → *Tus integraciones* → tu aplicación → *Credenciales*:
 De Facturapi → *Configuración* → *API Keys*: la **secret key** (`sk_test_…`
 o `sk_live_…`).
 
+> ### Las tres piezas deben ser del mismo entorno
+>
+> Mercado Pago tiene credenciales de prueba y de producción, y **cada una
+> tiene su propia clave de webhook**. Si el access token es de un entorno y
+> la clave del webhook del otro, la validación de firma rechaza todas las
+> notificaciones: el pago se cobra pero el plan Pro nunca se activa, sin
+> ningún error visible para el usuario.
+>
+> Elige un entorno y que coincidan las tres: **access token**, **webhook
+> dado de alta** y **clave secreta del webhook**.
+>
+> Para saber en cuál estás sin exponer el valor del token, mira el prefijo:
+> `TEST-` es prueba, `APP_USR-` es producción. Los logs del webhook también
+> lo dicen: si la firma falla, el aviso nombra el entorno del token para que
+> el desajuste salte a la vista.
+>
+> **Un pago de prueba con token `APP_USR-` cobra dinero de verdad.** Si vas
+> a probar en producción, hazlo con el monto mínimo y cancela después la
+> suscripción desde `/pro` — de paso verificas el flujo de cancelación.
+
 > **Nunca** pegues estos valores en un chat, un ticket, un comentario de
 > código o un commit. Si alguno se expuso, revócalo y genera uno nuevo desde
 > el panel del proveedor: es gratis y toma un minuto.

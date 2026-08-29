@@ -542,6 +542,13 @@ exports.cancelarSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) =>
 // idempotente: los documentos llevan id derivado del id de MP y el consumo
 // del código promocional se hace en una transacción que solo corre una vez.
 
+// Nombra el entorno del token sin revelar su valor. Un token de prueba con
+// un webhook de producción (o al revés) hace que la firma nunca cuadre y que
+// los cobros reales fallen sin explicación: conviene verlo en los logs.
+function entornoMP() {
+  return MP_TOKEN.value().startsWith("TEST-") ? "prueba (TEST-)" : "producción (APP_USR-)";
+}
+
 async function mpGet(ruta) {
   const r = await fetch(`https://api.mercadopago.com${ruta}`, {
     headers: { Authorization: `Bearer ${MP_TOKEN.value()}` },
@@ -653,11 +660,17 @@ exports.webhookMP = onRequest({ secrets: [MP_TOKEN, MP_WEBHOOK_SECRET] }, async 
     const secreto = MP_WEBHOOK_SECRET.value();
     if (secreto) {
       if (!data?.id || !firmaMPValida(req.headers, data.id, secreto)) {
-        console.warn("webhookMP: firma inválida o ausente — petición descartada");
+        console.warn(
+          `webhookMP: firma inválida o ausente — petición descartada. ` +
+          `El access token es de ${entornoMP()}; MP_WEBHOOK_SECRET debe ser el de ESA ` +
+          `misma aplicación de Mercado Pago. Si registraste el webhook en la otra, ` +
+          `la firma nunca va a cuadrar.`);
         return res.status(200).send("OK");
       }
     } else {
-      console.warn("webhookMP: MP_WEBHOOK_SECRET no configurado — firma no verificada");
+      console.warn(
+        `webhookMP: MP_WEBHOOK_SECRET no configurado — firma NO verificada. ` +
+        `Access token de ${entornoMP()}.`);
     }
 
     // ── Alta / cambio de estado de la suscripción ──────────────────────
