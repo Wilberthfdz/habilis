@@ -9,6 +9,7 @@ const MODULES = [
   { id: "usuarios", label: "Usuarios", icon: "👥" },
   { id: "finanzas", label: "Finanzas", icon: "💰" },
   { id: "operaciones", label: "Operaciones", icon: "🔧" },
+  { id: "soporte", label: "Soporte", icon: "🎧" },
   { id: "care", label: "Care", icon: "🏥" },
   { id: "agentes", label: "Agentes IA", icon: "🤖" },
   { id: "marketing", label: "Marketing", icon: "📣" },

@@ -5,6 +5,7 @@ import AdminAgentes from "./admin/AdminAgentes.jsx";
 import AdminUsuarios from "./admin/AdminUsuarios.jsx";
 import AdminFinanzas from "./admin/AdminFinanzas.jsx";
 import AdminOperaciones from "./admin/AdminOperaciones.jsx";
+import AdminSoporte from "./admin/AdminSoporte.jsx";
 import AdminCare from "./admin/AdminCare.jsx";
 import AdminMarketing from "./admin/AdminMarketing.jsx";
 import AdminConfig from "./admin/AdminConfig.jsx";
@@ -19,6 +20,7 @@ export default function Admin({ nav, user }) {
       case "usuarios":    return <AdminUsuarios />;
       case "finanzas":    return <AdminFinanzas />;
       case "operaciones": return <AdminOperaciones />;
+      case "soporte":     return <AdminSoporte />;
       case "care":        return <AdminCare />;
       case "marketing":   return <AdminMarketing />;
       case "config":      return <AdminConfig />;

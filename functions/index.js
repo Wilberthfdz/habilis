@@ -512,6 +512,45 @@ exports.analisisMercado = onCall(async (request) => {
 });
 
 // ═══════════════════════════════════════════════════════════════
+// 🎧 SOPORTE — "soporte prioritario" para Pro/Empresa dejaba de ser una
+// frase en Precios.jsx: se crea vía Admin SDK para que `prioridad` salga
+// del plan REAL en Firestore (no de lo que el cliente declare), y el panel
+// admin (AdminSoporte.jsx) ordena la cola con los prioritarios primero.
+// ═══════════════════════════════════════════════════════════════
+exports.crearTicketSoporte = onCall(async (request) => {
+  const uid = requireAuth(request);
+  await checkRateLimit(uid, "crearTicketSoporte", 10);
+  const { mensaje } = request.data || {};
+  if (!mensaje || typeof mensaje !== "string" || !mensaje.trim()) {
+    throw new HttpsError("invalid-argument", "Escribe tu mensaje.");
+  }
+  if (mensaje.length > 2000) {
+    throw new HttpsError("invalid-argument", "El mensaje es demasiado largo (máx. 2000 caracteres).");
+  }
+
+  const [tecnicoDoc, clienteDoc] = await Promise.all([
+    db.collection("tecnicos").doc(uid).get(),
+    db.collection("clientes").doc(uid).get(),
+  ]);
+  const tecnico = tecnicoDoc.data();
+  const cliente = clienteDoc.data();
+  const prioridad = tecnico?.plan === "pro" || tecnico?.plan === "empresa";
+
+  const ref = await db.collection("soporteTickets").add({
+    userId: uid,
+    userEmail: request.auth.token.email || "",
+    userNombre: tecnico?.nombre || cliente?.nombre || "",
+    plan: tecnico?.plan || (cliente ? "cliente" : "desconocido"),
+    prioridad,
+    mensaje: mensaje.trim(),
+    estado: "abierto",
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  await logDecision("soporte", `nuevo ticket${prioridad ? " (prioritario)" : ""}`, ref.id, "");
+  return { id: ref.id, prioridad };
+});
+
+// ═══════════════════════════════════════════════════════════════
 // EMPLEADOS (cuentas Empresa) — tope de 10 por cuenta
 // Se crea vía Admin SDK, no como escritura directa del cliente: las
 // reglas de Firestore no pueden contar cuántos documentos ya existen de

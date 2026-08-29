@@ -260,6 +260,15 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Tickets de soporte. Se crean vía Cloud Function (Admin SDK) para que
+    // `prioridad` salga del plan real del usuario en Firestore, no de lo
+    // que el cliente declare — si no, cualquiera podía mandar
+    // prioridad:true y saltarse la cola de soporte "prioritario" de Pro.
+    match /soporteTickets/{id} {
+      allow read:  if (request.auth != null && resource.data.userId == request.auth.uid) || isAdmin();
+      allow write: if isAdmin();
+    }
+
     // Configuración general del sitio (config/general) y disclosures
     // financieros internos del XPRIZE (config/xprize) comparten colección.
     // Ningún componente público lee esto todavía (ver AdminConfig.jsx) — el

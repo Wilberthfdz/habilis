@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import Nav from "../components/Nav.jsx";
 import Logo from "../components/Logo.jsx";
-import { soporteIA } from "../lib/gemini.js";
+import { soporteIA, crearTicketSoporte } from "../lib/gemini.js";
 
 const FAQ = [
   ["¿Cuánto cuesta Habilis?", "Buscar y contactar técnicos es gratis, siempre. Para técnicos hay plan Gratis (perfil + 5 trabajos documentados), plan Pro de $149 MXN/mes con IVA incluido (prioridad en búsquedas, sin anuncios, trabajos ilimitados, herramientas de IA, cotizaciones y Habilis Care), y plan Empresa de $499 MXN/mes con todo lo de Pro más la posibilidad de agregar empleados a tu cuenta."],
@@ -23,6 +23,24 @@ export default function Soporte({ nav, user }) {
   const [texto, setTexto]       = useState("");
   const [cargando, setCargando] = useState(false);
   const chatRef = useRef(null);
+
+  const [ticketTexto, setTicketTexto] = useState("");
+  const [ticketEnviando, setTicketEnviando] = useState(false);
+  const [ticketOk, setTicketOk] = useState(null); // { prioridad } tras enviar
+  const [ticketError, setTicketError] = useState("");
+
+  const enviarTicket = async () => {
+    const mensaje = ticketTexto.trim();
+    if (!mensaje) return;
+    setTicketError(""); setTicketEnviando(true);
+    try {
+      const r = await crearTicketSoporte(mensaje);
+      setTicketOk(r);
+      setTicketTexto("");
+    } catch (e) {
+      setTicketError(e.message || "No se pudo enviar. Intenta de nuevo o escríbenos por correo.");
+    } finally { setTicketEnviando(false); }
+  };
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
@@ -159,12 +177,48 @@ export default function Soporte({ nav, user }) {
               ¿Prefieres hablar con una persona?
             </h3>
             <p style={{ fontSize:"13px", color:"#64748B", lineHeight:1.7, marginBottom:"12px" }}>
-              Escríbenos y te respondemos por correo. Los suscriptores Pro tienen soporte prioritario.
+              Los suscriptores Pro y Empresa tienen soporte prioritario: su ticket queda marcado
+              y aparece primero en la fila de atención.
             </p>
-            <a href="mailto:habilisempresa@gmail.com"
-              style={{ display:"inline-block", fontSize:"13.5px", fontWeight:800, color:"#F07020" }}>
-              habilisempresa@gmail.com →
-            </a>
+
+            {user ? (
+              ticketOk ? (
+                <div style={{ background:"#F0FDF4", border:"1px solid #A7F3D0", borderRadius:"10px",
+                              padding:"12px 14px", fontSize:"13px", color:"#059669" }}>
+                  ✅ Recibimos tu mensaje{ticketOk.prioridad ? " con prioridad Pro/Empresa" : ""}.
+                  Te respondemos por correo.
+                </div>
+              ) : (
+                <>
+                  <textarea value={ticketTexto} onChange={e => setTicketTexto(e.target.value)}
+                    placeholder="Cuéntanos tu duda o problema…" maxLength={2000}
+                    style={{ width:"100%", border:"1px solid #E2E8F0", borderRadius:"10px",
+                             padding:"10px 14px", fontSize:"13.5px", minHeight:"80px",
+                             resize:"vertical", boxSizing:"border-box", marginBottom:"10px",
+                             fontFamily:"inherit" }} />
+                  {ticketError && (
+                    <p style={{ fontSize:"12.5px", color:"#DC2626", marginBottom:"10px" }}>{ticketError}</p>
+                  )}
+                  <button className="h-btn-orange" onClick={enviarTicket}
+                    disabled={ticketEnviando || !ticketTexto.trim()}
+                    style={{ padding:"10px 20px", fontSize:"13.5px",
+                             opacity: ticketEnviando || !ticketTexto.trim() ? 0.5 : 1 }}>
+                    {ticketEnviando ? "Enviando…" : "Enviar mensaje"}
+                  </button>
+                </>
+              )
+            ) : (
+              <p style={{ fontSize:"13px", color:"#94A3B8", marginBottom:"10px" }}>
+                Inicia sesión para escribirnos desde aquí — así identificamos tu cuenta y prioridad automáticamente.
+              </p>
+            )}
+
+            <p style={{ fontSize:"12px", color:"#94A3B8", marginTop:"14px" }}>
+              O escríbenos directo a{" "}
+              <a href="mailto:habilisempresa@gmail.com" style={{ fontWeight:800, color:"#F07020" }}>
+                habilisempresa@gmail.com
+              </a>
+            </p>
           </div>
         </div>
       </div>

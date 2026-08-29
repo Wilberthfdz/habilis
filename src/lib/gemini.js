@@ -254,3 +254,10 @@ export async function analizarMercado() {
   const result = await analisisMercadoProxy({});
   return result.data; // { ciudad, dias, total, ranking }
 }
+
+// ── 16. TICKET DE SOPORTE (prioridad real para Pro/Empresa) ─────────────
+const crearTicketSoporteProxy = httpsCallable(fns, "crearTicketSoporte");
+export async function crearTicketSoporte(mensaje) {
+  const result = await crearTicketSoporteProxy({ mensaje });
+  return result.data; // { id, prioridad }
+}
