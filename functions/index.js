@@ -16,6 +16,7 @@
 //   firebase functions:secrets:set MP_ACCESS_TOKEN
 //   firebase functions:secrets:set MP_WEBHOOK_SECRET
 //   firebase functions:secrets:set FACTURAPI_KEY
+//   firebase functions:secrets:set RESEND_API_KEY
 
 const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
@@ -30,6 +31,9 @@ const GEMINI_KEY = defineSecret("GEMINI_KEY");
 const MP_TOKEN = defineSecret("MP_ACCESS_TOKEN");
 const MP_WEBHOOK_SECRET = defineSecret("MP_WEBHOOK_SECRET");
 const FACTURAPI_KEY = defineSecret("FACTURAPI_KEY");
+const RESEND_KEY = defineSecret("RESEND_API_KEY");
+// Debe coincidir con el dominio verificado en Resend (Domains → DNS).
+const RESEND_FROM = "Habilis <noreply@myhabilis.com>";
 
 const db = admin.firestore();
 // gemini-2.0-flash se retiró (404 model-not-found) — reemplazado por
@@ -548,6 +552,103 @@ exports.crearTicketSoporte = onCall(async (request) => {
   });
   await logDecision("soporte", `nuevo ticket${prioridad ? " (prioritario)" : ""}`, ref.id, "");
   return { id: ref.id, prioridad };
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 📧 CORREO TRANSACCIONAL PROPIO (Resend) — reemplaza el correo de
+// verificación/reset genérico de Firebase (noreply@<proyecto>.firebaseapp.com,
+// que cae en spam por no tener la reputación de myhabilis.com). El enlace de
+// acción lo sigue emitiendo Firebase Auth (generateEmailVerificationLink /
+// generatePasswordResetLink); solo cambia quién manda el correo.
+// TODAVÍA NO está conectado al frontend — falta verificar el dominio en
+// Resend y guardar RESEND_API_KEY. Ver DESPLEGAR.md / SETUP_PAGOS.md.
+// ═══════════════════════════════════════════════════════════════
+async function enviarCorreoResend(key, to, subject, html) {
+  const r = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: RESEND_FROM, to: [to], subject, html }),
+  });
+  if (!r.ok) {
+    const body = await r.text().catch(() => "");
+    console.error(`Resend error ${r.status}: ${body.slice(0, 300)}`);
+    throw new HttpsError("internal", "No se pudo enviar el correo. Intenta de nuevo.");
+  }
+}
+
+function plantillaCorreo({ titulo, cuerpo, botonTexto, botonUrl }) {
+  return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#F1F5F9;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#F1F5F9;padding:32px 16px;">
+<tr><td align="center">
+<table width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;max-width:480px;">
+<tr><td style="background:#0F172A;padding:22px 32px;">
+<span style="color:#F97316;font-weight:900;font-size:20px;letter-spacing:0.04em;">HABILIS</span>
+</td></tr>
+<tr><td style="padding:32px;">
+<h1 style="margin:0 0 12px;font-size:20px;color:#0F172A;font-family:Arial,sans-serif;">${titulo}</h1>
+<p style="margin:0 0 24px;font-size:14px;color:#475569;line-height:1.6;">${cuerpo}</p>
+<table cellpadding="0" cellspacing="0"><tr><td style="background:#F97316;border-radius:10px;">
+<a href="${botonUrl}" style="display:inline-block;padding:12px 28px;color:#ffffff;font-weight:700;font-size:14px;text-decoration:none;font-family:Arial,sans-serif;">${botonTexto}</a>
+</td></tr></table>
+<p style="margin:24px 0 0;font-size:12px;color:#94A3B8;word-break:break-all;">Si el botón no funciona, copia este enlace:<br>${botonUrl}</p>
+</td></tr>
+<tr><td style="padding:18px 32px;background:#F8FAFC;text-align:center;">
+<p style="margin:0;font-size:11px;color:#94A3B8;">Habilis · myhabilis.com · México</p>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body></html>`;
+}
+
+exports.enviarVerificacionEmail = onCall({ secrets: [RESEND_KEY] }, async (request) => {
+  const uid = requireAuth(request);
+  await checkRateLimit(uid, "enviarVerificacionEmail", 5);
+
+  const userRecord = await admin.auth().getUser(uid);
+  if (!userRecord.email) throw new HttpsError("failed-precondition", "Tu cuenta no tiene correo.");
+  if (userRecord.emailVerified) return { ok: true, yaVerificado: true };
+
+  const link = await admin.auth().generateEmailVerificationLink(userRecord.email, {
+    url: "https://myhabilis.com", handleCodeInApp: false,
+  });
+  const primerNombre = (userRecord.displayName || "").split(" ")[0];
+  const html = plantillaCorreo({
+    titulo: "Confirma tu correo",
+    cuerpo: `Hola${primerNombre ? " " + primerNombre : ""}, confirma tu correo para proteger tu cuenta de Habilis.`,
+    botonTexto: "Confirmar correo",
+    botonUrl: link,
+  });
+  await enviarCorreoResend(RESEND_KEY.value(), userRecord.email, "Confirma tu correo — Habilis", html);
+  return { ok: true };
+});
+
+exports.enviarResetPasswordEmail = onCall({ secrets: [RESEND_KEY] }, async (request) => {
+  const { email } = request.data || {};
+  if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new HttpsError("invalid-argument", "Correo inválido.");
+  }
+  const correo = email.trim().toLowerCase();
+  // Sin uid (puede pedirse deslogueado) — se limita por el correo mismo.
+  await checkRateLimit(correo, "resetPasswordEmail", 5);
+
+  try {
+    const link = await admin.auth().generatePasswordResetLink(correo, {
+      url: "https://myhabilis.com", handleCodeInApp: false,
+    });
+    const html = plantillaCorreo({
+      titulo: "Restablece tu contraseña",
+      cuerpo: "Pediste restablecer tu contraseña en Habilis. Si no fuiste tú, ignora este correo — tu cuenta sigue segura.",
+      botonTexto: "Restablecer contraseña",
+      botonUrl: link,
+    });
+    await enviarCorreoResend(RESEND_KEY.value(), correo, "Restablece tu contraseña — Habilis", html);
+  } catch (e) {
+    // Nunca revelar si el correo existe o no (enumeración de cuentas): se
+    // responde éxito igual, el motivo real solo queda en logs del servidor.
+    if (e.code !== "auth/user-not-found") console.error("enviarResetPasswordEmail:", e.message);
+  }
+  return { ok: true };
 });
 
 // ═══════════════════════════════════════════════════════════════

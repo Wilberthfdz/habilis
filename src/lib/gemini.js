@@ -261,3 +261,19 @@ export async function crearTicketSoporte(mensaje) {
   const result = await crearTicketSoporteProxy({ mensaje });
   return result.data; // { id, prioridad }
 }
+
+// ── 17. CORREO PROPIO (Resend) — verificación y reset de contraseña ─────
+// TODAVÍA NO se usa en Nav/Registro/Login: falta verificar el dominio en
+// Resend y guardar RESEND_API_KEY. Mientras tanto esos flujos siguen
+// usando sendEmailVerification/sendPasswordResetEmail de Firebase
+// (lib/firebase.js) para no dejar la verificación de cuentas sin correo.
+const enviarVerificacionEmailProxy = httpsCallable(fns, "enviarVerificacionEmail");
+export async function enviarVerificacionEmailPropio() {
+  const result = await enviarVerificacionEmailProxy({});
+  return result.data; // { ok, yaVerificado? }
+}
+const enviarResetPasswordEmailProxy = httpsCallable(fns, "enviarResetPasswordEmail");
+export async function enviarResetPasswordPropio(email) {
+  const result = await enviarResetPasswordEmailProxy({ email });
+  return result.data; // { ok }
+}
