@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Logo from "./Logo.jsx";
 import NotifBell from "./NotifBell.jsx";
 import { obtenerTecnico, cerrarSesion, enviarVerificacionEmail } from "../lib/firebase.js";
+import { isAdminUser } from "../lib/admin.js";
 
 const aboutLinks = [
   { label:"Quiénes somos",          route:"quienesSomos" },
@@ -48,7 +49,7 @@ export default function Nav({ nav, user }) {
     ...(esTecnico === true ? [{ label:"Cotizaciones", route:"cotizaciones" }] : []),
     ...(esEmpresa ? [{ label:"Empleados", route:"empleados" }] : []),
     ...(esTecnico === false ? [{ label:"Mi cuenta", route:"miCuenta" }] : []),
-    ...(user?.email === "wilberthfdz@gmail.com" ? [
+    ...(isAdminUser(user) ? [
       { label:"⚙️ Admin",  route:"admin" },
     ] : []),
   ];

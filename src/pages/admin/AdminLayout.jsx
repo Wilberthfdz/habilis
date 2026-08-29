@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { iniciarSesion, loginConGoogle } from "../../lib/firebase.js";
+import { isAdminUser } from "../../lib/admin.js";
 
-const ADMIN_EMAIL = "wilberthfdz@gmail.com";
+export { isAdminUser };
 
 const MODULES = [
   { id: "dashboard", label: "Dashboard", icon: "📊" },
@@ -13,10 +14,6 @@ const MODULES = [
   { id: "marketing", label: "Marketing", icon: "📣" },
   { id: "config", label: "Config", icon: "⚙️" },
 ];
-
-export function isAdminUser(user) {
-  return !!user && user.email === ADMIN_EMAIL;
-}
 
 export function AdminLoginGate({ nav }) {
   const [email, setEmail] = useState("");
