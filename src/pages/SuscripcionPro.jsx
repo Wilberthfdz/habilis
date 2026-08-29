@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Nav from "../components/Nav.jsx";
 import { obtenerTecnico } from "../lib/firebase.js";
-import { iniciarSuscripcionPro, solicitarFactura } from "../lib/gemini.js";
+import { iniciarSuscripcionPro, solicitarFactura, cancelarSuscripcionPro } from "../lib/gemini.js";
 
 const BENEFICIOS = [
   "Prioridad alta en búsquedas",
@@ -39,10 +39,43 @@ export default function SuscripcionPro({ nav, user }) {
   const [fx, setFx] = useState({ rfc:"", razonSocial:"", codigoPostal:"", regimenFiscal:"612", usoCFDI:"G03" });
   const [fxEstado, setFxEstado] = useState({ cargando:false, error:"", url:"" });
 
+  const [cancelando, setCancelando] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
+  const [tardando, setTardando] = useState(false);
+
+  // Mercado Pago regresa a /pro con parámetros en la URL. El plan lo activa
+  // el webhook, que puede tardar unos segundos: en vez de dejar al técnico
+  // viendo la pantalla de compra como si no hubiera pagado, se muestra
+  // "confirmando" y se relee su plan hasta que aparezca.
+  const vueltaDePago = typeof window !== "undefined" && window.location.search.length > 1;
+
   useEffect(() => {
     if (!user) { setTecnico(null); return; }
-    obtenerTecnico(user.uid).then(t => setTecnico(t || null)).catch(() => setTecnico(null));
-  }, [user]);
+    let cancelado = false;
+    let intentos = 0;
+
+    const leer = async () => {
+      try {
+        const t = await obtenerTecnico(user.uid);
+        if (cancelado) return;
+        setTecnico(t || null);
+        if (t?.plan === "pro") { setConfirmando(false); return; }
+        if (vueltaDePago && intentos < 20) {          // ~60 s de espera
+          intentos++;
+          setConfirmando(true);
+          if (intentos === 8) setTardando(true);
+          setTimeout(leer, 3000);
+        } else {
+          setConfirmando(false);
+        }
+      } catch {
+        if (!cancelado) { setTecnico(null); setConfirmando(false); }
+      }
+    };
+
+    leer();
+    return () => { cancelado = true; };
+  }, [user, vueltaDePago]);
 
   const pagar = async () => {
     setError(""); setCargando(true);
@@ -64,6 +97,23 @@ export default function SuscripcionPro({ nav, user }) {
       setFxEstado({ cargando:false, error:"", url: r?.verificationUrl || "ok" });
     } catch (e) {
       setFxEstado({ cargando:false, error: e.message || "No se pudo generar la factura.", url:"" });
+    }
+  };
+
+  const cancelar = async () => {
+    if (!window.confirm(
+      "¿Cancelar tu suscripción Pro?\n\nDejarás de tener prioridad en búsquedas, " +
+      "herramientas de IA y Habilis Care. No se te volverá a cobrar."
+    )) return;
+    setError(""); setCancelando(true);
+    try {
+      await cancelarSuscripcionPro();
+      const t = await obtenerTecnico(user.uid);
+      setTecnico(t || null);
+    } catch (e) {
+      setError(e.message || "No se pudo cancelar. Intenta de nuevo o escríbenos a habilisempresa@gmail.com.");
+    } finally {
+      setCancelando(false);
     }
   };
 
@@ -92,7 +142,23 @@ export default function SuscripcionPro({ nav, user }) {
           <p style={{ textAlign:"center", color:"#94A3B8", fontSize:"14px" }}>Cargando…</p>
         )}
 
-        {user && tecnico !== undefined && !esPro && (
+        {user && confirmando && (
+          <div className="h-card" style={{ padding:"36px", textAlign:"center" }}>
+            <div style={{ width:"38px", height:"38px", border:"3px solid #F97316",
+                          borderTopColor:"transparent", borderRadius:"50%",
+                          margin:"0 auto 16px", animation:"spin 0.8s linear infinite" }} />
+            <h1 style={{ fontSize:"20px", fontWeight:900, color:"#0F172A", marginBottom:"8px" }}>
+              Confirmando tu pago…
+            </h1>
+            <p style={{ fontSize:"14px", color:"#64748B", lineHeight:1.7 }}>
+              {tardando
+                ? "Mercado Pago está tardando más de lo normal. Puedes cerrar esta página: en cuanto se confirme, tu plan se activa solo. Si en unos minutos sigue igual, escríbenos a habilisempresa@gmail.com."
+                : "Estamos esperando la confirmación de Mercado Pago. Esto suele tomar unos segundos."}
+            </p>
+          </div>
+        )}
+
+        {user && tecnico !== undefined && !esPro && !confirmando && (
           <div className="h-card" style={{ padding:"clamp(24px,5vw,36px)" }}>
             <p style={{ fontSize:"11px", fontWeight:800, color:"#F97316", letterSpacing:"0.1em",
                         textTransform:"uppercase", marginBottom:"8px" }}>Suscripción</p>
@@ -127,8 +193,9 @@ export default function SuscripcionPro({ nav, user }) {
             </button>
             <p style={{ fontSize:"12px", color:"#94A3B8", marginTop:"12px", lineHeight:1.6, textAlign:"center" }}>
               Suscripción mensual con renovación automática: se cobra cada mes hasta que
-              la canceles desde Mercado Pago. El pago se procesa de forma segura ahí —
-              Habilis nunca ve tu tarjeta — y tu plan se activa al confirmarse.
+              la canceles, y puedes hacerlo desde esta misma página cuando quieras. El pago
+              se procesa de forma segura en Mercado Pago — Habilis nunca ve tu tarjeta —
+              y tu plan se activa al confirmarse.
             </p>
           </div>
         )}
@@ -141,10 +208,22 @@ export default function SuscripcionPro({ nav, user }) {
               <h1 style={{ fontSize:"22px", fontWeight:900, color:"#0F172A", marginBottom:"6px" }}>
                 Ya eres Pro
               </h1>
-              <p style={{ fontSize:"14px", color:"#64748B", lineHeight:1.7 }}>
-                Tu suscripción está activa. La gestión del cobro (método de pago o cancelación)
-                se hace desde tu cuenta de Mercado Pago.
+              <p style={{ fontSize:"14px", color:"#64748B", lineHeight:1.7, marginBottom:"18px" }}>
+                Tu suscripción está activa y se renueva automáticamente cada mes.
+                El método de pago se administra desde tu cuenta de Mercado Pago.
               </p>
+
+              {error && (
+                <p style={{ fontSize:"13px", color:"#DC2626", background:"#FEE2E2", borderRadius:"8px",
+                            padding:"10px 14px", marginBottom:"12px" }}>{error}</p>
+              )}
+
+              <button onClick={cancelar} disabled={cancelando}
+                style={{ background:"none", border:"1px solid #E2E8F0", borderRadius:"10px",
+                         padding:"10px 18px", fontSize:"13px", fontWeight:700,
+                         color:"#64748B", cursor:"pointer", opacity: cancelando ? 0.6 : 1 }}>
+                {cancelando ? "Cancelando…" : "Cancelar suscripción"}
+              </button>
             </div>
 
             <div className="h-card" style={{ padding:"clamp(24px,5vw,32px)" }}>

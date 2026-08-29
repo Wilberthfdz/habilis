@@ -457,7 +457,9 @@ exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
       reason: "Habilis Pro",
       external_reference: uid,
       auto_recurring: { frequency: 1, frequency_type: "months", transaction_amount: monto, currency_id: "MXN" },
-      back_url: "https://myhabilis.com",
+      // Vuelve al checkout, que muestra el estado real del pago en vez de
+      // dejar al usuario en la portada sin saber si se cobró.
+      back_url: "https://myhabilis.com/pro",
       payer_email: email,
     }),
   });
@@ -473,6 +475,37 @@ exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
     fecha: admin.firestore.FieldValue.serverTimestamp(),
   });
   return { url: data.init_point, monto };
+});
+
+// Cancelar la suscripción desde la propia app. Antes había que buscarla en
+// Mercado Pago: una fricción innecesaria y una queja segura de soporte.
+// El plan se retira aquí mismo y el webhook confirma después el estado.
+exports.cancelarSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
+  const uid = requireAuth(request);
+  await checkRateLimit(uid, "cancelarSuscripcion", 10);
+
+  const tecnico = await db.collection("tecnicos").doc(uid).get();
+  const suscripcionId = tecnico.data()?.suscripcionId;
+  if (!suscripcionId) {
+    throw new HttpsError("failed-precondition", "No tienes una suscripción activa que cancelar.");
+  }
+
+  const r = await fetch(`https://api.mercadopago.com/preapproval/${suscripcionId}`, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${MP_TOKEN.value()}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ status: "cancelled" }),
+  });
+  if (!r.ok) {
+    const detalle = await r.text().catch(() => "");
+    console.error(`Cancelar preapproval ${suscripcionId} falló (${r.status}): ${detalle.slice(0, 300)}`);
+    throw new HttpsError("internal", "No se pudo cancelar la suscripción. Intenta de nuevo o escríbenos.");
+  }
+
+  await db.collection("tecnicos").doc(uid).update({
+    plan: "gratis",
+    suscripcionEstado: "cancelled",
+  });
+  return { ok: true };
 });
 
 // ── Helpers de suscripción ───────────────────────────────────────────────

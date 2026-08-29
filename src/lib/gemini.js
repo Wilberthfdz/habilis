@@ -229,3 +229,10 @@ ${contexto ? `CONVERSACIÓN PREVIA:\n${contexto}\n\n` : ""}Usuario: ${pregunta}
 Responde SOLO con tu mensaje de soporte, sin prefijos.`;
   return callGemini(prompt, 0.4, "soporte");
 }
+
+// ── 13. CANCELAR SUSCRIPCIÓN PRO ─────────────────────────────────────────
+const cancelarSuscripcionProxy = httpsCallable(fns, "cancelarSuscripcion");
+export async function cancelarSuscripcionPro() {
+  const result = await cancelarSuscripcionProxy({});
+  return result.data;
+}
