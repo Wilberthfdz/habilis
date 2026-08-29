@@ -1,5 +1,29 @@
 # Configuración de pagos (Mercado Pago + Facturapi)
 
+> ## Resumen: cuatro pasos
+>
+> ```bash
+> # 1. Traer el código y crear el secreto que falta
+> git checkout claude/rafa-habilsi-work-thaoiv && git pull
+> npx firebase-tools functions:secrets:set MP_WEBHOOK_SECRET
+>
+> # 2. Publicar TODO (pruebas + compilación + backend + reglas + sitio)
+> npm run deploy
+> ```
+>
+> 3. Dar de alta el webhook en Mercado Pago (sección 3) — la clave secreta
+>    que devuelve es la del paso 1, así que si aún no la tienes, haz primero
+>    el alta y luego el paso 1.
+> 4. Entrar a `myhabilis.com/pro` y pagar con un **usuario de prueba
+>    comprador** de Mercado Pago (sección 4).
+>
+> `npm run deploy` publica los tres destinos de una vez —backend, reglas y
+> **el sitio**— porque desplegar solo las funciones deja myhabilis.com en la
+> versión vieja, sin la página de pago. El resto de este documento explica
+> cada paso con detalle.
+
+---
+
 Guía para dejar operativo el cobro del Plan Pro. **Ninguna credencial vive en
 este repositorio**: todas se guardan en Google Secret Manager a través de
 `firebase functions:secrets:set`, que es el mecanismo que ya usa el backend
