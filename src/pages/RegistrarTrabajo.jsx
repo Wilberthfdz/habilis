@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Logo from "../components/Logo.jsx";
 import Nav from "../components/Nav.jsx";
-import { db } from "../lib/firebase.js";
+import { db, obtenerTecnico, marcarRespuestaSolicitud } from "../lib/firebase.js";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 const TIPOS   = ["Instalación","Reparación","Mantenimiento","Diagnóstico","Otro"];
@@ -18,20 +18,28 @@ const inp = { width:"100%", border:"1px solid #E2E8F0", borderRadius:"10px",
 const label = { fontSize:"11px", fontWeight:700, color:"#64748B", textTransform:"uppercase",
                 letterSpacing:"0.06em", display:"block", marginBottom:"5px" };
 
-export default function RegistrarTrabajo({ nav, user }) {
+export default function RegistrarTrabajo({ nav, user, params }) {
+  const solicitudId = params?.solicitudId || null;
   const [form, setForm] = useState({
-    titulo:"", tipo:"Instalación", descripcion:"",
+    titulo:        params?.tituloSolicitud || "",
+    tipo:"Instalación",
+    descripcion:   params?.descripcionSolicitud || "",
     problema:"", solucion:"", materiales:"",
-    tiempoHoras:"", costoTotal:"", ciudad:"",
+    tiempoHoras:"", costoTotal:"",
+    ciudad:        params?.ciudadSolicitud || "",
     clienteNombre:"", estado:"terminado",
   });
   const [fotos,   setFotos]   = useState({ antes:null, despues:null });
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState("");
   const [touched, setTouched] = useState({});
+  const [esTecnico, setEsTecnico] = useState(null);
 
-  useEffect(() => { if (!user) nav("login"); }, [user]);
-  if (!user) return null;
+  useEffect(() => {
+    if (!user) { nav("login"); return; }
+    obtenerTecnico(user.uid).then(t => { if (!t) { nav("misSolicitudes"); return; } setEsTecnico(true); });
+  }, [user]);
+  if (!user || esTecnico !== true) return null;
 
   const set = k => e => setForm(f => ({ ...f, [k]:e.target.value }));
 
@@ -107,10 +115,12 @@ export default function RegistrarTrabajo({ nav, user }) {
         clienteNombre: form.clienteNombre.trim(),
         estado:        form.estado,
         tecnicoId:     user.uid,
+        solicitudId,
         evidencias,
         createdAt:     serverTimestamp(),
         updatedAt:     serverTimestamp(),
       });
+      if (solicitudId) marcarRespuestaSolicitud(solicitudId).catch(() => {});
       nav("panel");
     } catch (e) {
       console.error("Error guardando trabajo:", e);
@@ -148,7 +158,9 @@ export default function RegistrarTrabajo({ nav, user }) {
             Documenta tu trabajo
           </h1>
           <p style={{ color:"rgba(255,255,255,0.5)", fontSize:"14px" }}>
-            Construye tu reputación con evidencia real. Fotos, tiempos, materiales.
+            {solicitudId
+              ? "Respondiendo a una solicitud del Feed — ajusta los detalles antes de guardar."
+              : "Construye tu reputación con evidencia real. Fotos, tiempos, materiales."}
           </p>
         </div>
       </div>

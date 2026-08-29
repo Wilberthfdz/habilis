@@ -3,7 +3,7 @@ import Nav from "../components/Nav.jsx";
 import Avatar from "../components/Avatar.jsx";
 import { db } from "../lib/firebase.js";
 import {
-  actualizarSolicitudChat, enviarMensajeChat, crearTrabajo,
+  actualizarSolicitudChat, enviarMensajeChat, crearTrabajo, obtenerTecnico,
 } from "../lib/firebase.js";
 import { generarResumenChat } from "../lib/gemini.js";
 import {
@@ -31,8 +31,19 @@ export default function Chat({ nav, user, params }) {
   const esCliente = solicitud && user?.uid === solicitud.clienteId;
   const enConversacion = esTecnico || esCliente;
 
+  // Tipo de cuenta general (independiente de esta solicitud en particular) —
+  // se usa como destino de "regreso" cuando no hay solicitud cargada todavía.
+  const [soyTecnico, setSoyTecnico] = useState(null);
   useEffect(() => {
-    if (!solicitudId || !user) { nav(user ? "panel" : "login"); return; }
+    if (!user) return;
+    let cancelado = false;
+    obtenerTecnico(user.uid).then(t => { if (!cancelado) setSoyTecnico(!!t); });
+    return () => { cancelado = true; };
+  }, [user]);
+  const destinoPropio = (esTecnico ?? soyTecnico) ? "panel" : "misSolicitudes";
+
+  useEffect(() => {
+    if (!solicitudId || !user) { nav(user ? destinoPropio : "login"); return; }
 
     // Real-time listener on solicitud document
     const unsubSol = onSnapshot(doc(db, "solicitudes_chat", solicitudId), snap => {
@@ -149,7 +160,7 @@ export default function Chat({ nav, user, params }) {
       <div style={{ textAlign:"center", padding:"80px" }}>
         <p style={{ fontSize:"52px" }}>💬</p>
         <p style={{ fontWeight:800, color:"#0F172A", marginTop:"12px" }}>Solicitud no encontrada</p>
-        <button onClick={() => nav("panel")}
+        <button onClick={() => nav(destinoPropio)}
           style={{ marginTop:"20px", background:"#F97316", color:"#fff", border:"none",
                    borderRadius:"10px", padding:"11px 22px", fontWeight:700, cursor:"pointer" }}>
           Ir al Panel
@@ -173,7 +184,7 @@ export default function Chat({ nav, user, params }) {
       <div style={{ background:"#0F172A", padding:"16px 20px", position:"sticky", top:"60px",
                     zIndex:100, borderBottom:"1px solid rgba(255,255,255,0.08)" }}>
         <div style={{ maxWidth:"700px", margin:"0 auto", display:"flex", gap:"12px", alignItems:"center" }}>
-          <button onClick={() => nav("panel")}
+          <button onClick={() => nav(destinoPropio)}
             style={{ background:"none", border:"none", color:"rgba(255,255,255,0.45)", cursor:"pointer",
                      fontSize:"18px", padding:"0 8px 0 0", flexShrink:0 }}>←</button>
           <div style={{ flex:1, minWidth:0 }}>

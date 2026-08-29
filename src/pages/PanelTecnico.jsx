@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import Logo from "../components/Logo.jsx";
 import Nav from "../components/Nav.jsx";
 import { obtenerTecnico, obtenerTrabajosDelTecnico, cerrarSesion, subirFotoPerfil,
-         obtenerSolicitudesChat, actualizarTecnico, obtenerColaboradores } from "../lib/firebase.js";
+         obtenerSolicitudesChat, actualizarTecnico, obtenerColaboradores,
+         crearCotizacion, obtenerSiguienteFolio } from "../lib/firebase.js";
 import Avatar from "../components/Avatar.jsx";
 import { sugerirRespuesta } from "../lib/gemini.js";
 
@@ -31,6 +32,7 @@ export default function PanelTecnico({ nav, user }) {
   const [redCount,          setRedCount]          = useState(0);
   const [alcance,           setAlcance]           = useState("nacional");
   const [savingAlcance,     setSavingAlcance]     = useState(false);
+  const [creandoCot,        setCreandoCot]        = useState(false);
 
   useEffect(() => {
     if (!user) { nav("login"); return; }
@@ -54,6 +56,33 @@ export default function PanelTecnico({ nav, user }) {
   }, [user]);
 
   const logout = async () => { await cerrarSesion(); nav("landing"); };
+
+  const nuevaCotizacion = async () => {
+    setCreandoCot(true);
+    try {
+      const folio = await obtenerSiguienteFolio(user.uid);
+      const id    = await crearCotizacion({
+        tecnicoId: user.uid,
+        folio,
+        estado:    "borrador",
+        cliente:   { nombre:"", empresa:"", rfc:"", email:"", telefono:"" },
+        productos: [],
+        manoObra:  [],
+        subtotal:  0,
+        total:     0,
+        iva:       true,
+        descuento: { tipo:"porcentaje", valor:0 },
+        moneda:    "MXN",
+        tipoCambio:17.5,
+        validez:   15,
+        notas:     "",
+        terminos:  "Cotización válida por 15 días. Precios sujetos a cambio sin previo aviso.",
+        metodoPago:"Transferencia",
+        fecha:     new Date().toISOString(),
+      });
+      nav("editorCotizacion", { cotizacionId: id });
+    } finally { setCreandoCot(false); }
+  };
 
   const handleFotoChange = async e => {
     const file = e.target.files?.[0];
@@ -145,7 +174,7 @@ export default function PanelTecnico({ nav, user }) {
   return (
     <div style={{ background:"#F1F5F9", minHeight:"100vh" }}>
       {/* NAV */}
-      <div style={{ background:"#0F172A" }}><Nav nav={nav} user={user} onLogout={logout} /></div>
+      <div style={{ background:"#0F172A" }}><Nav nav={nav} user={user} /></div>
 
       {/* GREETING BANNER */}
       <div style={{ background:"#0F172A", padding:"32px 20px 28px", position:"relative", overflow:"hidden" }}>
@@ -357,10 +386,11 @@ export default function PanelTecnico({ nav, user }) {
                            fontSize:"13px", cursor:"pointer" }}>
                   Ver mis cotizaciones
                 </button>
-                <button onClick={() => nav("editorCotizacion")}
+                <button onClick={nuevaCotizacion} disabled={creandoCot}
                   style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"9px",
-                           padding:"9px 16px", fontWeight:700, fontSize:"13px", cursor:"pointer" }}>
-                  + Nueva cotización
+                           padding:"9px 16px", fontWeight:700, fontSize:"13px", cursor:"pointer",
+                           opacity: creandoCot ? 0.7 : 1 }}>
+                  {creandoCot ? "Creando..." : "+ Nueva cotización"}
                 </button>
               </div>
             </div>

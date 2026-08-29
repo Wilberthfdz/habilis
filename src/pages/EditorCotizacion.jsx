@@ -65,7 +65,7 @@ export default function EditorCotizacion({ nav, user, params }) {
       obtenerClientesTecnico(user.uid),
       obtenerProductosTecnico(user.uid),
     ]).then(([c, t, cls, prods]) => {
-      if (!c) { nav("cotizaciones"); return; }
+      if (!c || !t) { nav("cotizaciones"); return; }
       setCot(c);
       setTecnico(t);
       setClientesList(cls);
@@ -92,7 +92,7 @@ export default function EditorCotizacion({ nav, user, params }) {
     clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(() => guardar(false), 30000);
     return () => clearTimeout(autoSaveTimer.current);
-  }, [productos, manoObra, cliente, notas, iva, descPct]);
+  }, [productos, manoObra, cliente, notas, iva, descPct, folio, fecha, validez, moneda, terminos, metodoPago]);
 
   // Financial calculations
   const subtotalProds  = productos.reduce((s, p) => s + (Number(p.cantidad||1) * Number(p.precioUnitario||0)), 0);
@@ -108,7 +108,7 @@ export default function EditorCotizacion({ nav, user, params }) {
     if (showFeedback) setSaving(true);
     try {
       const data = {
-        folio, fecha, validez: Number(validez), estado:"borrador",
+        folio, fecha, validez: Number(validez),
         cliente, productos, manoObra,
         descuento: { tipo:"porcentaje", valor:Number(descPct) },
         iva, moneda, subtotal, total, ivaMonto,
@@ -505,7 +505,7 @@ export default function EditorCotizacion({ nav, user, params }) {
       {/* Mobile sticky footer */}
       <div className="editor-mob-footer"
         style={{ position:"fixed", bottom:0, left:0, right:0, zIndex:300,
-                 background:"rgba(15,23,42,0.96)", backdropFilter:"blur(12px)",
+                 background:"rgba(15,23,42,0.98)",
                  padding:"12px 16px", borderTop:"1px solid rgba(255,255,255,0.1)",
                  gap:"8px", justifyContent:"stretch" }}>
         <button onClick={() => guardar(true)} disabled={saving}

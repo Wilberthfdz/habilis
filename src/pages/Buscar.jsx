@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Logo from "../components/Logo.jsx";
 import Nav from "../components/Nav.jsx";
 import Avatar from "../components/Avatar.jsx";
@@ -17,13 +17,23 @@ export default function Buscar({ nav, user, params }) {
   const [q,        setQ]        = useState(params?.oficio || "");
 
   useEffect(() => {
-    buscarTecnicos({}).then(r => {
-      setTodos(r);
-      const init = params?.oficio || "";
-      setTecnicos(init ? filtrar(r, init) : r);
-    }).catch(() => { setTodos([]); setTecnicos([]); })
+    buscarTecnicos({}).then(setTodos)
+      .catch(() => setTodos([]))
       .finally(() => setLoading(false));
   }, []);
+
+  // Perfiles creados antes de la taxonomía no tienen categoriaId — derivamos
+  // uno a partir de su `oficio` de texto libre para que los chips los sigan
+  // encontrando (ej. "Técnico HVAC / Minisplits" → categoría "clima").
+  const categoriaDerivada = useMemo(() => {
+    const map = {};
+    for (const t of todos) {
+      if (t.categoriaId) continue;
+      const hit = buscarPorTexto(t.oficio || "", 1)[0];
+      if (hit) map[t.id] = hit.id.split(".")[0];
+    }
+    return map;
+  }, [todos]);
 
   const score = t =>
     (t.totalTrabajos || 0) * 2 +
@@ -44,7 +54,7 @@ export default function Buscar({ nav, user, params }) {
           (t.oficio||"").toLowerCase().includes(l) ||
           (t.nombre||"").toLowerCase().includes(l) ||
           (t.ciudad||"").toLowerCase().includes(l) ||
-          (t.categoriaId && catIds.has(t.categoriaId)) ||
+          catIds.has(t.categoriaId || categoriaDerivada[t.id]) ||
           (t.subcategoriaId && subIds.has(t.subcategoriaId))
         )
       : [...lista];
@@ -60,6 +70,17 @@ export default function Buscar({ nav, user, params }) {
     // Sort by score descending
     return conAlcance.sort((a, b) => score(b) - score(a));
   };
+
+  // Aplica la búsqueda inicial (ej. desde una tarjeta de categoría en Landing)
+  // hasta que `todos` y `categoriaDerivada` estén listos — antes se ejecutaba
+  // en el mismo efecto que carga `todos`, usando un `filtrar` con categorías
+  // derivadas todavía vacías, y podía dar 0 resultados en la primera carga.
+  useEffect(() => {
+    if (todos.length === 0) return;
+    const init = params?.oficio || "";
+    setTecnicos(init ? filtrar(todos, init) : todos);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todos]);
 
   const buscar   = () => setTecnicos(filtrar(todos, q));
   const onKey    = e => { if (e.key === "Enter") buscar(); };

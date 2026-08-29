@@ -8,7 +8,10 @@ service cloud.firestore {
 
     match /tecnicos/{uid} {
       allow read:   if true;
-      allow create: if request.auth != null && request.auth.uid == uid;
+      // isAdmin() puede crear con cualquier id (onboarding en persona desde
+      // el ERP, antes de que la persona tenga cuenta propia) — ver #8 de la
+      // auditoría del 16 ago.
+      allow create: if isAdmin() || (request.auth != null && request.auth.uid == uid);
       // El dueño solo puede tocar campos de perfil "seguros" — plan, verificado,
       // rating, rankScore, etc. son SOLO backend (agentes / webhook de pago).
       // Antes cualquier usuario podía hacer updateDoc({plan:"pro"}) directo
@@ -17,6 +20,19 @@ service cloud.firestore {
         request.auth != null && request.auth.uid == uid &&
         request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['nombre','oficio','ciudad','experiencia','bio','fotoUrl','alcance','disponible','updatedAt'])
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Perfiles de cliente — a diferencia de tecnicos, NO son públicos: solo
+    // el dueño (o el admin) puede leerlos.
+    match /clientes/{uid} {
+      allow read:   if (request.auth != null && request.auth.uid == uid) || isAdmin();
+      allow create: if request.auth != null && request.auth.uid == uid;
+      allow update: if isAdmin() || (
+        request.auth != null && request.auth.uid == uid &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['nombre','telefono','ciudad','updatedAt'])
       );
       allow delete: if isAdmin();
     }
@@ -31,7 +47,12 @@ service cloud.firestore {
     match /solicitudes/{solicitudId} {
       allow read:   if true;
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update: if isAdmin();
+      // Cualquier autenticado puede sumarle una respuesta (técnico
+      // respondiendo desde el Feed) — todo lo demás sigue solo-admin.
+      allow update: if isAdmin() || (
+        request.auth != null &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['respuestas'])
+      );
       allow delete: if isAdmin();
     }
 
@@ -99,14 +120,28 @@ service cloud.firestore {
 
     // Chat solicitudes — readable by both parties, writable by authenticated users
     match /solicitudes_chat/{solicitudId} {
-      allow read:   if request.auth != null;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null;
+      // Antes cualquier usuario autenticado podía leer/editar CUALQUIER
+      // conversación con solo saber el id — ahora restringido a las dos
+      // partes de esa solicitud (o admin). Ver auditoría del 16 ago.
+      allow read:   if request.auth != null && (
+        resource.data.clienteId == request.auth.uid ||
+        resource.data.tecnicoId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if request.auth != null && request.resource.data.clienteId == request.auth.uid;
+      allow update: if request.auth != null && (
+        resource.data.clienteId == request.auth.uid ||
+        resource.data.tecnicoId == request.auth.uid ||
+        isAdmin()
+      );
       allow delete: if false;
 
       match /mensajes/{mensajeId} {
-        allow read:   if request.auth != null;
-        allow create: if request.auth != null;
+        allow read, create: if request.auth != null && (
+          get(/databases/$(database)/documents/solicitudes_chat/$(solicitudId)).data.clienteId == request.auth.uid ||
+          get(/databases/$(database)/documents/solicitudes_chat/$(solicitudId)).data.tecnicoId == request.auth.uid ||
+          isAdmin()
+        );
         allow update: if false;
         allow delete: if false;
       }

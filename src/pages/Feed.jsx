@@ -229,7 +229,13 @@ export default function Feed({ nav, user }) {
                 </span>
                 <button onClick={() => {
                   if (esTrabajo && post.tecnicoId) nav("perfil", { tecnicoId:post.tecnicoId });
-                  else nav(user ? "registrarTrabajo" : "registro");
+                  else if (user) nav("registrarTrabajo", {
+                    solicitudId: post.id,
+                    tituloSolicitud: post.titulo || "",
+                    descripcionSolicitud: post.descripcion || "",
+                    ciudadSolicitud: post.ciudad || "",
+                  });
+                  else nav("registro");
                 }}
                   style={{ background:"#0F172A", color:"#fff", border:"none", borderRadius:"8px",
                            padding:"8px 16px", fontSize:"12px", fontWeight:600, cursor:"pointer" }}>

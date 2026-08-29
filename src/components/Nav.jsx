@@ -1,29 +1,49 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Logo from "./Logo.jsx";
 import NotifBell from "./NotifBell.jsx";
+import { obtenerTecnico, cerrarSesion, enviarVerificacionEmail } from "../lib/firebase.js";
 
-export default function Nav({ nav, user, onLogout }) {
+export default function Nav({ nav, user }) {
   const [open, setOpen] = useState(false);
+  // null = aún no sabemos (evita parpadear el botón equivocado); true/false una vez resuelto.
+  const [esTecnico, setEsTecnico] = useState(null);
+  const [reenviando, setReenviando] = useState(false);
+  const [reenviado,  setReenviado]  = useState(false);
+
+  useEffect(() => {
+    if (!user) { setEsTecnico(null); return; }
+    let cancelado = false;
+    obtenerTecnico(user.uid).then(t => { if (!cancelado) setEsTecnico(!!t); });
+    return () => { cancelado = true; };
+  }, [user]);
+
+  const logout = async () => { await cerrarSesion(); nav("landing"); };
+
+  const reenviarVerificacion = async () => {
+    setReenviando(true);
+    try { await enviarVerificacionEmail(user); setReenviado(true); }
+    catch {} finally { setReenviando(false); }
+  };
 
   const primaryLinks = [
     { label:"Buscar",      route:"buscar" },
     { label:"Feed",        route:"feed" },
     { label:"Precios",     route:"precios" },
-    ...(user ? [
-      { label:"Care",      route:"habilisCare" },
-      { label:"Cotizaciones", route:"cotizaciones" },
-    ] : []),
+    ...(user ? [{ label:"Care", route:"habilisCare" }] : []),
+    ...(esTecnico === true ? [{ label:"Cotizaciones", route:"cotizaciones" }] : []),
+    ...(esTecnico === false ? [{ label:"Mi cuenta", route:"miCuenta" }] : []),
     ...(user?.email === "wilberthfdz@gmail.com" ? [
       { label:"⚙️ Admin",  route:"admin" },
     ] : []),
   ];
 
   return (
+    <>
     <nav style={{
       display:"flex", alignItems:"center", justifyContent:"space-between",
       padding:"0 clamp(16px,4vw,40px)", height:"60px",
       position:"sticky", top:0, zIndex:200,
-      background:"rgba(8,14,28,0.94)", backdropFilter:"blur(20px)",
+      background:"rgba(8,14,28,0.97)",
       borderBottom:"1px solid rgba(255,255,255,0.06)"
     }}>
       <style>{`
@@ -96,12 +116,14 @@ export default function Nav({ nav, user, onLogout }) {
         {user ? (
           <>
             <NotifBell nav={nav} user={user} />
-            <button className="nav-btn-panel" onClick={() => nav("panel")}>Mi Panel</button>
-            {onLogout && (
-              <button className="nav-btn-logout" onClick={onLogout} style={{ marginLeft:"6px" }}>
-                Salir
-              </button>
+            {esTecnico !== null && (
+              esTecnico
+                ? <button className="nav-btn-panel" onClick={() => nav("panel")}>Mi Panel</button>
+                : <button className="nav-btn-panel" onClick={() => nav("misSolicitudes")}>Mis solicitudes</button>
             )}
+            <button className="nav-btn-logout" onClick={logout} style={{ marginLeft:"6px" }}>
+              Salir
+            </button>
           </>
         ) : (
           <>
@@ -137,7 +159,7 @@ export default function Nav({ nav, user, onLogout }) {
       {open && (
         <div style={{
           position:"absolute", top:"60px", left:0, right:0,
-          background:"rgba(8,14,28,0.98)", backdropFilter:"blur(20px)",
+          background:"rgba(8,14,28,0.98)",
           borderBottom:"1px solid rgba(255,255,255,0.08)",
           padding:"8px 16px 20px", display:"flex", flexDirection:"column", gap:"4px", zIndex:201
         }}>
@@ -150,14 +172,16 @@ export default function Nav({ nav, user, onLogout }) {
           <div style={{ height:"1px", background:"rgba(255,255,255,0.08)", margin:"8px 0" }}/>
           {user ? (
             <>
-              <button className="nav-link" style={{ width:"100%", justifyContent:"flex-start" }}
-                onClick={() => { nav("panel"); setOpen(false); }}>Mi Panel</button>
-              {onLogout && (
-                <button className="nav-btn-logout" style={{ width:"100%", textAlign:"left", marginTop:"4px" }}
-                  onClick={() => { onLogout(); setOpen(false); }}>
-                  Cerrar sesión
+              {esTecnico !== null && (
+                <button className="nav-link" style={{ width:"100%", justifyContent:"flex-start" }}
+                  onClick={() => { nav(esTecnico ? "panel" : "misSolicitudes"); setOpen(false); }}>
+                  {esTecnico ? "Mi Panel" : "Mis solicitudes"}
                 </button>
               )}
+              <button className="nav-btn-logout" style={{ width:"100%", textAlign:"left", marginTop:"4px" }}
+                onClick={() => { logout(); setOpen(false); }}>
+                Cerrar sesión
+              </button>
             </>
           ) : (
             <>
@@ -172,5 +196,22 @@ export default function Nav({ nav, user, onLogout }) {
         </div>
       )}
     </nav>
+    {user && !user.emailVerified && (
+      <div style={{ background:"linear-gradient(90deg,#F59E0B,#F97316)", color:"#1C1206",
+                    padding:"10px 16px", fontSize:"13.5px", display:"flex", alignItems:"center",
+                    justifyContent:"center", gap:"12px", flexWrap:"wrap", textAlign:"center",
+                    boxShadow:"0 2px 8px rgba(0,0,0,0.15)" }}>
+        <span style={{ fontWeight:800 }}>
+          ⚠️ Tu correo no está verificado — confírmalo para proteger tu cuenta (revisa tu bandeja y spam).
+        </span>
+        <button onClick={reenviarVerificacion} disabled={reenviando || reenviado}
+          style={{ background:"#1C1206", border:"none",
+                   color:"#FDE68A", borderRadius:"7px", padding:"6px 14px", fontSize:"12.5px",
+                   fontWeight:800, cursor: reenviado ? "default" : "pointer", flexShrink:0 }}>
+          {reenviando ? "Enviando..." : reenviado ? "✓ Correo enviado" : "Reenviar correo →"}
+        </button>
+      </div>
+    )}
+    </>
   );
 }

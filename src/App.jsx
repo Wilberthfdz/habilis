@@ -20,6 +20,8 @@ import VistaCotizacion               from "./pages/VistaCotizacion.jsx";
 import SolicitarServicio             from "./pages/SolicitarServicio.jsx";
 import Chat                          from "./pages/Chat.jsx";
 import MiRed                         from "./pages/MiRed.jsx";
+import MisSolicitudes                from "./pages/MisSolicitudes.jsx";
+import MiCuentaCliente               from "./pages/MiCuentaCliente.jsx";
 import Privacidad                    from "./pages/Privacidad.jsx";
 import Terminos                      from "./pages/Terminos.jsx";
 
@@ -53,9 +55,9 @@ input, select, textarea { font-size:16px !important; } /* prevent iOS zoom */
 @media (max-width:640px) {
   body { font-size:15px; }
   /* Force single column grids */
-  [style*="gridTemplateColumns"] { grid-template-columns:1fr !important; }
+  [style*="grid-template-columns"] { grid-template-columns:1fr !important; }
   /* Cards full-width padding */
-  [style*="borderRadius:\"16px\""], [style*='borderRadius:"16px"'] { padding:14px !important; }
+  [style*="border-radius: 16px"] { padding:14px !important; }
   /* Prevent overflow */
   * { max-width:100vw; }
   /* Table horizontal scroll */
@@ -104,7 +106,14 @@ const screenInicial = () => {
   if (path === "/inversion") return "inversion";
   if (path === "/privacidad") return "privacidad";
   if (path === "/terminos") return "terminos";
+  // Links compartidos de cotizaciones (WhatsApp, etc.) usan ?vista=<id>
+  if (new URLSearchParams(window.location.search).get("vista")) return "vistaCotizacion";
   return "landing";
+};
+
+const paramsIniciales = () => {
+  const vista = new URLSearchParams(window.location.search).get("vista");
+  return vista ? { token: vista } : {};
 };
 
 // Pantallas que se reflejan en la URL (compartibles por link directo)
@@ -113,7 +122,7 @@ const RUTAS_URL = { admin: "/admin", inversion: "/inversion", privacidad: "/priv
 export default function App() {
   const [user,    setUser]    = useState(undefined);
   const [screen,  setScreen]  = useState(screenInicial);
-  const [params,  setParams]  = useState({});
+  const [params,  setParams]  = useState(paramsIniciales);
 
   useEffect(() => {
     const unsub = onAuth(u => setUser(u || null));
@@ -166,6 +175,8 @@ export default function App() {
       case "solicitarServicio":  return <SolicitarServicio  {...screenProps} params={params} />;
       case "chat":               return <Chat               {...screenProps} params={params} />;
       case "miRed":              return <MiRed              {...screenProps} />;
+      case "misSolicitudes":     return <MisSolicitudes     {...screenProps} />;
+      case "miCuenta":           return <MiCuentaCliente    {...screenProps} />;
       case "admin":              return <Admin              {...screenProps} />;
       case "inversion":          return <Inversion          {...screenProps} />;
       case "privacidad":         return <Privacidad         {...screenProps} />;

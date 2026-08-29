@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Logo from "../components/Logo.jsx";
-import { iniciarSesion, loginConGoogle, loginConApple, obtenerTecnico, enviarResetPassword } from "../lib/firebase.js";
+import { iniciarSesion, loginConGoogle, loginConApple, obtenerTecnico, obtenerCliente, enviarResetPassword } from "../lib/firebase.js";
 
 // Google "G" logo inline SVG
 function GoogleIcon() {
@@ -33,7 +33,7 @@ export default function Login({ nav, user }) {
   const [error,         setError]         = useState("");
   const [resetEnviado,  setResetEnviado]  = useState(false);
 
-  useEffect(() => { if (user) nav("panel"); }, [user]);
+  useEffect(() => { if (user) routeAfterLogin(user.uid); }, [user]);
 
   const mapError = code => {
     if (code.includes("user-not-found") || code.includes("wrong-password") || code.includes("invalid-credential"))
@@ -46,7 +46,10 @@ export default function Login({ nav, user }) {
   // After any login method, check whether the user already has a profile
   const routeAfterLogin = async uid => {
     const perfil = await obtenerTecnico(uid);
-    nav(perfil ? "panel" : "completarPerfil");
+    if (perfil) { nav("panel"); return; }
+    const cliente = await obtenerCliente(uid);
+    if (cliente) { nav("misSolicitudes"); return; }
+    nav("completarPerfil");
   };
 
   const submit = async e => {
@@ -118,9 +121,8 @@ export default function Login({ nav, user }) {
       {/* Card */}
       <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center",
                     padding:"20px", position:"relative", zIndex:1 }}>
-        <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.09)",
-                      borderRadius:"24px", padding:"40px 36px", width:"100%", maxWidth:"420px",
-                      backdropFilter:"blur(16px)" }}>
+        <div style={{ background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.09)",
+                      borderRadius:"24px", padding:"40px 36px", width:"100%", maxWidth:"420px" }}>
 
           <h1 style={{ fontSize:"26px", fontWeight:900, color:"#fff", marginBottom:"6px" }}>Bienvenido</h1>
           <p style={{ color:"rgba(255,255,255,0.5)", fontSize:"14px", marginBottom:"28px" }}>

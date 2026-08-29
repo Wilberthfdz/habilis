@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Nav from "../components/Nav.jsx";
-import { obtenerCotizaciones, eliminarCotizacion, crearCotizacion, obtenerSiguienteFolio } from "../lib/firebase.js";
+import { obtenerCotizaciones, eliminarCotizacion, crearCotizacion, obtenerSiguienteFolio, obtenerTecnico } from "../lib/firebase.js";
 
 const ESTADO_CFG = {
   borrador:  { bg:"#F1F5F9", color:"#64748B",  label:"Borrador"  },
@@ -20,10 +20,15 @@ export default function Cotizaciones({ nav, user }) {
   const [loading, setLoading] = useState(true);
   const [filter,  setFilter]  = useState("todas");
   const [creating,setCreating]= useState(false);
+  const [esTecnico, setEsTecnico] = useState(null);
 
   useEffect(() => {
     if (!user) { nav("login"); return; }
-    cargar();
+    obtenerTecnico(user.uid).then(t => {
+      if (!t) { nav("misSolicitudes"); return; }
+      setEsTecnico(true);
+      cargar();
+    });
   }, [user]);
 
   const cargar = () => {
@@ -91,6 +96,8 @@ export default function Cotizaciones({ nav, user }) {
     aceptadas:cots.filter(c => c.estado === "aceptada").length,
     monto:    cots.filter(c => c.estado === "aceptada").reduce((s, c) => s + (c.total||0), 0),
   };
+
+  if (!user || esTecnico !== true) return null;
 
   return (
     <div style={{ background:"#F1F5F9", minHeight:"100vh" }}>

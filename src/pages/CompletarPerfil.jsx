@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import Logo from "../components/Logo.jsx";
 import Avatar from "../components/Avatar.jsx";
-import { crearPerfilTecnico, cerrarSesion } from "../lib/firebase.js";
+import { crearPerfilTecnico, crearPerfilCliente, cerrarSesion } from "../lib/firebase.js";
 import { transcribirRegistro } from "../lib/gemini.js";
 import { TAXONOMIA, buscarPorTexto } from "../lib/taxonomia.js";
 
@@ -17,6 +17,9 @@ export default function CompletarPerfil({ nav, user }) {
   const googleName  = user?.displayName || "";
   const googleEmail = user?.email       || "";
   const googlePhoto = user?.photoURL    || null;
+
+  const [tipoCuenta,   setTipoCuenta]   = useState("tecnico");
+  const esCliente = tipoCuenta === "cliente";
 
   const [categoriaId,   setCategoriaId]   = useState("electricidad");
   const [subcategoriaId,setSubcategoriaId]= useState("");
@@ -90,9 +93,17 @@ export default function CompletarPerfil({ nav, user }) {
   };
 
   const submit = async () => {
-    if (!ciudad.trim()) { setError("Ingresa tu ciudad para continuar."); return; }
+    if (!esCliente && !ciudad.trim()) { setError("Ingresa tu ciudad para continuar."); return; }
     setError(""); setLoading(true);
     try {
+      if (esCliente) {
+        await crearPerfilCliente(user.uid, {
+          nombre: googleName || "Sin nombre",
+          email:  googleEmail,
+        });
+        nav("misSolicitudes");
+        return;
+      }
       await crearPerfilTecnico(user.uid, {
         nombre:        googleName  || "Sin nombre",
         email:         googleEmail,
@@ -144,8 +155,8 @@ export default function CompletarPerfil({ nav, user }) {
         <div style={{ width:"100%", maxWidth:"480px" }}>
 
           {/* Card */}
-          <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.09)",
-                        borderRadius:"24px", padding:"36px 32px", backdropFilter:"blur(16px)" }}>
+          <div style={{ background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.09)",
+                        borderRadius:"24px", padding:"36px 32px" }}>
 
             {/* Google account preview */}
             <div style={{ display:"flex", alignItems:"center", gap:"14px", marginBottom:"28px",
@@ -166,41 +177,58 @@ export default function CompletarPerfil({ nav, user }) {
               </div>
             </div>
 
+            {/* Toggle tipo de cuenta */}
+            <div style={{ display:"flex", gap:"8px", marginBottom:"20px" }}>
+              {[["cliente","Soy cliente"],["tecnico","Soy técnico"]].map(([val, label]) => (
+                <button key={val} onClick={() => { setTipoCuenta(val); setError(""); }}
+                  style={{ flex:1, borderRadius:"10px", padding:"11px", fontSize:"14px", fontWeight:700,
+                           cursor:"pointer",
+                           background: tipoCuenta === val ? "#F97316" : "rgba(255,255,255,0.06)",
+                           color:      tipoCuenta === val ? "#fff"    : "rgba(255,255,255,0.6)",
+                           border:     tipoCuenta === val ? "1px solid #F97316" : "1px solid rgba(255,255,255,0.12)",
+                           transition:"background 0.2s" }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+
             <h2 style={{ fontSize:"22px", fontWeight:900, color:"#fff", marginBottom:"6px" }}>
-              ¡Un paso más!
+              {esCliente ? "¡Ya casi!" : "¡Un paso más!"}
             </h2>
             <p style={{ color:"rgba(255,255,255,0.45)", fontSize:"14px", marginBottom:"20px", lineHeight:1.5 }}>
-              Cuéntanos a qué te dedicas para que los clientes te encuentren.
+              {esCliente ? "Confirma tu cuenta para buscar y contactar técnicos verificados."
+                         : "Cuéntanos a qué te dedicas para que los clientes te encuentren."}
             </p>
-
-            {/* ── Registro por voz ── */}
-            <button onClick={toggleGrabacion} disabled={transcribiendo}
-              style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"center",
-                       gap:"10px", background: grabando ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.06)",
-                       border: grabando ? "1.5px solid rgba(239,68,68,0.5)" : "1.5px solid rgba(255,255,255,0.14)",
-                       borderRadius:"12px", padding:"13px 16px", fontSize:"14px", fontWeight:700,
-                       color: grabando ? "#FCA5A5" : "rgba(255,255,255,0.8)", cursor:"pointer",
-                       marginBottom:"20px", opacity: transcribiendo ? 0.7 : 1 }}>
-              {transcribiendo ? (
-                <>
-                  <div style={{ width:"16px", height:"16px", border:"2px solid rgba(255,255,255,0.3)",
-                                borderTopColor:"#fff", borderRadius:"50%", animation:"spin 0.75s linear infinite" }} />
-                  Escuchando lo que dijiste...
-                </>
-              ) : grabando ? (
-                <>⏹ Detener grabación</>
-              ) : (
-                <>🎙️ Llenar con mi voz — di tu oficio, ciudad y experiencia</>
-              )}
-            </button>
-            {vozOk && !transcribiendo && (
-              <p style={{ fontSize:"12px", color:"#86EFAC", marginTop:"-12px", marginBottom:"16px" }}>
-                ✓ Listo — revisa que los datos estén bien y ajusta lo que haga falta.
-              </p>
-            )}
 
             {/* Fields */}
             <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
+
+              {/* ── Registro por voz + datos de oficio (solo técnico) ── */}
+              {!esCliente && (<>
+              <button onClick={toggleGrabacion} disabled={transcribiendo}
+                style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"center",
+                         gap:"10px", background: grabando ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.06)",
+                         border: grabando ? "1.5px solid rgba(239,68,68,0.5)" : "1.5px solid rgba(255,255,255,0.14)",
+                         borderRadius:"12px", padding:"13px 16px", fontSize:"14px", fontWeight:700,
+                         color: grabando ? "#FCA5A5" : "rgba(255,255,255,0.8)", cursor:"pointer",
+                         opacity: transcribiendo ? 0.7 : 1 }}>
+                {transcribiendo ? (
+                  <>
+                    <div style={{ width:"16px", height:"16px", border:"2px solid rgba(255,255,255,0.3)",
+                                  borderTopColor:"#fff", borderRadius:"50%", animation:"spin 0.75s linear infinite" }} />
+                    Escuchando lo que dijiste...
+                  </>
+                ) : grabando ? (
+                  <>⏹ Detener grabación</>
+                ) : (
+                  <>🎙️ Llenar con mi voz — di tu oficio, ciudad y experiencia</>
+                )}
+              </button>
+              {vozOk && !transcribiendo && (
+                <p style={{ fontSize:"12px", color:"#86EFAC", margin:0 }}>
+                  ✓ Listo — revisa que los datos estén bien y ajusta lo que haga falta.
+                </p>
+              )}
 
               <div>
                 <label style={lbl}>Oficio principal *</label>
@@ -251,6 +279,7 @@ export default function CompletarPerfil({ nav, user }) {
                   style={{ width:"16px", height:"16px", accentColor:"#F97316" }} />
                 Cuento con herramienta propia
               </label>
+              </>)}
 
               {error && (
                 <div style={{ background:"rgba(239,68,68,0.12)", border:"1px solid rgba(239,68,68,0.28)",
@@ -264,7 +293,7 @@ export default function CompletarPerfil({ nav, user }) {
                          borderRadius:"12px", padding:"14px", fontSize:"15px", fontWeight:800,
                          cursor:"pointer", opacity: loading ? 0.75 : 1, marginTop:"4px",
                          boxShadow:"0 4px 14px rgba(249,115,22,0.3)" }}>
-                {loading ? "Creando perfil..." : "Crear mi perfil gratis →"}
+                {loading ? "Creando cuenta..." : esCliente ? "Crear mi cuenta →" : "Crear mi perfil gratis →"}
               </button>
 
               <p style={{ fontSize:"12px", color:"rgba(255,255,255,0.25)", textAlign:"center" }}>

@@ -15,9 +15,9 @@ export default function Bienvenida({ nav }) {
 
       <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center",
                     padding:"20px", position:"relative", zIndex:1 }}>
-        <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.09)",
+        <div style={{ background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.09)",
                       borderRadius:"24px", padding:"52px 40px", width:"100%", maxWidth:"440px",
-                      textAlign:"center", backdropFilter:"blur(16px)" }}>
+                      textAlign:"center" }}>
           <div style={{ fontSize:"64px", marginBottom:"20px", animation:"fadeUp 0.6s ease forwards" }}>🎉</div>
           <h1 style={{ fontSize:"30px", fontWeight:900, color:"#fff", marginBottom:"10px" }}>
             ¡Tu perfil fue creado!

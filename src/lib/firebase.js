@@ -1,7 +1,7 @@
 // ─── FIREBASE SERVICE — Base de datos, auth y storage ────────────────────
 import { initializeApp }                   from "firebase/app";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, OAuthProvider, signInWithPopup, sendPasswordResetEmail } from "firebase/auth";
-import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, where, orderBy, limit, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, OAuthProvider, signInWithPopup, sendPasswordResetEmail, sendEmailVerification, updateProfile } from "firebase/auth";
+import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, where, orderBy, limit, getDocs, addDoc, serverTimestamp, increment } from "firebase/firestore";
 // Storage SDK removed — profile photos use base64-in-Firestore (no Blaze plan needed)
 import { firebaseConfig }                  from "./config.js";
 
@@ -20,6 +20,10 @@ export const iniciarSesion = (email, password) =>
 export const cerrarSesion = () => signOut(auth);
 
 export const enviarResetPassword = (email) => sendPasswordResetEmail(auth, email);
+
+export const enviarVerificacionEmail = (user) => sendEmailVerification(user);
+
+export const actualizarNombreAuth = (user, nombre) => updateProfile(user, { displayName: nombre });
 
 export const onAuth = (callback) => onAuthStateChanged(auth, callback);
 
@@ -55,6 +59,25 @@ export async function crearPerfilTecnico(uid, datos) {
 
 export async function obtenerTecnico(uid) {
   const snap = await getDoc(doc(db, "tecnicos", uid));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
+export async function crearPerfilCliente(uid, datos) {
+  await setDoc(doc(db, "clientes", uid), {
+    ...datos,
+    uid,
+    tipo: "cliente",
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function actualizarCliente(uid, datos) {
+  await updateDoc(doc(db, "clientes", uid), { ...datos, updatedAt: serverTimestamp() });
+}
+
+export async function obtenerCliente(uid) {
+  const snap = await getDoc(doc(db, "clientes", uid));
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
 
@@ -130,6 +153,10 @@ export async function obtenerSolicitudesRecientes(ciudad) {
   );
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function marcarRespuestaSolicitud(solicitudId) {
+  await updateDoc(doc(db, "solicitudes", solicitudId), { respuestas: increment(1) });
 }
 
 // ── FOTO DE PERFIL (base64 → Firestore, no Storage needed) ──────────────
@@ -317,6 +344,11 @@ export async function obtenerSolicitudesChat(tecnicoId, estado) {
   const conds = [where("tecnicoId","==",tecnicoId)];
   if (estado) conds.push(where("estado","==",estado));
   const snap = await getDocs(query(collection(db,"solicitudes_chat"), ...conds));
+  const docs = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+  return docs.sort((a,b) => (b.createdAt?.toMillis?.()|| 0) - (a.createdAt?.toMillis?.()|| 0));
+}
+export async function obtenerSolicitudesCliente(clienteId) {
+  const snap = await getDocs(query(collection(db,"solicitudes_chat"), where("clienteId","==",clienteId)));
   const docs = snap.docs.map(d => ({ id:d.id, ...d.data() }));
   return docs.sort((a,b) => (b.createdAt?.toMillis?.()|| 0) - (a.createdAt?.toMillis?.()|| 0));
 }
