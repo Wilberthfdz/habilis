@@ -5,7 +5,7 @@ import { obtenerTecnico, obtenerTrabajosDelTecnico, cerrarSesion, subirFotoPerfi
          obtenerSolicitudesChat, actualizarTecnico, obtenerColaboradores,
          crearCotizacion, obtenerSiguienteFolio } from "../lib/firebase.js";
 import Avatar from "../components/Avatar.jsx";
-import { sugerirRespuesta } from "../lib/gemini.js";
+import { sugerirRespuesta, analizarMercado } from "../lib/gemini.js";
 
 const fmt = n => `$${(n||0).toLocaleString("es-MX")}`;
 const initials = n => ((n||"").trim().charAt(0).toUpperCase()) || "T";
@@ -33,6 +33,9 @@ export default function PanelTecnico({ nav, user }) {
   const [alcance,           setAlcance]           = useState("nacional");
   const [savingAlcance,     setSavingAlcance]     = useState(false);
   const [creandoCot,        setCreandoCot]        = useState(false);
+  const [mercado,           setMercado]           = useState(null);
+  const [mercadoLoading,    setMercadoLoading]    = useState(false);
+  const [mercadoError,      setMercadoError]      = useState("");
 
   useEffect(() => {
     if (!user) { nav("login"); return; }
@@ -125,6 +128,13 @@ export default function PanelTecnico({ nav, user }) {
     try { setAiResp(await sugerirRespuesta(solicitudDemo, tecnico)); }
     catch { setAiResp("Error al conectar con Gemini. Verifica tu API key en config.js."); }
     finally { setAiLoading(false); }
+  };
+
+  const verMercado = async () => {
+    setMercadoError(""); setMercadoLoading(true);
+    try { setMercado(await analizarMercado()); }
+    catch (e) { setMercadoError(e.message || "No se pudo generar el análisis. Intenta de nuevo."); }
+    finally { setMercadoLoading(false); }
   };
 
   const esEmpresa = tecnico?.plan === "empresa";
@@ -538,9 +548,9 @@ export default function PanelTecnico({ nav, user }) {
             </div>
 
             {[
-              { icon:"👤", title:"Mejorar mi perfil",   desc:"Gemini mejora la descripción de tu perfil para que más clientes te contraten.", pro:false },
-              { icon:"📄", title:"Generar cotización",  desc:"Describe el trabajo y Gemini redacta una cotización profesional para el cliente.", pro:true },
-              { icon:"📊", title:"Análisis de mercado", desc:"Ve qué servicios tienen más demanda en tu ciudad esta semana.", pro:true },
+              { icon:"👤", title:"Mejorar mi perfil",   desc:"Gemini mejora la descripción de tu perfil para que más clientes te contraten.", pro:false, action:null, cta:null },
+              { icon:"📄", title:"Generar cotización",  desc:"Cotizaciones profesionales con desglose de conceptos, IVA y tu catálogo de productos.", pro:true, action:() => nav("cotizaciones"), cta:"Ir a Cotizaciones →" },
+              { icon:"📊", title:"Análisis de mercado", desc:"Solicitudes reales de tu ciudad en los últimos 30 días, por categoría.", pro:true, action:verMercado, cta:mercadoLoading ? "Generando..." : "Ver análisis →" },
             ].map(h => (
               <div key={h.title} style={{ ...CARD, display:"flex", gap:"14px", alignItems:"flex-start", opacity: h.pro && !esPro ? 0.6 : 1 }}>
                 <span style={{ fontSize:"24px", flexShrink:0 }}>{h.icon}</span>
@@ -549,11 +559,40 @@ export default function PanelTecnico({ nav, user }) {
                     <p style={{ fontWeight:700, fontSize:"14px" }}>{h.title}</p>
                     {h.pro && <span style={{ background:"#FFF7ED", color:"#EA580C", fontSize:"10px", fontWeight:700, padding:"2px 7px", borderRadius:"6px" }}>PRO</span>}
                   </div>
-                  <p style={{ color:"#64748B", fontSize:"13px", marginBottom: h.pro && !esPro ? "8px" : 0 }}>{h.desc}</p>
+                  <p style={{ color:"#64748B", fontSize:"13px", marginBottom: (h.pro && !esPro) || h.action ? "8px" : 0 }}>{h.desc}</p>
                   {h.pro && !esPro && (
                     <button onClick={() => nav("precios")} style={{ ...BTN_SM, background:"#fff", color:"#F97316", border:"1px solid #F97316" }}>
                       Requiere Plan Pro →
                     </button>
+                  )}
+                  {h.action && (!h.pro || esPro) && (
+                    <button onClick={h.action} disabled={mercadoLoading && h.title === "Análisis de mercado"} style={BTN_SM}>
+                      {h.cta}
+                    </button>
+                  )}
+                  {h.title === "Análisis de mercado" && esPro && (mercado || mercadoError) && (
+                    <div style={{ marginTop:"12px", paddingTop:"12px", borderTop:"1px solid #F1F5F9" }}>
+                      {mercadoError ? (
+                        <p style={{ fontSize:"12.5px", color:"#DC2626" }}>{mercadoError}</p>
+                      ) : mercado.ranking.length === 0 ? (
+                        <p style={{ fontSize:"12.5px", color:"#94A3B8" }}>
+                          Aún no hay suficientes solicitudes en {mercado.ciudad} en los últimos {mercado.dias} días.
+                        </p>
+                      ) : (
+                        <>
+                          <p style={{ fontSize:"11px", color:"#94A3B8", marginBottom:"8px" }}>
+                            {mercado.total} solicitud{mercado.total===1?"":"es"} en {mercado.ciudad} · últimos {mercado.dias} días
+                          </p>
+                          {mercado.ranking.map(r => (
+                            <div key={r.categoria} style={{ display:"flex", justifyContent:"space-between",
+                                                             fontSize:"13px", padding:"4px 0" }}>
+                              <span style={{ color:"#374151" }}>{r.categoria}</span>
+                              <span style={{ fontWeight:700, color:"#0F172A" }}>{r.solicitudes}</span>
+                            </div>
+                          ))}
+                        </>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

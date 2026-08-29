@@ -468,6 +468,50 @@ exports.transcribirRegistro = onCall({ secrets: [GEMINI_KEY] }, async (request) 
 });
 
 // ═══════════════════════════════════════════════════════════════
+// 📊 ANÁLISIS DE MERCADO — beneficio Pro/Empresa del panel de IA.
+// Cuenta solicitudes reales de la ciudad del técnico en los últimos 30
+// días, agrupadas por categoría. Es honesto sobre su propia limitación:
+// hoy `solicitudes` solo se llena desde Habilis Care (mantenimiento), así
+// que el panorama real de demanda todavía es parcial, no de toda la app.
+// ═══════════════════════════════════════════════════════════════
+exports.analisisMercado = onCall(async (request) => {
+  const uid = requireAuth(request);
+  await checkRateLimit(uid, "analisisMercado", 20);
+
+  const tecnicoDoc = await db.collection("tecnicos").doc(uid).get();
+  const tecnico = tecnicoDoc.data();
+  if (!tecnico || (tecnico.plan !== "pro" && tecnico.plan !== "empresa")) {
+    throw new HttpsError("permission-denied", "El análisis de mercado es un beneficio Pro/Empresa.");
+  }
+  const ciudad = (tecnico.ciudad || "").trim();
+  if (!ciudad) {
+    throw new HttpsError("failed-precondition", "Agrega tu ciudad en Configurar antes de ver el análisis de tu zona.");
+  }
+
+  // Sin rango en la query (evita depender de un índice compuesto nuevo):
+  // se trae por ciudad y se filtra la fecha en memoria — el volumen de
+  // `solicitudes` es bajo, así que no hay problema de rendimiento.
+  const snap = await db.collection("solicitudes").where("ciudad", "==", ciudad).limit(300).get();
+  const desdeMs = Date.now() - 30 * 24 * 3600 * 1000;
+  const conteo = {};
+  let total = 0;
+  snap.docs.forEach((d) => {
+    const data = d.data();
+    const ts = data.createdAt?.toMillis?.() || 0;
+    if (ts < desdeMs) return;
+    total++;
+    const cat = data.categoria || "Sin categoría";
+    conteo[cat] = (conteo[cat] || 0) + 1;
+  });
+  const ranking = Object.entries(conteo)
+    .sort((a, b) => b[1] - a[1])
+    .map(([categoria, solicitudes]) => ({ categoria, solicitudes }));
+
+  await logDecision("analisisMercado", `${total} solicitud(es) en ${ciudad}`, uid, "");
+  return { ciudad, dias: 30, total, ranking };
+});
+
+// ═══════════════════════════════════════════════════════════════
 // EMPLEADOS (cuentas Empresa) — tope de 10 por cuenta
 // Se crea vía Admin SDK, no como escritura directa del cliente: las
 // reglas de Firestore no pueden contar cuántos documentos ya existen de

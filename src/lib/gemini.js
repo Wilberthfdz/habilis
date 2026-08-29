@@ -247,3 +247,10 @@ export async function crearEmpleado(datos) {
   const result = await crearEmpleadoProxy(datos);
   return result.data; // { id }
 }
+
+// ── 15. ANÁLISIS DE MERCADO (beneficio Pro/Empresa) ──────────────────────
+const analisisMercadoProxy = httpsCallable(fns, "analisisMercado");
+export async function analizarMercado() {
+  const result = await analisisMercadoProxy({});
+  return result.data; // { ciudad, dias, total, ranking }
+}
