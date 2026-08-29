@@ -102,6 +102,16 @@ async function logDecision(agente, decision, entidadId, razon) {
 // Activa por primera vez en producción la lógica de "sugerirTecnicos"
 // (antes muerta: existía en el frontend pero nadie la llamaba).
 // ═══════════════════════════════════════════════════════════════
+// Plan Pro/Empresa promete "4 leads garantizados al mes" (Precios.jsx) —
+// antes el plan solo era desempate dentro de un top-3 fijo, así que la
+// garantía nunca se cumplía en la práctica. Ahora cualquier técnico Pro o
+// Empresa que sea oficio-compatible con la solicitud entra SIEMPRE en la
+// notificación mientras no haya usado su cupo del mes; no puede fabricar
+// demanda que no existe, pero si la solicitud existe y aplica, no depende
+// de que Gemini lo elija entre solo 3.
+const MAX_LEADS_MES_GARANTIZADOS = 4;
+const MAX_NOTIFICADOS_POR_SOLICITUD = 8; // tope para no saturar en ciudades grandes
+
 exports.agenteMatching = onDocumentCreated(
   { document: "solicitudes/{id}", secrets: [GEMINI_KEY] },
   async (event) => {
@@ -121,14 +131,29 @@ exports.agenteMatching = onDocumentCreated(
 "${sol.descripcion || sol.titulo}" (categoría: ${sol.categoria || "sin especificar"}) en ${sol.ciudad || "ciudad no especificada"}.
 Técnicos disponibles:
 ${lista}
-DECIDE los 3 mejores considerando: oficio compatible con la categoría, misma ciudad o cercana (ignora ciudad si no se especificó), experiencia, trabajos documentados. Plan pro es desempate, no criterio principal.
-Responde SOLO JSON: {"seleccionados":[{"id":"...","razon":"breve"}],"urgenciaIA":"baja|media|alta"}`;
+Marca TODOS los técnicos cuyo oficio sea razonablemente compatible con esta solicitud (no te limites a 3 — pueden ser 1 o pueden ser 15). Si se especificó ciudad, prioriza esa ciudad o cercanas en el orden, pero no excluyas a los demás si hay pocos compatibles ahí.
+Responde SOLO JSON, ordenado del más al menos relevante: {"elegibles":[{"id":"...","razon":"breve"}],"urgenciaIA":"baja|media|alta"}`;
 
-    const out = parseJsonLoose(await callGemini(prompt, GEMINI_KEY.value(), { maxTokens: 400, temperature: 0.3 }), {
-      seleccionados: [],
+    const out = parseJsonLoose(await callGemini(prompt, GEMINI_KEY.value(), { maxTokens: 700, temperature: 0.3 }), {
+      elegibles: [],
       urgenciaIA: "media",
     });
-    const seleccionados = (out.seleccionados || []).filter((s) => tecnicos.some((t) => t.id === s.id));
+    const mapTec = Object.fromEntries(tecnicos.map((t) => [t.id, t]));
+    const elegibles = (out.elegibles || []).filter((s) => mapTec[s.id]);
+
+    const periodo = new Date().toISOString().slice(0, 7); // "2026-08"
+    const bajoCupo = (s) => {
+      const t = mapTec[s.id];
+      if (t.plan !== "pro" && t.plan !== "empresa") return false;
+      const usados = t.leadsMesPeriodo === periodo ? (t.leadsMes || 0) : 0;
+      return usados < MAX_LEADS_MES_GARANTIZADOS;
+    };
+
+    // Pro/Empresa bajo cupo van primero (garantía real); el resto llena los
+    // huecos hasta el tope, en el mismo orden de relevancia que dio Gemini.
+    const prioridad = elegibles.filter(bajoCupo);
+    const resto = elegibles.filter((s) => !bajoCupo(s));
+    const seleccionados = [...prioridad, ...resto].slice(0, MAX_NOTIFICADOS_POR_SOLICITUD);
 
     await db.collection("solicitudes").doc(solId).update({
       urgenciaIA: out.urgenciaIA,
@@ -145,6 +170,14 @@ Responde SOLO JSON: {"seleccionados":[{"id":"...","razon":"breve"}],"urgenciaIA"
         link: "feed",
         fecha: admin.firestore.FieldValue.serverTimestamp(),
       });
+      if (bajoCupo(sel)) {
+        const t = mapTec[sel.id];
+        const usados = t.leadsMesPeriodo === periodo ? (t.leadsMes || 0) : 0;
+        await db.collection("tecnicos").doc(sel.id).update({
+          leadsMes: usados + 1,
+          leadsMesPeriodo: periodo,
+        });
+      }
     }
 
     await logDecision("matching", `asignó ${seleccionados.length} técnico(s)`, solId, seleccionados.map((s) => s.razon).join("; "));
@@ -426,10 +459,56 @@ exports.transcribirRegistro = onCall({ secrets: [GEMINI_KEY] }, async (request) 
 });
 
 // ═══════════════════════════════════════════════════════════════
+// EMPLEADOS (cuentas Empresa) — tope de 10 por cuenta
+// Se crea vía Admin SDK, no como escritura directa del cliente: las
+// reglas de Firestore no pueden contar cuántos documentos ya existen de
+// forma confiable (y menos aún de forma resistente a manipulación), así
+// que el límite solo se puede hacer cumplir aquí.
+// ═══════════════════════════════════════════════════════════════
+const MAX_EMPLEADOS_EMPRESA = 10;
+
+exports.crearEmpleado = onCall(async (request) => {
+  const uid = requireAuth(request);
+  await checkRateLimit(uid, "crearEmpleado", 20);
+  const { nombre, oficio, categoriaId, ciudad, experiencia, bio } = request.data || {};
+  if (!nombre || typeof nombre !== "string" || !nombre.trim()) {
+    throw new HttpsError("invalid-argument", "El nombre del empleado es requerido.");
+  }
+
+  const empresaDoc = await db.collection("tecnicos").doc(uid).get();
+  if (empresaDoc.data()?.plan !== "empresa") {
+    throw new HttpsError("permission-denied", "Solo las cuentas Empresa pueden agregar empleados.");
+  }
+
+  const conteo = await db.collection("tecnicos").where("empresaId", "==", uid).count().get();
+  if (conteo.data().count >= MAX_EMPLEADOS_EMPRESA) {
+    throw new HttpsError("resource-exhausted",
+      `Ya tienes ${MAX_EMPLEADOS_EMPRESA} empleados — es el máximo del Plan Empresa.`);
+  }
+
+  const ref = await db.collection("tecnicos").add({
+    nombre: nombre.trim(),
+    oficio: oficio || "",
+    categoriaId: categoriaId || null,
+    ciudad: (ciudad || "").trim(),
+    experiencia: parseInt(experiencia) || 0,
+    bio: (bio || "").trim(),
+    empresaId: uid,
+    plan: "empresa",
+    verificado: false,
+    rating: 0,
+    totalReviews: 0,
+    totalTrabajos: 0,
+    disponible: true,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  return { id: ref.id };
+});
+
+// ═══════════════════════════════════════════════════════════════
 // MERCADO PAGO — suscripción Habilis Pro
 // ═══════════════════════════════════════════════════════════════
-// Precio base por tipo de plan. "empresa" agrega la gestión de empleados
-// sobre los mismos beneficios de Pro — ver crearEmpleado en el frontend.
 const PRECIOS_PLAN = { pro: 149, empresa: 499 };
 
 exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {

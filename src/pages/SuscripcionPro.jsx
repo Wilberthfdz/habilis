@@ -13,7 +13,7 @@ const BENEFICIOS_PRO = [
 ];
 const BENEFICIOS_EMPRESA = [
   ...BENEFICIOS_PRO,
-  "Agrega empleados: cada uno con su propio perfil, visible en las búsquedas",
+  "Agrega hasta 10 empleados: cada uno con su propio perfil, visible en las búsquedas",
 ];
 const PRECIOS = { pro: 149, empresa: 499 };
 

@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
 import Nav from "../components/Nav.jsx";
 import Avatar from "../components/Avatar.jsx";
-import { obtenerTecnico, obtenerEmpleados, crearEmpleado, actualizarEmpleado, eliminarEmpleado } from "../lib/firebase.js";
+import { obtenerTecnico, obtenerEmpleados, actualizarEmpleado, eliminarEmpleado } from "../lib/firebase.js";
+import { crearEmpleado } from "../lib/gemini.js";
 import { TAXONOMIA } from "../lib/taxonomia.js";
+
+const MAX_EMPLEADOS = 10;
 
 const CARD = { background:"#fff", border:"1px solid #E2E8F0", borderRadius:"16px",
                padding:"20px", marginBottom:"14px", boxShadow:"0 1px 3px rgba(0,0,0,0.06)" };
@@ -49,8 +52,11 @@ export default function Empleados({ nav, user }) {
 
   const cancelarEdicion = () => { setEditandoId(null); setForm(VACIO); setError(""); };
 
+  const alTope = !editandoId && empleados.length >= MAX_EMPLEADOS;
+
   const guardar = async () => {
     if (!form.nombre.trim()) { setError("Ingresa el nombre del empleado."); return; }
+    if (alTope) { setError(`Ya tienes ${MAX_EMPLEADOS} empleados — es el máximo del Plan Empresa.`); return; }
     setError(""); setGuardando(true);
     const categoria = TAXONOMIA.find(c => c.id === form.categoriaId) || TAXONOMIA[0];
     const datos = {
@@ -63,7 +69,7 @@ export default function Empleados({ nav, user }) {
     };
     try {
       if (editandoId) await actualizarEmpleado(editandoId, datos);
-      else await crearEmpleado(user.uid, datos);
+      else await crearEmpleado(datos);
       cancelarEdicion();
       cargar();
     } catch (e) {
@@ -117,12 +123,18 @@ export default function Empleados({ nav, user }) {
             🏢 Tu equipo
           </h1>
           <p style={{ color:"rgba(255,255,255,0.5)", fontSize:"14px" }}>
-            {empleados.length} empleado{empleados.length === 1 ? "" : "s"} · aparecen en las búsquedas de Habilis
+            {empleados.length}/{MAX_EMPLEADOS} empleados · aparecen en las búsquedas de Habilis
           </p>
         </div>
       </div>
 
       <div style={{ maxWidth:"680px", margin:"0 auto", padding:"20px" }}>
+        {alTope && (
+          <div style={{ background:"#FFF7ED", border:"1px solid #FED7AA", borderRadius:"12px",
+                        padding:"14px 16px", marginBottom:"14px", fontSize:"13px", color:"#EA580C" }}>
+            Llegaste al máximo de {MAX_EMPLEADOS} empleados del Plan Empresa. Quita a alguien de tu equipo para agregar otro.
+          </div>
+        )}
         <div style={CARD}>
           <h3 style={{ fontWeight:800, fontSize:"15px", color:"#0F172A", marginBottom:"14px" }}>
             {editandoId ? "Editar empleado" : "Agregar empleado"}
@@ -164,8 +176,9 @@ export default function Empleados({ nav, user }) {
           )}
 
           <div style={{ display:"flex", gap:"10px" }}>
-            <button onClick={guardar} disabled={guardando}
-              style={{ ...BTN, flex:1, opacity: guardando ? 0.6 : 1 }}>
+            <button onClick={guardar} disabled={guardando || alTope}
+              style={{ ...BTN, flex:1, opacity: (guardando || alTope) ? 0.6 : 1,
+                       cursor: alTope ? "not-allowed" : "pointer" }}>
               {guardando ? "Guardando..." : editandoId ? "Guardar cambios" : "+ Agregar empleado"}
             </button>
             {editandoId && (

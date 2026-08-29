@@ -12,15 +12,12 @@ service cloud.firestore {
       // isAdmin() puede crear con cualquier id (onboarding en persona desde
       // el ERP, antes de que la persona tenga cuenta propia) — ver #8 de la
       // auditoría del 16 ago.
-      allow create: if isAdmin()
-        || (request.auth != null && request.auth.uid == uid)
-        // Una cuenta con plan "empresa" da de alta perfiles de empleados con
-        // id propio (no ligado a su uid) — `empresaId` los vincula a quien
-        // paga y los administra. Se exige que el creador YA tenga ese plan
-        // (no basta con que el doc nuevo declare empresaId=su uid), para que
-        // no sea una forma gratis de crear perfiles extra.
-        || (request.auth != null && request.resource.data.empresaId == request.auth.uid &&
-            get(/databases/$(database)/documents/tecnicos/$(request.auth.uid)).data.plan == "empresa");
+      // Los perfiles de empleados (empresaId) se crean SOLO vía la Cloud
+      // Function crearEmpleado (Admin SDK, que ignora estas reglas) — ahí
+      // se hace cumplir el tope de 10 por cuenta Empresa. Las reglas no
+      // pueden contar documentos existentes de forma confiable, así que
+      // dejar un create directo aquí abría la puerta a saltarse el tope.
+      allow create: if isAdmin() || (request.auth != null && request.auth.uid == uid);
       // El dueño solo puede tocar campos de perfil "seguros" — plan, verificado,
       // rating, rankScore, etc. son SOLO backend (agentes / webhook de pago).
       // Antes cualquier usuario podía hacer updateDoc({plan:"pro"}) directo

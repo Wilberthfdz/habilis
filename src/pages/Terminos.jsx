@@ -152,7 +152,7 @@ export default function Terminos({ nav }) {
           <h3 style={H3}>4.3 Plan Empresa</h3>
           <ul style={{ paddingLeft:"20px" }}>
             <li style={LI}>El plan Empresa cuesta <strong>$499 MXN al mes</strong> (IVA incluido), mismo mecanismo de cobro recurrente que el plan Pro, e incluye todos sus beneficios.</li>
-            <li style={LI}>Además, permite dar de alta perfiles de empleados bajo la cuenta de la empresa; cada perfil aparece en las búsquedas de la plataforma como un técnico independiente, administrado por el Titular de la cuenta Empresa.</li>
+            <li style={LI}>Además, permite dar de alta hasta 10 perfiles de empleados bajo la cuenta de la empresa; cada perfil aparece en las búsquedas de la plataforma como un técnico independiente, administrado por el Titular de la cuenta Empresa. Estos perfiles no tienen cuenta ni inicio de sesión propio.</li>
             <li style={LI}>La empresa es responsable de la veracidad de los datos de los perfiles de sus empleados que da de alta, y de retirarlos cuando corresponda.</li>
           </ul>
           <h3 style={H3}>4.4 Facturación</h3>

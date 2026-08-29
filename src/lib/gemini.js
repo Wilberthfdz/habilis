@@ -238,3 +238,12 @@ export async function cancelarSuscripcionPro() {
   const result = await cancelarSuscripcionProxy({});
   return result.data;
 }
+
+// ── 14. EMPLEADOS (cuenta Empresa) ───────────────────────────────────────
+// Vía Cloud Function, no escritura directa: aquí se hace cumplir el tope
+// de 10 empleados por cuenta Empresa.
+const crearEmpleadoProxy = httpsCallable(fns, "crearEmpleado");
+export async function crearEmpleado(datos) {
+  const result = await crearEmpleadoProxy(datos);
+  return result.data; // { id }
+}

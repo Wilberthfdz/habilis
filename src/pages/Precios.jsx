@@ -24,14 +24,14 @@ const PRO = [
 
 const EMPRESA = [
   ...PRO,
-  [true, "🏢 Agrega empleados a tu equipo"],
+  [true, "🏢 Agrega hasta 10 empleados a tu equipo"],
   [true, "Cada empleado con su propio perfil visible en búsquedas"],
 ];
 
 const FAQ = [
   ["¿Puedo cancelar en cualquier momento?","Sí. Sin contratos de permanencia. Cancelas desde tu página de suscripción cuando quieras, y conservas los beneficios hasta el fin del mes pagado."],
   ["¿Cómo se realiza el cobro?","Cobro mensual a través de Mercado Pago, con tarjeta de débito o crédito ($149 MXN Plan Pro, $499 MXN Plan Empresa). Puedes solicitar factura CFDI con tus datos fiscales."],
-  ["¿Qué son los leads garantizados?","Son solicitudes de clientes que coinciden con tu oficio y ciudad, enviadas directo a tu panel."],
+  ["¿Qué son los leads garantizados?","Solicitudes de clientes que coinciden con tu oficio y ciudad. Como técnico Pro o Empresa, tienes prioridad real: mientras no hayas recibido 4 este mes, te llega cualquier solicitud compatible antes que a un técnico del plan Gratis. El número real depende de cuántas solicitudes haya en tu zona — Habilis no puede fabricar solicitudes que no existen, pero si existen y aplican para ti, son tuyas primero."],
   ["¿El plan Gratis es realmente gratis?","Sí, siempre. Los clientes también pueden buscar y contactar técnicos sin costo alguno."],
   ["¿Qué diferencia al Plan Empresa del Pro?","Todo lo del Plan Pro, más la posibilidad de agregar empleados a tu cuenta: cada uno con su propio perfil, visible en las búsquedas de Habilis, administrado desde tu panel."],
 ];

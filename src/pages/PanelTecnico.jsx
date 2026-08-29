@@ -128,6 +128,8 @@ export default function PanelTecnico({ nav, user }) {
   };
 
   const esEmpresa = tecnico?.plan === "empresa";
+  const periodoActual = new Date().toISOString().slice(0, 7);
+  const leadsMes = tecnico?.leadsMesPeriodo === periodoActual ? (tecnico?.leadsMes || 0) : 0;
   // Empresa incluye todos los beneficios de Pro (IA, cotizaciones, Care,
   // prioridad) además de poder agregar empleados.
   const esPro = tecnico?.plan === "pro" || esEmpresa;
@@ -258,6 +260,7 @@ export default function PanelTecnico({ nav, user }) {
                 ["🔧", stats.trabajos,    "Trabajos"],
                 ["✅", stats.completados, "Completados"],
                 ["💰", fmt(stats.ingresos),"Ingresos"],
+                ...(esPro ? [["🎯", `${Math.min(leadsMes,4)}/4`, "Leads del mes"]] : []),
               ].map(([icon, val, label]) => (
                 <div key={label} style={{ textAlign:"center" }}>
                   <div style={{ fontSize:"20px", marginBottom:"2px" }}>{icon}</div>

@@ -135,24 +135,9 @@ export async function buscarTecnicos({ limite = 100 } = {}) {
 // Un perfil con plan "empresa" puede dar de alta perfiles de empleados como
 // técnicos propios: comparten el mismo esquema y aparecen en las mismas
 // búsquedas/matching, solo llevan `empresaId` apuntando al dueño que paga.
-export async function crearEmpleado(empresaId, datos) {
-  const ref = doc(collection(db, "tecnicos"));
-  await setDoc(ref, {
-    ...datos,
-    uid: ref.id,
-    empresaId,
-    plan: "empresa",
-    verificado: false,
-    rating: 0,
-    totalReviews: 0,
-    totalTrabajos: 0,
-    disponible: true,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
-  return ref.id;
-}
-
+// Crear uno nuevo pasa por la Cloud Function `crearEmpleado` (lib/gemini.js)
+// — ahí se hace cumplir el tope de 10 por cuenta, algo que las reglas de
+// Firestore no pueden garantizar de forma confiable.
 export async function obtenerEmpleados(empresaId) {
   const q = query(collection(db, "tecnicos"), where("empresaId", "==", empresaId));
   const snap = await getDocs(q);
