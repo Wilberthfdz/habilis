@@ -30,6 +30,8 @@ import Soporte                       from "./pages/Soporte.jsx";
 import SuscripcionPro                from "./pages/SuscripcionPro.jsx";
 import Empleados                     from "./pages/Empleados.jsx";
 import HacerseTecnico                from "./pages/HacerseTecnico.jsx";
+import Verificacion                  from "./pages/Verificacion.jsx";
+import Agenda                        from "./pages/Agenda.jsx";
 
 // Carga diferida: el ERP admin y la página de inversión solo los ve un
 // puñado de personas — no tienen por qué pesar en el bundle de todos.
@@ -117,6 +119,8 @@ const screenInicial = () => {
   if (path === "/soporte") return "soporte";
   if (path === "/pro") return "suscripcionPro";
   if (path === "/empresa") return "suscripcionEmpresa";
+  // Perfil público con link bonito: myhabilis.com/t/juan-electricista
+  if (path.startsWith("/t/") && path.length > 3) return "perfil";
   // Links compartidos de cotizaciones (WhatsApp, etc.) usan ?vista=<id>
   if (new URLSearchParams(window.location.search).get("vista")) return "vistaCotizacion";
   return "landing";
@@ -124,7 +128,10 @@ const screenInicial = () => {
 
 const paramsIniciales = () => {
   const vista = new URLSearchParams(window.location.search).get("vista");
-  return vista ? { token: vista } : {};
+  if (vista) return { token: vista };
+  const path = window.location.pathname.replace(/\/+$/, "");
+  if (path.startsWith("/t/") && path.length > 3) return { slug: path.slice(3) };
+  return {};
 };
 
 // Pantallas que se reflejan en la URL (compartibles por link directo)
@@ -203,6 +210,8 @@ export default function App() {
       case "suscripcionEmpresa": return <SuscripcionPro     {...screenProps} params={{ ...params, plan:"empresa" }} />;
       case "empleados":          return <Empleados          {...screenProps} />;
       case "hacerseTecnico":     return <HacerseTecnico     {...screenProps} />;
+      case "verificacion":       return <Verificacion       {...screenProps} />;
+      case "agenda":             return <Agenda             {...screenProps} />;
       default: return <Landing {...screenProps} />;
     }
   };

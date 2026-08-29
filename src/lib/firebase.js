@@ -88,6 +88,77 @@ export async function obtenerTecnico(uid) {
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
 
+// ── SLUG PÚBLICO (myhabilis.com/t/juan-electricista) ─────────────────────
+const slugify = (s) => (s || "")
+  .normalize("NFD").replace(/[̀-ͯ]/g, "")
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, "-")
+  .replace(/^-+|-+$/g, "")
+  .slice(0, 60)
+  .replace(/-+$/, "");
+
+// El id del documento en /slugs ES el slug: una transacción con tx.get()
+// antes de tx.set() es lo único que garantiza que dos técnicos no reclamen
+// el mismo link al mismo tiempo (una regla de seguridad sola no puede).
+async function intentarReclamarSlug(uid, slug, prevSlug) {
+  await runTransaction(db, async (tx) => {
+    const slugRef = doc(db, "slugs", slug);
+    const slugSnap = await tx.get(slugRef);
+    if (slugSnap.exists() && slugSnap.data().tecnicoId !== uid) {
+      throw new Error("SLUG_OCUPADO");
+    }
+    if (!slugSnap.exists()) tx.set(slugRef, { tecnicoId: uid, createdAt: serverTimestamp() });
+    tx.update(doc(db, "tecnicos", uid), { slug, updatedAt: serverTimestamp() });
+    if (prevSlug && prevSlug !== slug) tx.delete(doc(db, "slugs", prevSlug));
+  });
+}
+
+export async function reclamarSlug(uid, deseado, prevSlug) {
+  const base = slugify(deseado);
+  if (!base || base.length < 3) throw new Error("Elige un texto más largo para tu link (mín. 3 caracteres).");
+  let candidato = base;
+  for (let i = 0; i < 15; i++) {
+    try {
+      await intentarReclamarSlug(uid, candidato, prevSlug);
+      return candidato;
+    } catch (e) {
+      if (e.message !== "SLUG_OCUPADO") throw e;
+      candidato = `${base}-${Math.floor(100 + Math.random() * 900)}`;
+    }
+  }
+  throw new Error("No se pudo reservar ese link, intenta con otro texto.");
+}
+
+export async function obtenerTecnicoPorSlug(slug) {
+  const slugSnap = await getDoc(doc(db, "slugs", slug));
+  if (!slugSnap.exists()) return null;
+  return obtenerTecnico(slugSnap.data().tecnicoId);
+}
+
+// ── AGENDA — disponibilidad semanal (beneficio Pro/Empresa) ─────────────
+// Reservar/cancelar/consultar horarios libres pasa por Cloud Functions
+// (ver lib/gemini.js) — aquí solo vive la plantilla que el propio técnico
+// edita directo, que las reglas ya limitan a su dueño con plan pagante.
+export async function guardarDisponibilidad(uid, bloques, duracionMin) {
+  await setDoc(doc(db, "disponibilidad", uid), {
+    bloques, duracionMin: duracionMin || 60, updatedAt: serverTimestamp(),
+  }, { merge: true });
+}
+
+export async function obtenerDisponibilidad(uid) {
+  const snap = await getDoc(doc(db, "disponibilidad", uid));
+  return snap.exists() ? snap.data() : null;
+}
+
+export async function obtenerMisCitas(uid, campo) {
+  // Sin orderBy aquí a propósito — combinado con el where de otro campo
+  // pediría un índice compuesto nuevo. Se ordena en el cliente.
+  const q = query(collection(db, "citas"), where(campo, "==", uid));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (a.fecha + a.hora).localeCompare(b.fecha + b.hora));
+}
+
 export async function crearPerfilCliente(uid, datos) {
   await setDoc(doc(db, "clientes", uid), {
     ...datos,
@@ -228,6 +299,45 @@ export async function subirFotoPerfil(uid, blob) {
 
   await updateDoc(doc(db, "tecnicos", uid), { fotoUrl: base64, updatedAt: serverTimestamp() });
   return base64;
+}
+
+// ── VERIFICACIÓN DE IDENTIDAD (INE + comprobante, base64 → Firestore) ───
+// Documentos necesitan más resolución que la foto de perfil (800px vs 200px)
+// para que sean legibles al revisarlos, así que el límite de tamaño es mayor.
+async function blobABase64(blob, limiteBytes) {
+  const base64 = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = e => resolve(e.target.result);
+    reader.onerror = () => reject(new Error("No se pudo leer la imagen."));
+    reader.readAsDataURL(blob);
+  });
+  if (base64.length > limiteBytes) {
+    throw new Error("El archivo sigue siendo muy grande. Usa una imagen más pequeña.");
+  }
+  return base64;
+}
+
+export async function subirVerificacion(uid, ineBlob, comprobanteBlob) {
+  const ineBase64 = await blobABase64(ineBlob, 600 * 1024);
+  const comprobanteBase64 = comprobanteBlob ? await blobABase64(comprobanteBlob, 600 * 1024) : null;
+
+  const datos = {
+    ineBase64,
+    estado: "pendiente",
+    motivoRechazo: null,
+    updatedAt: serverTimestamp(),
+  };
+  if (comprobanteBase64) datos.comprobanteBase64 = comprobanteBase64;
+
+  const existe = await getDoc(doc(db, "verificaciones", uid));
+  if (!existe.exists()) datos.createdAt = serverTimestamp();
+
+  await setDoc(doc(db, "verificaciones", uid), datos, { merge: true });
+}
+
+export async function obtenerVerificacion(uid) {
+  const snap = await getDoc(doc(db, "verificaciones", uid));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
 
 // ── HABILIS CARE — ACTIVOS ───────────────────────────────────────────────

@@ -65,7 +65,9 @@ export default function AdminUsuarios() {
   };
 
   const togglePlan = (t) => accion(t, { plan: t.plan === "pro" ? "gratis" : "pro" }, t.plan === "pro" ? "quitó Pro" : "activó Pro (sin pago)");
-  const toggleVerificado = (t) => accion(t, { verificado: !t.verificado }, t.verificado ? "desverificó" : "verificó");
+  // Override manual (sin revisar documentos) — para onboarding en persona.
+  // La vía normal con evidencia (INE/comprobante) es la pestaña Verificaciones.
+  const toggleVerificado = (t) => accion(t, { verificado: !t.verificado }, t.verificado ? "desverificó (manual)" : "verificó (manual, sin documentos)");
   const toggleSuspendido = (t) => accion(t, { suspendido: !t.suspendido, disponible: !!t.suspendido }, t.suspendido ? "reactivó" : "suspendió");
 
   const eliminar = async (t) => {
@@ -181,7 +183,7 @@ export default function AdminUsuarios() {
                   <td style={{ ...TD, whiteSpace: "nowrap" }}>
                     <div style={{ display: "flex", gap: 4 }}>
                       <button disabled={busy === t.id} style={btnSm} onClick={() => setFicha(t)}>Ver ficha</button>
-                      <button disabled={busy === t.id} style={btnSm} onClick={() => toggleVerificado(t)}>{t.verificado ? "Desverificar" : "Verificar"}</button>
+                      <button disabled={busy === t.id} style={btnSm} onClick={() => toggleVerificado(t)}>{t.verificado ? "Desverificar" : "Verificar (manual)"}</button>
                       <button disabled={busy === t.id} style={btnSm} onClick={() => toggleSuspendido(t)}>{t.suspendido ? "Reactivar" : "Suspender"}</button>
                     </div>
                   </td>

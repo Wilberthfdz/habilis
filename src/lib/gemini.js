@@ -289,3 +289,20 @@ export async function crearTrabajo(datos) {
   const result = await crearTrabajoProxy(datos);
   return result.data; // { id }
 }
+
+// ── 19. AGENDA — disponibilidad + citas (beneficio Pro/Empresa) ─────────
+const obtenerHorariosDisponiblesProxy = httpsCallable(fns, "obtenerHorariosDisponibles");
+export async function obtenerHorariosDisponibles(tecnicoId, fecha) {
+  const result = await obtenerHorariosDisponiblesProxy({ tecnicoId, fecha });
+  return result.data; // { slots, duracionMin }
+}
+const reservarCitaProxy = httpsCallable(fns, "reservarCita");
+export async function reservarCita(tecnicoId, fecha, hora, nota) {
+  const result = await reservarCitaProxy({ tecnicoId, fecha, hora, nota });
+  return result.data; // { id }
+}
+const cancelarCitaProxy = httpsCallable(fns, "cancelarCita");
+export async function cancelarCitaPropia(citaId) {
+  const result = await cancelarCitaProxy({ citaId });
+  return result.data; // { ok }
+}

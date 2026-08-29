@@ -36,16 +36,69 @@ service cloud.firestore {
       allow update: if isAdmin() || (
         request.auth != null && request.auth.uid == uid &&
         request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['nombre','oficio','ciudad','experiencia','bio','fotoUrl','alcance','disponible','updatedAt'])
+          .hasOnly(['nombre','oficio','ciudad','experiencia','bio','fotoUrl','alcance','disponible','slug','updatedAt'])
       ) || (
         // La empresa dueña administra el perfil de su empleado (mismos campos
         // "seguros" que un técnico independiente editaría de sí mismo).
         request.auth != null && resource.data.empresaId == request.auth.uid &&
         request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['nombre','oficio','categoriaId','ciudad','experiencia','bio','fotoUrl','disponible','updatedAt'])
+          .hasOnly(['nombre','oficio','categoriaId','ciudad','experiencia','bio','fotoUrl','disponible','slug','updatedAt'])
       );
       allow delete: if isAdmin()
         || (request.auth != null && resource.data.empresaId == request.auth.uid);
+    }
+
+    // Reserva de slugs bonitos (myhabilis.com/t/juan-electricista). El id del
+    // documento ES el slug — así una transacción que hace tx.get() antes de
+    // tx.set() garantiza unicidad real (dos personas no pueden reservar el
+    // mismo slug a la vez). Solo el dueño del perfil puede reclamar/soltar
+    // su propio slug; nunca se permite "update" — cambiar de slug es
+    // borrar la reserva vieja y crear una nueva.
+    match /slugs/{slug} {
+      allow read: if true;
+      allow create: if request.auth != null &&
+        request.resource.data.tecnicoId == request.auth.uid &&
+        slug.matches('^[a-z0-9-]{3,60}$');
+      allow delete: if isAdmin() ||
+        (request.auth != null && resource.data.tecnicoId == request.auth.uid);
+      allow update: if false;
+    }
+
+    // Agenda — disponibilidad semanal (beneficio Pro/Empresa, mismo candado
+    // que activos/cotizaciones: get() confirma el plan pagante). Lectura
+    // pública porque el propio perfil la muestra, pero reservar una cita de
+    // verdad pasa por la Cloud Function reservarCita (evita condiciones de
+    // carrera y no expone nombre/teléfono de otros clientes en el cálculo
+    // de horarios libres).
+    match /disponibilidad/{uid} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == uid &&
+        get(/databases/$(database)/documents/tecnicos/$(uid)).data.plan in ['pro','empresa'];
+    }
+
+    // Citas agendadas — solo las crea/cancela reservarCita/cancelarCita
+    // (Cloud Functions, Admin SDK). Un write directo desde el cliente
+    // podría saltarse la validación de horario o pisar la reserva de otra
+    // persona; con create/update en false aquí, la única vía es el backend.
+    match /citas/{id} {
+      allow read: if request.auth != null &&
+        (resource.data.tecnicoId == request.auth.uid || resource.data.clienteId == request.auth.uid) || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Verificación de identidad — INE + comprobante de oficio. A diferencia
+    // de tecnicos, NO es pública: solo el dueño y el admin ven los documentos.
+    // El dueño puede volver a subir tras un rechazo, pero no auto-aprobarse
+    // (estado solo puede quedar en "pendiente" desde su propio update).
+    match /verificaciones/{uid} {
+      allow read:   if (request.auth != null && request.auth.uid == uid) || isAdmin();
+      allow create: if request.auth != null && request.auth.uid == uid &&
+        request.resource.data.estado == "pendiente";
+      allow update: if isAdmin() || (
+        request.auth != null && request.auth.uid == uid &&
+        request.resource.data.estado == "pendiente"
+      );
+      allow delete: if isAdmin();
     }
 
     // Perfiles de cliente — a diferencia de tecnicos, NO son públicos: solo

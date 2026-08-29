@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import Logo from "../components/Logo.jsx";
 import Nav from "../components/Nav.jsx";
 import Avatar from "../components/Avatar.jsx";
-import { obtenerTecnico, obtenerTrabajosDelTecnico, agregarColaborador, estaEnRed } from "../lib/firebase.js";
+import { obtenerTecnico, obtenerTecnicoPorSlug, obtenerTrabajosDelTecnico, agregarColaborador, estaEnRed, reclamarSlug, esPlanPagante } from "../lib/firebase.js";
+import { obtenerHorariosDisponibles, reservarCita } from "../lib/gemini.js";
 
 const initials = n => ((n||"").trim().charAt(0).toUpperCase()) || "T";
 
@@ -14,24 +15,28 @@ export default function Perfil({ nav, params, user }) {
   const [enRed,      setEnRed]      = useState(false);
   const [agregando,  setAgregando]  = useState(false);
 
-  const tecnicoId = params?.tecnicoId;
+  const slug = params?.slug;
+  // Con link bonito (/t/juan-electricista) todavía no sabemos el uid hasta
+  // resolver el slug — el resto del componente usa tecnicoId derivado del
+  // perfil ya cargado (tecnico.id), no del param original.
+  const tecnicoId = tecnico?.id || (!slug ? params?.tecnicoId : undefined);
 
   useEffect(() => {
-    if (!tecnicoId) { setNotFound(true); setLoading(false); return; }
+    if (!slug && !params?.tecnicoId) { setNotFound(true); setLoading(false); return; }
     (async () => {
       try {
-        const t = await obtenerTecnico(tecnicoId);
+        const t = slug ? await obtenerTecnicoPorSlug(slug) : await obtenerTecnico(params.tecnicoId);
         if (!t) { setNotFound(true); setLoading(false); return; }
         setTecnico(t);
-        const tr = await obtenerTrabajosDelTecnico(tecnicoId).catch(() => []);
-        setTrabajos(tr.filter(t => ["terminado","validado"].includes(t.estado)));
-        if (user?.uid && user.uid !== tecnicoId) {
-          estaEnRed(user.uid, tecnicoId).then(setEnRed).catch(() => {});
+        const tr = await obtenerTrabajosDelTecnico(t.id).catch(() => []);
+        setTrabajos(tr.filter(x => ["terminado","validado"].includes(x.estado)));
+        if (user?.uid && user.uid !== t.id) {
+          estaEnRed(user.uid, t.id).then(setEnRed).catch(() => {});
         }
       } catch { setNotFound(true); }
       finally { setLoading(false); }
     })();
-  }, [tecnicoId]);
+  }, [slug, params?.tecnicoId]);
 
   const CARD = { background:"#fff", border:"1px solid #E2E8F0", borderRadius:"16px",
                  padding:"22px", marginBottom:"14px", boxShadow:"0 1px 3px rgba(0,0,0,0.06)" };
@@ -165,6 +170,10 @@ export default function Perfil({ nav, params, user }) {
           </div>
         </div>
 
+        {esOwner && <CompartirPerfil tecnico={tecnico} onSlug={(s) => setTecnico(t => ({ ...t, slug:s }))} />}
+
+        {!esOwner && esPlanPagante(tecnico.plan) && <AgendarCita tecnico={tecnico} user={user} nav={nav} />}
+
         {/* Stats */}
         <div style={CARD}>
           <h2 style={{ fontWeight:800, fontSize:"15px", color:"#0F172A", marginBottom:"16px" }}>Estadísticas</h2>
@@ -239,5 +248,210 @@ export default function Perfil({ nav, params, user }) {
         </div>
       </div>
     </Shell>
+  );
+}
+
+// ── Link bonito para compartir (solo el dueño lo ve) ────────────────────
+function CompartirPerfil({ tecnico, onSlug }) {
+  const [editando, setEditando] = useState(false);
+  const [texto,    setTexto]    = useState(tecnico.slug || "");
+  const [guardando,setGuardando]= useState(false);
+  const [error,    setError]    = useState("");
+  const [copiado,  setCopiado]  = useState(false);
+
+  const CARD = { background:"#fff", border:"1px solid #E2E8F0", borderRadius:"16px",
+                 padding:"22px", marginBottom:"14px", boxShadow:"0 1px 3px rgba(0,0,0,0.06)" };
+  const inp  = { border:"1px solid #E2E8F0", borderRadius:"9px", padding:"9px 12px", fontSize:"13.5px" };
+
+  const url = tecnico.slug ? `${window.location.origin}/t/${tecnico.slug}` : null;
+
+  const guardar = async () => {
+    setError(""); setGuardando(true);
+    try {
+      const nuevoSlug = await reclamarSlug(tecnico.id, texto, tecnico.slug);
+      onSlug(nuevoSlug);
+      setTexto(nuevoSlug);
+      setEditando(false);
+    } catch (e) { setError(e.message || "No se pudo guardar el link."); }
+    finally { setGuardando(false); }
+  };
+
+  const copiar = () => {
+    if (!url) return;
+    navigator.clipboard?.writeText(url).then(() => {
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    });
+  };
+
+  return (
+    <div style={CARD}>
+      <h2 style={{ fontWeight:800, fontSize:"15px", color:"#0F172A", marginBottom:"10px" }}>🔗 Comparte tu perfil</h2>
+      {url && !editando ? (
+        <div style={{ display:"flex", gap:"8px", flexWrap:"wrap", alignItems:"center" }}>
+          <code style={{ background:"#F1F5F9", borderRadius:"8px", padding:"9px 12px", fontSize:"13px",
+                          flex:1, minWidth:"180px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+            {url}
+          </code>
+          <button onClick={copiar}
+            style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"9px",
+                     padding:"9px 16px", fontSize:"13px", fontWeight:700, cursor:"pointer" }}>
+            {copiado ? "✓ Copiado" : "Copiar"}
+          </button>
+          <button onClick={() => setEditando(true)}
+            style={{ background:"#F1F5F9", border:"1px solid #E2E8F0", borderRadius:"9px",
+                     padding:"9px 16px", fontSize:"13px", fontWeight:600, cursor:"pointer" }}>
+            Cambiar
+          </button>
+        </div>
+      ) : (
+        <div>
+          <p style={{ color:"#64748B", fontSize:"13px", marginBottom:"10px" }}>
+            Elige un link corto y fácil de recordar para compartir tu perfil por WhatsApp o redes sociales.
+          </p>
+          <div style={{ display:"flex", gap:"8px", flexWrap:"wrap", alignItems:"center" }}>
+            <span style={{ fontSize:"13px", color:"#94A3B8" }}>myhabilis.com/t/</span>
+            <input value={texto} onChange={e => setTexto(e.target.value)} placeholder="juan-electricista"
+              style={{ ...inp, flex:1, minWidth:"160px" }} />
+            <button onClick={guardar} disabled={guardando || !texto.trim()}
+              style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"9px",
+                       padding:"9px 16px", fontSize:"13px", fontWeight:700, cursor:"pointer",
+                       opacity: guardando || !texto.trim() ? 0.6 : 1 }}>
+              {guardando ? "Guardando…" : "Guardar"}
+            </button>
+            {tecnico.slug && (
+              <button onClick={() => { setEditando(false); setTexto(tecnico.slug); setError(""); }}
+                style={{ background:"none", border:"none", color:"#94A3B8", fontSize:"13px", cursor:"pointer" }}>
+                Cancelar
+              </button>
+            )}
+          </div>
+          {error && <p style={{ color:"#DC2626", fontSize:"12.5px", marginTop:"8px" }}>{error}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Agendar cita — sale del propio horario del técnico (Pro/Empresa) ────
+const proximosDias = () => {
+  const dias = [];
+  const hoy = new Date();
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + i);
+    const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    dias.push({ iso, label: d.toLocaleDateString("es-MX", { weekday:"short", day:"numeric", month:"short" }) });
+  }
+  return dias;
+};
+
+function AgendarCita({ tecnico, user, nav }) {
+  const dias = proximosDias();
+  const [fecha, setFecha] = useState(dias[0].iso);
+  const [slots, setSlots] = useState(null);
+  const [cargando, setCargando] = useState(false);
+  const [seleccionado, setSeleccionado] = useState(null);
+  const [nota, setNota] = useState("");
+  const [reservando, setReservando] = useState(false);
+  const [confirmada, setConfirmada] = useState(null);
+  const [error, setError] = useState("");
+
+  const CARD = { background:"#fff", border:"1px solid #E2E8F0", borderRadius:"16px",
+                 padding:"22px", marginBottom:"14px", boxShadow:"0 1px 3px rgba(0,0,0,0.06)" };
+
+  useEffect(() => {
+    if (!user) return;
+    setSlots(null); setSeleccionado(null); setError("");
+    setCargando(true);
+    obtenerHorariosDisponibles(tecnico.id, fecha)
+      .then(r => setSlots(r.slots || []))
+      .catch(e => setError(e.message || "No se pudo cargar la agenda."))
+      .finally(() => setCargando(false));
+  }, [fecha, user, tecnico.id]);
+
+  const confirmar = async () => {
+    if (!seleccionado) return;
+    setError(""); setReservando(true);
+    try {
+      await reservarCita(tecnico.id, fecha, seleccionado, nota.trim());
+      setConfirmada({ fecha, hora: seleccionado });
+    } catch (e) {
+      setError(e.message || "No se pudo agendar. Intenta con otro horario.");
+      setSlots(s => (s || []).filter(h => h !== seleccionado));
+      setSeleccionado(null);
+    } finally { setReservando(false); }
+  };
+
+  if (!user) return (
+    <div style={CARD}>
+      <h2 style={{ fontWeight:800, fontSize:"15px", color:"#0F172A", marginBottom:"10px" }}>📅 Agendar una cita</h2>
+      <p style={{ color:"#64748B", fontSize:"13px", marginBottom:"12px" }}>Inicia sesión para ver los horarios disponibles de {tecnico.nombre}.</p>
+      <button onClick={() => nav("login")}
+        style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"10px",
+                 padding:"10px 18px", fontSize:"14px", fontWeight:700, cursor:"pointer" }}>
+        Iniciar sesión
+      </button>
+    </div>
+  );
+
+  if (confirmada) return (
+    <div style={{ ...CARD, background:"#F0FDF4", border:"1px solid #A7F3D0" }}>
+      <h2 style={{ fontWeight:800, fontSize:"15px", color:"#15803D", marginBottom:"6px" }}>✓ Cita agendada</h2>
+      <p style={{ color:"#166534", fontSize:"13.5px" }}>
+        Quedaste agendado con {tecnico.nombre} el {dias.find(d => d.iso === confirmada.fecha)?.label} a las {confirmada.hora}.
+      </p>
+    </div>
+  );
+
+  return (
+    <div style={CARD}>
+      <h2 style={{ fontWeight:800, fontSize:"15px", color:"#0F172A", marginBottom:"10px" }}>📅 Agendar una cita</h2>
+
+      <div style={{ display:"flex", gap:"6px", overflowX:"auto", paddingBottom:"8px", marginBottom:"12px" }}>
+        {dias.map(d => (
+          <button key={d.iso} onClick={() => setFecha(d.iso)}
+            style={{ flexShrink:0, background: fecha === d.iso ? "#0F172A" : "#F1F5F9",
+                     color: fecha === d.iso ? "#fff" : "#374151", border:"none", borderRadius:"9px",
+                     padding:"8px 12px", fontSize:"12px", fontWeight:700, cursor:"pointer", textTransform:"capitalize" }}>
+            {d.label}
+          </button>
+        ))}
+      </div>
+
+      {cargando ? (
+        <p style={{ color:"#94A3B8", fontSize:"13px" }}>Buscando horarios…</p>
+      ) : (slots && slots.length === 0) ? (
+        <p style={{ color:"#94A3B8", fontSize:"13px" }}>Sin horarios disponibles este día — prueba otra fecha.</p>
+      ) : (
+        <div style={{ display:"flex", gap:"8px", flexWrap:"wrap", marginBottom:"14px" }}>
+          {(slots || []).map(h => (
+            <button key={h} onClick={() => setSeleccionado(h)}
+              style={{ background: seleccionado === h ? "#F97316" : "#F1F5F9",
+                       color: seleccionado === h ? "#fff" : "#374151", border:"none", borderRadius:"8px",
+                       padding:"8px 14px", fontSize:"13px", fontWeight:700, cursor:"pointer" }}>
+              {h}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {seleccionado && (
+        <>
+          <textarea value={nota} onChange={e => setNota(e.target.value)} maxLength={300}
+            placeholder="Cuéntale brevemente qué necesitas (opcional)"
+            style={{ width:"100%", border:"1px solid #E2E8F0", borderRadius:"10px", padding:"10px 12px",
+                     fontSize:"13.5px", minHeight:"60px", boxSizing:"border-box", marginBottom:"10px",
+                     fontFamily:"inherit", resize:"vertical" }} />
+          <button onClick={confirmar} disabled={reservando}
+            style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"10px",
+                     padding:"11px 20px", fontSize:"14px", fontWeight:700, cursor:"pointer",
+                     opacity: reservando ? 0.6 : 1 }}>
+            {reservando ? "Agendando…" : `Confirmar cita para las ${seleccionado}`}
+          </button>
+        </>
+      )}
+
+      {error && <p style={{ color:"#DC2626", fontSize:"12.5px", marginTop:"10px" }}>{error}</p>}
+    </div>
   );
 }

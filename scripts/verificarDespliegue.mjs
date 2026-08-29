@@ -20,6 +20,9 @@ const MARCAS = [
   ["Modelo de plataforma",           "no el prestador del servicio"],
   ["Soporte con IA",                 "Asistente Habilis"],
   ["Menú Acerca de",                 "Cómo funciona la app"],
+  ["Verificación de identidad",      "Verifica tu identidad"],
+  ["Link bonito de perfil",          "Comparte tu perfil"],
+  ["Agenda de citas",                "Mi agenda"],
 ];
 
 // Textos que YA NO deben aparecer: si siguen, el sitio es el viejo.

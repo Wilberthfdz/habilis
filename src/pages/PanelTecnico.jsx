@@ -551,6 +551,7 @@ export default function PanelTecnico({ nav, user }) {
               { icon:"👤", title:"Mejorar mi perfil",   desc:"Gemini mejora la descripción de tu perfil para que más clientes te contraten.", pro:false, action:null, cta:null },
               { icon:"📄", title:"Generar cotización",  desc:"Cotizaciones profesionales con desglose de conceptos, IVA y tu catálogo de productos.", pro:true, action:() => nav("cotizaciones"), cta:"Ir a Cotizaciones →" },
               { icon:"📊", title:"Análisis de mercado", desc:"Solicitudes reales de tu ciudad en los últimos 30 días, por categoría.", pro:true, action:verMercado, cta:mercadoLoading ? "Generando..." : "Ver análisis →" },
+              { icon:"📅", title:"Mi agenda", desc:"Marca tu disponibilidad y deja que los clientes agenden una cita directo, sin ida y vuelta por chat.", pro:true, action:() => nav("agenda"), cta:"Ir a mi Agenda →" },
             ].map(h => (
               <div key={h.title} style={{ ...CARD, display:"flex", gap:"14px", alignItems:"flex-start", opacity: h.pro && !esPro ? 0.6 : 1 }}>
                 <span style={{ fontSize:"24px", flexShrink:0 }}>{h.icon}</span>
@@ -704,6 +705,18 @@ export default function PanelTecnico({ nav, user }) {
                   Ver perfil público →
                 </button>
               </div>
+            </div>
+
+            <div style={CARD}>
+              <h3 style={{ fontWeight:800, fontSize:"15px", color:"#0F172A", marginBottom:"8px" }}>🪪 Verificación de identidad</h3>
+              <p style={{ fontSize:"13px", color:"#64748B", lineHeight:1.5, marginBottom:"14px" }}>
+                {tecnico.verificado
+                  ? "Tu identidad ya está verificada — tienes la insignia ✅ en tu perfil público."
+                  : "Sube tu INE para obtener la insignia de verificado y generar más confianza con los clientes."}
+              </p>
+              <button style={{ ...BTN }} onClick={() => nav("verificacion")}>
+                {tecnico.verificado ? "Ver mi verificación" : "Verificar mi identidad →"}
+              </button>
             </div>
 
             {!esPro && (

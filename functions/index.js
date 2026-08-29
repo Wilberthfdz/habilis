@@ -1367,3 +1367,141 @@ exports.emitirFactura = onCall({ secrets: [FACTURAPI_KEY] }, async (request) => 
   });
   return { facturaId: inv.id, verificationUrl: inv.verification_url };
 });
+
+// ═══════════════════════════════════════════════════════════════
+// AGENDA — disponibilidad semanal + citas (beneficio Pro/Empresa)
+// La disponibilidad ("disponibilidad/{uid}") la escribe el técnico
+// directo (ver firestore.rules), pero calcular horarios libres y reservar
+// pasan por aquí: así no se filtra nombre/teléfono de otros clientes al
+// calcular huecos, y un id determinístico (`${tecnicoId}_${fecha}_${hora}`)
+// dentro de una transacción es lo único que garantiza que dos personas no
+// agenden el mismo hueco a la vez.
+// ═══════════════════════════════════════════════════════════════
+const HORA_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
+const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function minutosDesde(hhmm) {
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + m;
+}
+function hhmmDesdeMinutos(mins) {
+  const h = Math.floor(mins / 60).toString().padStart(2, "0");
+  const m = (mins % 60).toString().padStart(2, "0");
+  return `${h}:${m}`;
+}
+function generarSlots(bloques, dia, duracionMin) {
+  const slots = [];
+  (bloques || []).filter((b) => b.dia === dia).forEach((b) => {
+    const inicio = minutosDesde(b.inicio);
+    const fin = minutosDesde(b.fin);
+    for (let t = inicio; t + duracionMin <= fin; t += duracionMin) slots.push(hhmmDesdeMinutos(t));
+  });
+  return slots;
+}
+
+exports.obtenerHorariosDisponibles = onCall(async (request) => {
+  requireAuth(request);
+  const { tecnicoId, fecha } = request.data || {};
+  if (!tecnicoId || typeof tecnicoId !== "string") throw new HttpsError("invalid-argument", "Falta el técnico.");
+  if (!fecha || !FECHA_RE.test(fecha)) throw new HttpsError("invalid-argument", "Fecha inválida.");
+  const hoy = new Date().toISOString().slice(0, 10);
+  if (fecha < hoy) throw new HttpsError("invalid-argument", "Elige una fecha futura.");
+
+  const [tecnicoSnap, dispSnap] = await Promise.all([
+    db.collection("tecnicos").doc(tecnicoId).get(),
+    db.collection("disponibilidad").doc(tecnicoId).get(),
+  ]);
+  if (!tecnicoSnap.exists || !esPlanPagante(tecnicoSnap.data().plan) || !dispSnap.exists) {
+    return { slots: [], duracionMin: 60 };
+  }
+  const disp = dispSnap.data();
+  const duracionMin = disp.duracionMin || 60;
+  // Mediodía UTC evita que un corrimiento de zona horaria cambie el día.
+  const dia = new Date(`${fecha}T12:00:00Z`).getUTCDay();
+  const candidatos = generarSlots(disp.bloques, dia, duracionMin);
+  if (candidatos.length === 0) return { slots: [], duracionMin };
+
+  const citasSnap = await db.collection("citas")
+    .where("tecnicoId", "==", tecnicoId).where("fecha", "==", fecha).get();
+  const ocupados = new Set(citasSnap.docs.filter((d) => d.data().estado !== "cancelada").map((d) => d.data().hora));
+  return { slots: candidatos.filter((h) => !ocupados.has(h)), duracionMin };
+});
+
+exports.reservarCita = onCall(async (request) => {
+  const uid = requireAuth(request);
+  await checkRateLimit(uid, "reservarCita", 20);
+  const { tecnicoId, fecha, hora, nota } = request.data || {};
+  if (!tecnicoId || typeof tecnicoId !== "string") throw new HttpsError("invalid-argument", "Falta el técnico.");
+  if (!fecha || !FECHA_RE.test(fecha)) throw new HttpsError("invalid-argument", "Fecha inválida.");
+  if (!hora || !HORA_RE.test(hora)) throw new HttpsError("invalid-argument", "Horario inválido.");
+  const hoy = new Date().toISOString().slice(0, 10);
+  if (fecha < hoy) throw new HttpsError("invalid-argument", "Elige una fecha futura.");
+
+  const [tecnicoSnap, dispSnap, clienteSnap] = await Promise.all([
+    db.collection("tecnicos").doc(tecnicoId).get(),
+    db.collection("disponibilidad").doc(tecnicoId).get(),
+    db.collection("clientes").doc(uid).get(),
+  ]);
+  if (!tecnicoSnap.exists || !esPlanPagante(tecnicoSnap.data().plan) || !dispSnap.exists) {
+    throw new HttpsError("failed-precondition", "Este técnico no tiene agenda disponible.");
+  }
+  const disp = dispSnap.data();
+  const duracionMin = disp.duracionMin || 60;
+  const dia = new Date(`${fecha}T12:00:00Z`).getUTCDay();
+  if (!generarSlots(disp.bloques, dia, duracionMin).includes(hora)) {
+    throw new HttpsError("failed-precondition", "Ese horario ya no forma parte de la agenda del técnico.");
+  }
+
+  const citaRef = db.collection("citas").doc(`${tecnicoId}_${fecha}_${hora}`);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(citaRef);
+    if (snap.exists && snap.data().estado !== "cancelada") {
+      throw new HttpsError("already-exists", "Ese horario ya fue reservado por alguien más.");
+    }
+    tx.set(citaRef, {
+      tecnicoId, clienteId: uid,
+      clienteNombre: clienteSnap.exists ? (clienteSnap.data().nombre || "") : "",
+      fecha, hora, duracionMin,
+      nota: (nota || "").slice(0, 300),
+      estado: "confirmada",
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  });
+
+  await db.collection("notificaciones").add({
+    userId: tecnicoId, tipo: "cita",
+    mensaje: `Nueva cita agendada: ${fecha} ${hora}hrs.`,
+    leida: false, link: "panel", fecha: admin.firestore.FieldValue.serverTimestamp(),
+  }).catch(() => {});
+
+  return { id: citaRef.id };
+});
+
+exports.cancelarCita = onCall(async (request) => {
+  const uid = requireAuth(request);
+  const { citaId } = request.data || {};
+  if (!citaId || typeof citaId !== "string") throw new HttpsError("invalid-argument", "Falta la cita.");
+
+  const ref = db.collection("citas").doc(citaId);
+  const notifPara = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) throw new HttpsError("not-found", "Esa cita no existe.");
+    const cita = snap.data();
+    if (cita.tecnicoId !== uid && cita.clienteId !== uid) {
+      throw new HttpsError("permission-denied", "No puedes cancelar esta cita.");
+    }
+    if (cita.estado === "cancelada") return null;
+    tx.update(ref, { estado: "cancelada", updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+    return cita.tecnicoId === uid ? cita.clienteId : cita.tecnicoId;
+  });
+
+  if (notifPara) {
+    await db.collection("notificaciones").add({
+      userId: notifPara, tipo: "cita",
+      mensaje: "Una cita fue cancelada.",
+      leida: false, link: "panel", fecha: admin.firestore.FieldValue.serverTimestamp(),
+    }).catch(() => {});
+  }
+  return { ok: true };
+});

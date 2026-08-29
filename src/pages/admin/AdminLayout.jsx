@@ -7,6 +7,7 @@ export { isAdminUser };
 const MODULES = [
   { id: "dashboard", label: "Dashboard", icon: "📊" },
   { id: "usuarios", label: "Usuarios", icon: "👥" },
+  { id: "verificaciones", label: "Verificaciones", icon: "🪪" },
   { id: "finanzas", label: "Finanzas", icon: "💰" },
   { id: "operaciones", label: "Operaciones", icon: "🔧" },
   { id: "soporte", label: "Soporte", icon: "🎧" },
