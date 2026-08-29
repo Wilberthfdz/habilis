@@ -32,10 +32,17 @@ const MP_WEBHOOK_SECRET = defineSecret("MP_WEBHOOK_SECRET");
 const FACTURAPI_KEY = defineSecret("FACTURAPI_KEY");
 
 const db = admin.firestore();
-const GEMINI_MODEL = "gemini-2.0-flash";
+// gemini-2.0-flash se retiró (404 model-not-found) — reemplazado por
+// gemini-3.6-flash, que Google recomienda como sucesor directo.
+const GEMINI_MODEL = "gemini-3.6-flash";
 
 // ═══════════════════════════ HELPERS ═══════════════════════════
-async function callGemini(prompt, key, { maxTokens = 800, temperature = 0.4 } = {}) {
+// gemini-3.6-flash gasta varios cientos de tokens "pensando" antes de dar
+// la respuesta (no se puede desactivar con thinkingConfig en este modelo:
+// thinkingBudget:0 da 400 invalid-argument, y valores bajos no se respetan
+// con precisión). maxTokens debe dejar espacio de sobra para ese consumo
+// además de la respuesta real, o la llamada corta en MAX_TOKENS sin JSON.
+async function callGemini(prompt, key, { maxTokens = 1500, temperature = 0.4 } = {}) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
   const r = await fetch(url, {
     method: "POST",
@@ -134,7 +141,7 @@ ${lista}
 Marca TODOS los técnicos cuyo oficio sea razonablemente compatible con esta solicitud (no te limites a 3 — pueden ser 1 o pueden ser 15). Si se especificó ciudad, prioriza esa ciudad o cercanas en el orden, pero no excluyas a los demás si hay pocos compatibles ahí.
 Responde SOLO JSON, ordenado del más al menos relevante: {"elegibles":[{"id":"...","razon":"breve"}],"urgenciaIA":"baja|media|alta"}`;
 
-    const out = parseJsonLoose(await callGemini(prompt, GEMINI_KEY.value(), { maxTokens: 700, temperature: 0.3 }), {
+    const out = parseJsonLoose(await callGemini(prompt, GEMINI_KEY.value(), { maxTokens: 2000, temperature: 0.3 }), {
       elegibles: [],
       urgenciaIA: "media",
     });
@@ -203,7 +210,7 @@ Trabajo: título "${t.titulo}", descripción "${t.descripcion || ""}", problema 
 DECIDE y responde SOLO JSON:
 {"aprobadoIA":true|false,"razonIA":"breve","categoriaIA":"Electricidad|Plomería|HVAC|Redes|Cámaras|Herrería|Tablaroca|Pintura|Mecánica|Otro","urgenciaIA":"baja|media|alta","calidadIA":1-10}`;
 
-    const out = parseJsonLoose(await callGemini(prompt, GEMINI_KEY.value(), { maxTokens: 300, temperature: 0.1 }), {
+    const out = parseJsonLoose(await callGemini(prompt, GEMINI_KEY.value(), { maxTokens: 1300, temperature: 0.1 }), {
       aprobadoIA: true,
       razonIA: "",
       categoriaIA: "Otro",
@@ -265,7 +272,7 @@ Reglas:
 
 Responde SOLO JSON: {"bioMejorada":"...","perfilCompleto":true|false,"scoreInicial":0-100,"sugerencia":"qué le falta al perfil, breve o vacío"}`;
 
-    const out = parseJsonLoose(await callGemini(prompt, GEMINI_KEY.value(), { maxTokens: 500, temperature: 0.5 }), {
+    const out = parseJsonLoose(await callGemini(prompt, GEMINI_KEY.value(), { maxTokens: 1400, temperature: 0.5 }), {
       bioMejorada: t.bio || "",
       perfilCompleto: false,
       scoreInicial: 30,
@@ -330,7 +337,7 @@ Intervalo recomendado para este tipo de equipo: ${intervalo} días.
 DECIDE y responde SOLO JSON:
 {"saludScoreIA":0-100,"estadoIA":"verde|amarillo|rojo","accionIA":"nada|notificar|crear_solicitud","mensajeIA":"breve en español"}`;
 
-      const out = parseJsonLoose(await callGemini(prompt, GEMINI_KEY.value(), { maxTokens: 250, temperature: 0.3 }), {
+      const out = parseJsonLoose(await callGemini(prompt, GEMINI_KEY.value(), { maxTokens: 1300, temperature: 0.3 }), {
         saludScoreIA: 50,
         estadoIA: "amarillo",
         accionIA: "nada",
@@ -414,7 +421,7 @@ exports.geminiProxy = onCall({ secrets: [GEMINI_KEY] }, async (request) => {
   if (!prompt || typeof prompt !== "string" || !prompt.trim() || prompt.length > 4000) {
     throw new HttpsError("invalid-argument", "El campo 'prompt' es requerido y debe ser válido.");
   }
-  const text = await callGemini(prompt, GEMINI_KEY.value(), { temperature, maxTokens: 1024 });
+  const text = await callGemini(prompt, GEMINI_KEY.value(), { temperature, maxTokens: 1800 });
   await logDecision(agentName, "respuesta generada", uid, "");
   return { text };
 });
