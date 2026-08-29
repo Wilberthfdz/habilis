@@ -576,12 +576,20 @@ async function enviarCorreoResend(key, to, subject, html) {
 }
 
 function plantillaCorreo({ titulo, cuerpo, botonTexto, botonUrl }) {
-  return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#F1F5F9;font-family:Arial,Helvetica,sans-serif;">
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0;padding:0;background:#F1F5F9;font-family:Arial,Helvetica,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#F1F5F9;padding:32px 16px;">
 <tr><td align="center">
 <table width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;max-width:480px;">
 <tr><td style="background:#0F172A;padding:22px 32px;">
-<span style="color:#F97316;font-weight:900;font-size:20px;letter-spacing:0.04em;">HABILIS</span>
+<table cellpadding="0" cellspacing="0"><tr>
+<td style="width:36px;height:36px;background:#0F172A;border:1.5px solid rgba(255,255,255,0.15);border-radius:8px;text-align:center;vertical-align:middle;">
+<span style="color:#F97316;font-weight:900;font-size:19px;font-family:Georgia,'Times New Roman',serif;line-height:36px;">H</span>
+</td>
+<td style="width:10px;"></td>
+<td style="vertical-align:middle;">
+<span style="color:#ffffff;font-weight:900;font-size:19px;letter-spacing:0.05em;font-family:Arial,Helvetica,sans-serif;">HABILIS</span>
+</td>
+</tr></table>
 </td></tr>
 <tr><td style="padding:32px;">
 <h1 style="margin:0 0 12px;font-size:20px;color:#0F172A;font-family:Arial,sans-serif;">${titulo}</h1>
