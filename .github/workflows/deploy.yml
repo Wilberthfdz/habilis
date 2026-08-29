@@ -1,0 +1,56 @@
+name: Desplegar a Firebase
+
+# Se lanza a mano desde la pestaña Actions de GitHub: no hay despliegues
+# accidentales al hacer push.
+on:
+  workflow_dispatch:
+    inputs:
+      destinos:
+        description: "Qué publicar"
+        required: true
+        default: "functions,firestore,hosting"
+        type: choice
+        options:
+          - functions,firestore,hosting
+          - hosting
+          - functions
+          - firestore
+
+jobs:
+  desplegar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Instalar dependencias
+        run: |
+          npm ci
+          npm ci --prefix functions
+
+      - name: Pruebas
+        run: npm test
+
+      - name: Compilar el sitio
+        run: npm run build
+
+      # La credencial nunca se escribe en el log: se vuelca a un archivo
+      # temporal del runner, que se destruye al terminar el trabajo.
+      - name: Preparar credenciales
+        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > "$RUNNER_TEMP/sa.json"
+
+      - name: Desplegar
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          npx --yes firebase-tools deploy \
+            --only "${{ inputs.destinos }}" \
+            --project habilis-eb89c \
+            --non-interactive
+
+      - name: Comprobar que el sitio en vivo trae los cambios
+        if: contains(inputs.destinos, 'hosting')
+        run: npm run verificar
