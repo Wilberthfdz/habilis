@@ -92,6 +92,7 @@ export default function Perfil({ nav, params, user }) {
               <div style={{ display:"flex", alignItems:"center", gap:"8px", flexWrap:"wrap", marginBottom:"4px" }}>
                 <h1 style={{ fontSize:"clamp(20px,3.5vw,28px)", fontWeight:900, color:"#fff" }}>{tecnico.nombre}</h1>
                 {tecnico.plan==="pro" && <span style={{ background:"rgba(249,115,22,0.2)", border:"1px solid rgba(249,115,22,0.4)", color:"#F97316", fontSize:"11px", fontWeight:800, padding:"2px 8px", borderRadius:"6px" }}>⚡ PRO</span>}
+                {tecnico.plan==="empresa" && <span style={{ background:"rgba(37,99,235,0.2)", border:"1px solid rgba(37,99,235,0.45)", color:"#93C5FD", fontSize:"11px", fontWeight:800, padding:"2px 8px", borderRadius:"6px" }}>🏢 EMPRESA</span>}
                 {tecnico.verificado && <span style={{ background:"rgba(16,185,129,0.15)", border:"1px solid rgba(16,185,129,0.3)", color:"#10B981", fontSize:"11px", fontWeight:800, padding:"2px 8px", borderRadius:"6px" }}>✅ Verificado</span>}
               </div>
               <p style={{ color:"#F97316", fontWeight:600, fontSize:"15px" }}>{tecnico.oficio}</p>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { db, auth } from "../../lib/firebase.js";
+import { db, auth, esPlanPagante } from "../../lib/firebase.js";
 import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc, serverTimestamp, query, where, limit } from "firebase/firestore";
 import { mxn, fechaCorta, exportarCSV, logAdmin } from "../../lib/erp.js";
 import { TAXONOMIA } from "../../lib/taxonomia.js";
@@ -64,7 +64,7 @@ export default function AdminUsuarios() {
     finally { setBusy(null); }
   };
 
-  const togglePlan = (t) => accion(t, { plan: t.plan === "pro" ? "gratis" : "pro" }, t.plan === "pro" ? "quitó Pro" : "activó Pro (sin pago)");
+  const togglePlan = (t) => accion(t, { plan: esPlanPagante(t.plan) ? "gratis" : "pro" }, esPlanPagante(t.plan) ? `quitó ${t.plan === "empresa" ? "Empresa" : "Pro"}` : "activó Pro (sin pago)");
   // Override manual (sin revisar documentos) — para onboarding en persona.
   // La vía normal con evidencia (INE/comprobante) es la pestaña Verificaciones.
   const toggleVerificado = (t) => accion(t, { verificado: !t.verificado }, t.verificado ? "desverificó (manual)" : "verificó (manual, sin documentos)");
@@ -109,7 +109,7 @@ export default function AdminUsuarios() {
   const stats = {
     visibles: filtrados.length,
     total: tecnicos.length,
-    pros: filtrados.filter((t) => t.plan === "pro").length,
+    pros: filtrados.filter((t) => esPlanPagante(t.plan)).length,
     verificados: filtrados.filter((t) => t.verificado).length,
     suspendidos: filtrados.filter((t) => t.suspendido).length,
   };
@@ -119,7 +119,7 @@ export default function AdminUsuarios() {
       {error && <div style={{ ...CARD, color: "#991B1B" }}>{error}</div>}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px,1fr))", gap: 10 }}>
-        {[["En vista", `${stats.visibles} / ${stats.total}`], ["Pro", stats.pros], ["Verificados", stats.verificados], ["Suspendidos", stats.suspendidos]].map(([l, v]) => (
+        {[["En vista", `${stats.visibles} / ${stats.total}`], ["De paga", stats.pros], ["Verificados", stats.verificados], ["Suspendidos", stats.suspendidos]].map(([l, v]) => (
           <div key={l} style={CARD}><div style={{ fontSize: 11, color: "#64748B", fontWeight: 700, textTransform: "uppercase" }}>{l}</div><div style={{ fontSize: 22, fontWeight: 800 }}>{v}</div></div>
         ))}
       </div>
@@ -128,7 +128,7 @@ export default function AdminUsuarios() {
         <input placeholder="Buscar nombre, email, oficio, ciudad…" value={q} onChange={(e) => setQ(e.target.value)}
           style={{ ...inp, flex: 1, minWidth: 200 }} />
         <select value={filtroPlan} onChange={(e) => setFiltroPlan(e.target.value)} style={inp}>
-          <option value="todos">Plan: todos</option><option value="gratis">Gratis</option><option value="pro">Pro</option>
+          <option value="todos">Plan: todos</option><option value="gratis">Gratis</option><option value="pro">Pro</option><option value="empresa">Empresa</option>
         </select>
         <select value={filtroVerif} onChange={(e) => setFiltroVerif(e.target.value)} style={inp}>
           <option value="todos">Verificado: todos</option><option value="si">Sí</option><option value="no">No</option>
@@ -261,7 +261,7 @@ function FichaTecnico({ tecnico, busy, onClose, onGuardar, onTogglePlan, onToggl
             <textarea value={form.bio} onChange={set("bio")} style={{ ...inp, width: "100%", minHeight: 70, boxSizing: "border-box", marginTop: 3 }} /></label>
           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
             <button disabled={busy} onClick={guardar} style={{ ...btnSm, background: "#F97316", color: "#fff", border: "none" }}>{busy ? "Guardando…" : "💾 Guardar cambios"}</button>
-            <button disabled={busy} onClick={onTogglePlan} style={btnSm}>{tecnico.plan === "pro" ? "Quitar Pro" : "Hacer Pro"}</button>
+            <button disabled={busy} onClick={onTogglePlan} style={btnSm}>{esPlanPagante(tecnico.plan) ? `Quitar ${tecnico.plan === "empresa" ? "Empresa" : "Pro"}` : "Hacer Pro"}</button>
             <button disabled={busy} onClick={onToggleVerif} style={btnSm}>{tecnico.verificado ? "Desverificar" : "Verificar"}</button>
             <button disabled={busy} onClick={onToggleSusp} style={btnSm}>{tecnico.suspendido ? "Reactivar" : "Suspender"}</button>
             <button disabled={busy} onClick={onEliminar} style={{ ...btnSm, color: "#991B1B" }}>🗑 Eliminar</button>

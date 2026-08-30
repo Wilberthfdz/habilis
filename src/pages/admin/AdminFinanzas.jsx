@@ -118,7 +118,7 @@ function Pagos() {
 
 function FormPagoManual({ tecnicos, onDone }) {
   const [uid, setUid] = useState("");
-  const [monto, setMonto] = useState("100");
+  const [monto, setMonto] = useState("149");
   const [metodo, setMetodo] = useState("efectivo");
   const [concepto, setConcepto] = useState("Habilis Pro mensual");
   const [saving, setSaving] = useState(false);
