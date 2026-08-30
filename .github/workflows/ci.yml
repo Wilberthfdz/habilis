@@ -11,11 +11,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Node 20: la misma versión que declara functions/package.json y que
+      # Node 22: la misma versión que declara functions/package.json y que
       # usa el runtime de Cloud Functions en producción.
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Instalar dependencias del frontend
         run: npm ci
