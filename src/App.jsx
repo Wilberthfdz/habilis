@@ -162,6 +162,17 @@ export default function App() {
     return unsub;
   }, []);
 
+  // Atrás/Adelante del navegador: nav() empuja entradas al historial con
+  // pushState, pero sin escuchar popstate la URL cambiaba y la pantalla no
+  // -- pulsar Atrás dejaba al usuario viendo /pro con la URL en "/", y al
+  // recargar saltaba al landing. Se vuelve a derivar la pantalla desde la
+  // URL, que es justo lo que hacen screenInicial/paramsIniciales al cargar.
+  useEffect(() => {
+    const alVolver = () => { setScreen(screenInicial()); setParams(paramsIniciales()); };
+    window.addEventListener("popstate", alVolver);
+    return () => window.removeEventListener("popstate", alVolver);
+  }, []);
+
   const nav = (screen, params = {}) => {
     // Refleja las pantallas compartibles en la URL; el resto de la
     // navegación se queda igual (por estado).
