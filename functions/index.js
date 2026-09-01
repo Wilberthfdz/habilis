@@ -852,6 +852,10 @@ exports.crearEmpleado = onCall(async (request) => {
 // ═══════════════════════════════════════════════════════════════
 const PRECIOS_PLAN = { pro: 149, empresa: 499 };
 
+// Mínimo que acepta Mercado Pago en MXN. Por debajo responde 400 con
+// "Cannot pay an amount lower than $ 10.00".
+const MONTO_MINIMO_MXN = 10;
+
 // Compartido entre crearSuscripcion (tarjeta, recurrente) y crearPagoUnico
 // (OXXO/SPEI/tarjeta, un solo cobro) — la validación del código no debía
 // vivir duplicada en dos flujos de cobro.
@@ -883,9 +887,21 @@ async function aplicarCodigoDescuento(codigo, precioBase) {
     return Math.min(99, Math.max(0, Number(promo.descuento) || 0));
   });
 
-  // Mercado Pago no acepta cobros de $0: el tope de 99% de arriba lo evita
-  // (y también protege contra datos mal capturados).
   const monto = Math.round(precioBase * (1 - pct / 100) * 100) / 100;
+
+  // El tope de 99% de arriba evita el cobro de $0, pero NO el mínimo real de
+  // Mercado Pago: 99% de $149 son $1.49 y MP responde "Cannot pay an amount
+  // lower than $ 10.00". Eso ya tumbó una suscripción en producción, y el
+  // usuario solo veía "intenta de nuevo" sin saber que la culpa era su código.
+  if (monto < MONTO_MINIMO_MXN) {
+    // El uso se apartó dentro de la transacción de arriba: hay que devolverlo
+    // antes de rendirse, o el código queda gastado sin que nadie cobre nada.
+    await devolverUsoPromo(promoRef.id);
+    throw new HttpsError("failed-precondition",
+      `Ese código deja el cobro en $${monto} MXN y Mercado Pago no acepta menos de ` +
+      `$${MONTO_MINIMO_MXN} MXN. Prueba con otro código o escríbenos.`);
+  }
+
   return { monto, promoId: promoRef.id };
 }
 
@@ -911,6 +927,42 @@ function claveIdempotencia(uid, plan, monto) {
     .update(`${uid}:${plan}:${monto}:${dia}`)
     .digest("hex")
     .slice(0, 40);
+}
+
+// Mercado Pago puntúa el riesgo de cada cobro, y con solo el email casi no
+// tiene nada a favor: los rechazos `cc_rejected_high_risk` de agosto salieron
+// de ahí. Se le manda lo que YA consta del usuario — nunca un dato inventado,
+// que empeoraría el puntaje en vez de mejorarlo.
+//
+// OJO: esto solo sirve en `/checkout/preferences`. El endpoint `/preapproval`
+// no acepta un objeto `payer`, solo `payer_email`, así que la suscripción
+// recurrente no puede enriquecerse por aquí.
+//
+// Nunca debe impedir un cobro: si algo falla, se cobra igual con el email solo.
+async function datosPagador(uid, email) {
+  const payer = { email };
+  try {
+    const [tecSnap, factSnap] = await Promise.all([
+      db.collection("tecnicos").doc(uid).get(),
+      db.collection("facturas").where("userId", "==", uid)
+        .orderBy("fecha", "desc").limit(1).get(),
+    ]);
+
+    const nombre = (tecSnap.data()?.nombre || "").trim();
+    if (nombre) {
+      const partes = nombre.split(/\s+/);
+      payer.name = partes[0];
+      // En México lo normal son dos apellidos: todo lo que sigue al nombre.
+      if (partes.length > 1) payer.surname = partes.slice(1).join(" ");
+    }
+
+    // El RFC solo existe si el técnico ya facturó alguna vez. Si no, no va.
+    const rfc = factSnap.empty ? null : factSnap.docs[0].data()?.rfc;
+    if (rfc) payer.identification = { type: "RFC", number: rfc };
+  } catch (e) {
+    console.error("No se pudieron reunir los datos del pagador:", e.message);
+  }
+  return payer;
 }
 
 exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
@@ -988,7 +1040,7 @@ exports.crearPagoUnico = onCall({ secrets: [MP_TOKEN] }, async (request) => {
         title: plan === "empresa" ? "Habilis Empresa (1 mes)" : "Habilis Pro (1 mes)",
         quantity: 1, unit_price: monto, currency_id: "MXN",
       }],
-      payer: { email },
+      payer: await datosPagador(uid, email),
       external_reference: uid,
       back_urls: {
         success: "https://myhabilis.com/pro", failure: "https://myhabilis.com/pro", pending: "https://myhabilis.com/pro",
