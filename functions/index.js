@@ -23,8 +23,10 @@ const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
-const { firmaMPValida } = require("./mpFirma");
+const crypto = require("crypto");
+const { revisarFirmaMP, TOLERANCIA_SEGUNDOS } = require("./mpFirma");
 const { elegirCheckout } = require("./mpCheckout");
+const { datosCobroRecurrente, resumenCobro } = require("./mpAuthorizedPayment");
 admin.initializeApp();
 
 const GEMINI_KEY = defineSecret("GEMINI_KEY");
@@ -897,6 +899,20 @@ async function devolverUsoPromo(promoId) {
   }).catch((e) => console.error("No se pudo devolver el uso del código:", e.message));
 }
 
+// Mercado Pago deduplica por `X-Idempotency-Key`: dos peticiones con la misma
+// clave devuelven la misma operación en vez de crear dos. La clave se deriva de
+// la INTENCIÓN (quién, qué plan, cuánto, qué día), no al azar — un UUID nuevo
+// por llamada no serviría de nada, porque cada clic del usuario traería el suyo
+// y MP los vería como dos compras distintas. El día entra en la clave para que
+// volver a contratar mañana sí sea una operación nueva.
+function claveIdempotencia(uid, plan, monto) {
+  const dia = new Date().toISOString().slice(0, 10);
+  return crypto.createHash("sha256")
+    .update(`${uid}:${plan}:${monto}:${dia}`)
+    .digest("hex")
+    .slice(0, 40);
+}
+
 exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
   const uid = requireAuth(request);
   await checkRateLimit(uid, "crearSuscripcion", 10);
@@ -910,7 +926,11 @@ exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
 
   const r = await fetch("https://api.mercadopago.com/preapproval", {
     method: "POST",
-    headers: { Authorization: `Bearer ${MP_TOKEN.value()}`, "Content-Type": "application/json" },
+    headers: {
+      Authorization: `Bearer ${MP_TOKEN.value()}`,
+      "Content-Type": "application/json",
+      "X-Idempotency-Key": claveIdempotencia(uid, plan, monto),
+    },
     body: JSON.stringify({
       reason: plan === "empresa" ? "Habilis Empresa" : "Habilis Pro",
       external_reference: uid,
@@ -958,7 +978,11 @@ exports.crearPagoUnico = onCall({ secrets: [MP_TOKEN] }, async (request) => {
 
   const r = await fetch("https://api.mercadopago.com/checkout/preferences", {
     method: "POST",
-    headers: { Authorization: `Bearer ${MP_TOKEN.value()}`, "Content-Type": "application/json" },
+    headers: {
+      Authorization: `Bearer ${MP_TOKEN.value()}`,
+      "Content-Type": "application/json",
+      "X-Idempotency-Key": claveIdempotencia(uid, plan, monto),
+    },
     body: JSON.stringify({
       items: [{
         title: plan === "empresa" ? "Habilis Empresa (1 mes)" : "Habilis Pro (1 mes)",
@@ -1239,12 +1263,43 @@ exports.webhookMP = onRequest({ secrets: [MP_TOKEN, MP_WEBHOOK_SECRET] }, async 
     // lo que impide que un body falso escriba algo.
     const secreto = MP_WEBHOOK_SECRET.value();
     if (secreto) {
-      if (!data?.id || !firmaMPValida(req.headers, data.id, secreto)) {
+      // Se distingue POR QUÉ se descarta. Antes los tres casos de abajo
+      // producían el mismo mensaje ("firma inválida o ausente") y afirmaban
+      // de paso una causa concreta — el desajuste de aplicaciones — que era
+      // solo una hipótesis. Con eso en los logs era imposible saber si una
+      // notificación venía sin firmar o si la firma de verdad no cuadraba.
+      if (!data?.id) {
         console.warn(
-          `webhookMP: firma inválida o ausente — petición descartada. ` +
-          `El access token es de ${entornoMP()}; MP_WEBHOOK_SECRET debe ser el de ESA ` +
-          `misma aplicación de Mercado Pago. Si registraste el webhook en la otra, ` +
-          `la firma nunca va a cuadrar.`);
+          `webhookMP: notificación tipo "${type || "sin tipo"}" sin data.id — descartada. ` +
+          `No hay recurso que consultar ni sobre qué calcular la firma.`);
+        return res.status(200).send("OK");
+      }
+      if (typeof req.headers["x-signature"] !== "string") {
+        console.warn(
+          `webhookMP: notificación tipo "${type}" (id ${data.id}) llegó SIN cabecera ` +
+          `x-signature — descartada. Suele ser un ping del simulador o una IPN vieja; ` +
+          `si las firmadas sí entran, no hay nada que arreglar en el secreto.`);
+        return res.status(200).send("OK");
+      }
+      const revision = revisarFirmaMP(req.headers, data.id, secreto);
+      if (!revision.valida) {
+        // Un evento caducado y una firma que no cuadra se arreglan de forma
+        // distinta: el primero es un reenvío (o un reloj desfasado), el
+        // segundo es el secreto equivocado. Merecen mensajes distintos.
+        if (revision.motivo === "caducada") {
+          console.warn(
+            `webhookMP: notificación tipo "${type}" (id ${data.id}) fuera de la ventana de ` +
+            `${TOLERANCIA_SEGUNDOS}s — descartada por posible reenvío. La firma sí cuadraría; ` +
+            `lo que está mal es la antigüedad: ${revision.antiguedadSegundos}s. Si esto sale con ` +
+            `notificaciones legítimas, revisa el reloj de la instancia antes que el secreto.`);
+        } else {
+          console.warn(
+            `webhookMP: la firma NO coincide en tipo "${type}" (id ${data.id}) — descartada ` +
+            `(motivo: ${revision.motivo}). El access token es de ${entornoMP()}: ` +
+            `MP_WEBHOOK_SECRET tiene que ser el de ESA misma aplicación de Mercado Pago. ` +
+            `Y ojo: en Functions v2 el secreto se fija al desplegar, así que si lo cambiaste ` +
+            `hay que volver a desplegar webhookMP.`);
+        }
         return res.status(200).send("OK");
       }
     } else {
@@ -1263,12 +1318,27 @@ exports.webhookMP = onRequest({ secrets: [MP_TOKEN, MP_WEBHOOK_SECRET] }, async 
     // ── Cobro recurrente: llega uno por cada mes cobrado ───────────────
     // Sin esto solo quedaba registrado el primer pago y las renovaciones
     // mensuales eran invisibles para Finanzas.
+    //
+    // `data.id` aquí es el id del COBRO programado (authorized_payment), NO
+    // el de un pago. Pedírselo a /v1/payments devuelve 404, `mpGet` devolvía
+    // null y el bloque entero se saltaba en silencio: ninguna renovación
+    // llegaba a Firestore. Hay que resolverlo en dos pasos.
     if (type === "subscription_authorized_payment" && data?.id) {
-      const pago = await mpGet(`/v1/payments/${data.id}`);
+      const cobro = datosCobroRecurrente(await mpGet(`/authorized_payments/${data.id}`));
+      const pago = cobro?.paymentId ? await mpGet(`/v1/payments/${cobro.paymentId}`) : null;
       if (pago) {
-        const preapprovalId = pago.metadata?.preapproval_id || pago.preapproval_id || null;
+        const preapprovalId = cobro.preapprovalId
+          || pago.metadata?.preapproval_id || pago.preapproval_id || null;
         const uid = await resolverUid(pago, preapprovalId);
+        // Los cobros que no se aprobaron también se registran: son la señal
+        // de que una suscripción se está cayendo y antes no dejaban rastro
+        // en ningún lado. Finanzas, el dashboard y emitirFactura solo miran
+        // los que están en "aprobado", así que esto no infla ningún total.
         if (uid) await registrarPagoSuscripcion(uid, pago, preapprovalId);
+        else console.warn(`webhookMP: sin uid para ${resumenCobro(data.id, cobro)}`);
+      }
+      if (!pago || pago.status !== "approved") {
+        console.warn(`webhookMP: cobro recurrente no aprobado — ${resumenCobro(data.id, cobro)}`);
       }
     }
 
