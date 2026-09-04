@@ -118,7 +118,7 @@ export default function VistaCotizacion({ nav, params }) {
               </div>
               <span style={{ fontWeight:900, fontSize:"18px", color:"#0F172A", letterSpacing:"0.05em" }}>HABILIS</span>
             </div>
-            <p style={{ fontSize:"12px", color:"#94A3B8" }}>Plataforma de técnicos verificados · México</p>
+            <p style={{ fontSize:"12px", color:"#94A3B8" }}>Plataforma de reputación para técnicos · México</p>
           </div>
           <div style={{ textAlign:"right" }}>
             <p style={{ fontWeight:900, fontSize:"22px", color:"#0F172A", marginBottom:"4px" }}>{folio}</p>

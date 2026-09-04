@@ -15,14 +15,19 @@ export const TIPOS_ACTIVO = {
   "Generador":          { intervalo: 180, icono: "⚡" },
 };
 
+// Devolvía 100 —anillo verde, "Al día"— cuando el equipo no tenía ni una
+// fecha registrada. Un calentador que nadie ha revisado nunca aparecía en
+// perfecto estado. Sin fecha no hay dato, y eso es lo que ahora dice: null.
 export function calcularSalud(activo) {
-  if (!activo.ultimoMantenimiento) return 100;
   const cfg = TIPOS_ACTIVO[activo.tipo];
-  if (!cfg) return 100;
-  const ultimo = activo.ultimoMantenimiento.toDate
-    ? activo.ultimoMantenimiento.toDate()
-    : new Date(activo.ultimoMantenimiento);
-  const dias = Math.floor((Date.now() - ultimo.getTime()) / 86400000);
+  if (!cfg) return null;
+  // A falta de mantenimiento, la compra sirve de punto de partida: un equipo
+  // recién comprado sí está al día.
+  const base = activo.ultimoMantenimiento || activo.fechaCompra;
+  if (!base) return null;
+  const desde = base.toDate ? base.toDate() : new Date(base);
+  if (isNaN(desde.getTime())) return null;
+  const dias = Math.floor((Date.now() - desde.getTime()) / 86400000);
   return Math.max(0, Math.round((1 - dias / cfg.intervalo) * 100));
 }
 
@@ -37,8 +42,9 @@ export function calcularProxima(activo) {
   return p;
 }
 
-const COLOR_SALUD = pct => pct > 80 ? "#10B981" : pct > 50 ? "#F59E0B" : "#EF4444";
-const LABEL_SALUD = pct => pct > 80 ? "Al día" : pct > 50 ? "Próximo" : "Vencido";
+const COLOR_SALUD = pct => pct == null ? "#94A3B8" : pct > 80 ? "#10B981" : pct > 50 ? "#F59E0B" : "#EF4444";
+const LABEL_SALUD = pct => pct == null ? "Sin datos" : pct > 80 ? "Al día" : pct > 50 ? "Próximo" : "Vencido";
+const FONDO_SALUD = pct => pct == null ? "#F1F5F9" : pct > 80 ? "#F0FDF4" : pct > 50 ? "#FFFBEB" : "#FEF2F2";
 const fmtDate = d => d ? new Date(d).toLocaleDateString("es-MX", { day:"2-digit", month:"short", year:"numeric" }) : "—";
 const diasHasta = d => d ? Math.ceil((d - Date.now()) / 86400000) : null;
 
@@ -46,8 +52,19 @@ const diasHasta = d => d ? Math.ceil((d - Date.now()) / 86400000) : null;
 function AnilloSalud({ pct, size = 68 }) {
   const r    = (size - 10) / 2;
   const circ = 2 * Math.PI * r;
+  const color = COLOR_SALUD(pct);
+  // Sin dato el anillo se queda punteado y vacío: no simula un porcentaje.
+  if (pct == null) {
+    return (
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink: 0 }}>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#E2E8F0"
+                strokeWidth="7" strokeDasharray="4 6"/>
+        <text x={size/2} y={size/2+1} textAnchor="middle" dominantBaseline="middle"
+              fontSize="12" fontWeight="800" fill={color}>—</text>
+      </svg>
+    );
+  }
   const fill = Math.max(0, Math.min(100, pct));
-  const color = COLOR_SALUD(fill);
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink: 0 }}>
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#E2E8F0" strokeWidth="7"/>
@@ -226,11 +243,17 @@ export default function HabilisCare({ nav, user }) {
     cargar(); // refresh list after modal closes
   };
 
+  // `null < 50` es false en JS, así que los equipos sin datos no se contaban
+  // como vencidos — pero sí engordaban el "Al día" por resta. Se cuentan
+  // aparte y el "Al día" se calcula por conteo directo.
+  const salud = activos.map(a => calcularSalud(a));
   const stats = {
-    total:   activos.length,
-    vencido: activos.filter(a => calcularSalud(a) < 50).length,
-    proximo: activos.filter(a => { const p = calcularProxima(a); return p && diasHasta(p) <= 30 && diasHasta(p) >= 0; }).length,
+    total:    activos.length,
+    sinDatos: salud.filter(s => s == null).length,
+    vencido:  salud.filter(s => s != null && s < 50).length,
+    proximo:  activos.filter(a => { const p = calcularProxima(a); return p && diasHasta(p) <= 30 && diasHasta(p) >= 0; }).length,
   };
+  stats.alDia = salud.filter(s => s != null && s >= 50).length - stats.proximo;
 
   return (
     <div style={{ background:"#F1F5F9", minHeight:"100vh" }}>
@@ -269,10 +292,11 @@ export default function HabilisCare({ nav, user }) {
             <div style={{ display:"flex", gap:"20px", marginTop:"20px", flexWrap:"wrap" }}>
               {[
                 ["🔧", stats.total,   "Equipos registrados", "#94A3B8"],
-                ["✅", stats.total - stats.vencido - stats.proximo, "Al día",       "#10B981"],
+                ["✅", Math.max(0, stats.alDia), "Al día",       "#10B981"],
                 ["⏰", stats.proximo, "Mantenimiento próximo", "#F59E0B"],
                 ["🔴", stats.vencido, "Mantenimiento vencido", "#EF4444"],
-              ].map(([icon, val, label, color]) => (
+                ["❔", stats.sinDatos, "Sin fecha registrada", "#94A3B8"],
+              ].filter(([, val], i) => i < 3 || val > 0).map(([icon, val, label, color]) => (
                 <div key={label} style={{ background:"rgba(255,255,255,0.06)", borderRadius:"10px",
                                           padding:"10px 16px", border:"1px solid rgba(255,255,255,0.08)" }}>
                   <span style={{ fontSize:"16px" }}>{icon}</span>
@@ -319,7 +343,7 @@ export default function HabilisCare({ nav, user }) {
               const color  = COLOR_SALUD(salud);
               return (
                 <div key={activo.id}
-                  style={{ background:"#fff", border:`1px solid ${salud < 50 ? "rgba(239,68,68,0.3)" : salud < 80 ? "rgba(245,158,11,0.3)" : "#E2E8F0"}`,
+                  style={{ background:"#fff", border:`1px solid ${salud == null ? "#E2E8F0" : salud < 50 ? "rgba(239,68,68,0.3)" : salud < 80 ? "rgba(245,158,11,0.3)" : "#E2E8F0"}`,
                            borderRadius:"16px", padding:"18px", boxShadow:"0 1px 3px rgba(0,0,0,0.06)",
                            cursor:"pointer", transition:"box-shadow 0.2s" }}
                   onClick={() => nav("detalleActivo", { activoId: activo.id })}
@@ -352,7 +376,7 @@ export default function HabilisCare({ nav, user }) {
                         {proxima ? (dias < 0 ? `${Math.abs(dias)} días` : dias === 0 ? "Hoy" : `${dias} días`) : "Registrar mantenimiento"}
                       </p>
                     </div>
-                    <span style={{ background: salud > 80 ? "#F0FDF4" : salud > 50 ? "#FFFBEB" : "#FEF2F2",
+                    <span style={{ background: FONDO_SALUD(salud),
                                    color, fontSize:"11px", fontWeight:700,
                                    padding:"3px 10px", borderRadius:"20px" }}>
                       {LABEL_SALUD(salud)}

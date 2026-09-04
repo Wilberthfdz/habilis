@@ -10,6 +10,7 @@ const ICONO_TIPO = {
   bienvenida: "👋",
   care:       "🏥",
   marketing:  "📣",
+  chat:       "💬",
 };
 
 function tiempoRelativo(fecha) {
@@ -56,7 +57,10 @@ export default function NotifBell({ nav, user }) {
       setNotifs(prev => prev.map(x => x.id === n.id ? { ...x, leida: true } : x));
       marcarNotificacionLeida(n.id).catch(() => {});
     }
-    if (n.link) nav(n.link);
+    // El chat necesita saber QUÉ conversación abrir; el resto de los avisos
+    // van a una pantalla sin parámetros.
+    if (n.link === "chat" && n.solicitudId) nav("chat", { solicitudId: n.solicitudId });
+    else if (n.link) nav(n.link);
   };
 
   const limpiarTodas = () => {

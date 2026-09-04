@@ -24,7 +24,7 @@ const OFRECEMOS = [
     "Chat integrado para acordar los detalles",
   ]],
   ["Para empresas", [
-    "Técnicos verificados para mantenimiento recurrente",
+    "Técnicos con historial documentado para mantenimiento recurrente",
     "Cotizaciones formales con desglose e IVA",
     "Factura CFDI disponible en planes de pago",
     "Historial y trazabilidad de cada servicio",

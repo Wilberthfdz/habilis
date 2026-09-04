@@ -16,12 +16,12 @@ const PASOS_CLIENTE = [
 ];
 
 const HERRAMIENTAS = [
-  ["🤖", "5 agentes de IA", "Matching de solicitudes, moderación de contenido, verificación de perfiles, recordatorios de mantenimiento y ranking — trabajando 24/7."],
+  ["🤖", "5 agentes de IA", "Matching de solicitudes, moderación de contenido, redacción del perfil al darte de alta, recordatorios de mantenimiento y ranking — trabajando 24/7."],
   ["📋", "Cotizaciones Pro", "Genera cotizaciones formales con desglose de conceptos, IVA y tu catálogo de productos."],
   ["🛡️", "Habilis Care", "Registra tus equipos (aires, calentadores, bombas…) y recibe recordatorios de mantenimiento preventivo."],
   ["🎙️", "Registro por voz", "Dicta tu trabajo terminado y la IA lo transcribe, clasifica y publica con tus fotos."],
   ["💬", "Chat integrado", "Conversa con clientes o técnicos dentro de la app, con resúmenes automáticos de cada solicitud."],
-  ["🔔", "Notificaciones", "Entérate al momento de solicitudes nuevas, decisiones de moderación y actividad de tu red."],
+  ["🔔", "Notificaciones", "Entérate de mensajes nuevos en tus conversaciones, solicitudes que la IA te asigna, decisiones de moderación y avisos de mantenimiento."],
 ];
 
 const SEC = { maxWidth:"1000px", margin:"0 auto", padding:"0 20px" };
@@ -90,6 +90,37 @@ export default function ComoFunciona({ nav, user }) {
               <div style={{ fontSize:"26px", marginBottom:"10px" }}>{emoji}</div>
               <h3 style={{ fontSize:"15px", fontWeight:800, color:"#0F172A", marginBottom:"6px" }}>{titulo}</h3>
               <p style={{ fontSize:"13.5px", color:"#64748B", lineHeight:1.65 }}>{texto}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ ...SEC, marginBottom:"72px" }}>
+        <div className="h-card" style={{ padding:"clamp(24px,4vw,36px)" }}>
+          <h2 style={{ fontSize:"clamp(20px,3.5vw,26px)", fontWeight:900, color:"#0F172A",
+                       marginBottom:"10px" }}>
+            Qué significa cada distintivo
+          </h2>
+          <p style={{ fontSize:"14px", color:"#64748B", lineHeight:1.7, marginBottom:"22px" }}>
+            Preferimos decirte exactamente qué respalda cada etiqueta, en vez de
+            que supongas.
+          </p>
+          {[
+            ["#DCFCE7", "#15803D", "✅ Verificado",
+             "Habilis cotejó la identidad del técnico contra una identificación oficial y confirmó su teléfono. Es una revisión manual: el técnico la solicita escribiendo a habilisempresa@gmail.com. Acredita quién es, no la calidad de su trabajo — eso lo dicen sus trabajos documentados."],
+            ["#FFF5EB", "#C2410C", "⚡ Pro",
+             "El técnico paga la suscripción mensual. Le da trabajos ilimitados, prioridad en el orden de los resultados y las herramientas de cotización e IA. No es un sello de calidad ni una recomendación de Habilis."],
+            ["#EFF6FF", "#1D4ED8", "📸 Trabajos documentados",
+             "Cada trabajo publicado pasa por moderación automática antes de aparecer. El número que ves es cuántos superaron esa revisión, con sus fotos y su descripción."],
+            ["#F1F5F9", "#334155", "⭐ Calificación",
+             "Promedio de las valoraciones que dejan los clientes. Un técnico nuevo aparece sin calificación en lugar de con una inventada."],
+          ].map(([bg, color, titulo, texto]) => (
+            <div key={titulo} style={{ display:"flex", gap:"14px", alignItems:"flex-start",
+                                       padding:"14px 0", borderTop:"1px solid #EDE8E1" }}>
+              <span style={{ background:bg, color, fontSize:"12px", fontWeight:800,
+                             padding:"4px 10px", borderRadius:"7px", whiteSpace:"nowrap",
+                             flexShrink:0 }}>{titulo}</span>
+              <p style={{ fontSize:"13.5px", color:"#64748B", lineHeight:1.7 }}>{texto}</p>
             </div>
           ))}
         </div>

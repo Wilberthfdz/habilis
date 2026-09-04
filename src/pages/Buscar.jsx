@@ -87,7 +87,7 @@ export default function Buscar({ nav, user, params }) {
             Encuentra el técnico perfecto
           </h1>
           <p style={{ color:"rgba(255,255,255,0.5)", fontSize:"15px", marginBottom:"24px" }}>
-            Técnicos verificados con trabajos documentados cerca de ti
+            Técnicos con trabajos documentados cerca de ti
           </p>
 
           {/* Search */}

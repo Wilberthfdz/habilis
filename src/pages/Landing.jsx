@@ -96,7 +96,7 @@ const CATS = [
 ];
 
 const STEPS = [
-  { n:"01", title:"Busca el servicio", desc:"Escribe lo que necesitas y tu ciudad. Filtra por técnicos verificados con historial fotográfico real." },
+  { n:"01", title:"Busca el servicio", desc:"Escribe lo que necesitas y tu ciudad. Compara técnicos por sus trabajos documentados con fotos reales." },
   { n:"02", title:"Revisa el perfil",  desc:"Ve trabajos documentados con fotos antes/después, calificaciones de clientes reales y años de experiencia." },
   { n:"03", title:"Contrata directo",  desc:"Acuerdas precio y fecha directo con el técnico. Sin comisión por trabajo, sin comisiones ocultas." },
 ];
@@ -450,7 +450,7 @@ export default function Landing({ nav, user }) {
 
             {/* Trust badges */}
             <div style={{ display:"flex", gap:"20px", flexWrap:"wrap" }}>
-              {["Técnicos verificados","Fotos antes/después","Calificaciones reales","Sin comisiones"].map(t => (
+              {["Trabajos documentados","Fotos antes/después","Calificaciones de clientes","Sin comisiones"].map(t => (
                 <span key={t} style={{ color:"rgba(255,255,255,0.32)", fontSize:"12px", display:"flex", alignItems:"center", gap:"5px" }}>
                   <svg viewBox="0 0 12 12" width="10" height="10" fill="#F07020" style={{ flexShrink:0 }}>
                     <path d="M10.28 2.28L3.989 8.575 1.695 6.28A1 1 0 00.28 7.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 2.28z"/>

@@ -4,23 +4,30 @@ import { obtenerActivos, actualizarActivo, crearServicio, obtenerServicios, crea
 import { TIPOS_ACTIVO, calcularSalud, calcularProxima } from "./HabilisCare.jsx";
 
 // Re-export AnilloSalud if needed by other components
+// pct === null significa que el equipo no tiene fecha de mantenimiento ni de
+// compra: no hay nada que calcular y el anillo no finge un porcentaje.
 function AnilloGrande({ pct }) {
   const size  = 110;
   const r     = (size - 12) / 2;
   const circ  = 2 * Math.PI * r;
-  const fill  = Math.max(0, Math.min(100, pct));
-  const color = fill > 80 ? "#10B981" : fill > 50 ? "#F59E0B" : "#EF4444";
-  const label = fill > 80 ? "Saludable" : fill > 50 ? "Revisar pronto" : "Requiere servicio";
+  const sinDatos = pct == null;
+  const fill  = sinDatos ? 0 : Math.max(0, Math.min(100, pct));
+  const color = sinDatos ? "#94A3B8" : fill > 80 ? "#10B981" : fill > 50 ? "#F59E0B" : "#EF4444";
+  const label = sinDatos ? "Sin datos"
+              : fill > 80 ? "Saludable" : fill > 50 ? "Revisar pronto" : "Requiere servicio";
   return (
     <div style={{ textAlign:"center" }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#E2E8F0" strokeWidth="10"/>
-        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth="10"
-                strokeDasharray={`${(fill/100)*circ} ${circ}`} strokeLinecap="round"
-                transform={`rotate(-90 ${size/2} ${size/2})`}
-                style={{ transition:"stroke-dasharray 0.7s ease" }}/>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#E2E8F0" strokeWidth="10"
+                strokeDasharray={sinDatos ? "5 8" : undefined}/>
+        {!sinDatos && (
+          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth="10"
+                  strokeDasharray={`${(fill/100)*circ} ${circ}`} strokeLinecap="round"
+                  transform={`rotate(-90 ${size/2} ${size/2})`}
+                  style={{ transition:"stroke-dasharray 0.7s ease" }}/>
+        )}
         <text x={size/2} y={size/2-4} textAnchor="middle" dominantBaseline="middle"
-              fontSize="18" fontWeight="900" fill={color}>{fill}%</text>
+              fontSize="18" fontWeight="900" fill={color}>{sinDatos ? "—" : `${fill}%`}</text>
         <text x={size/2} y={size/2+16} textAnchor="middle" fontSize="9" fill="#94A3B8">SALUD</text>
       </svg>
       <p style={{ fontSize:"12px", fontWeight:700, color, marginTop:"4px" }}>{label}</p>
@@ -96,7 +103,7 @@ export default function DetalleActivo({ nav, user, params }) {
         categoria: activo.tipo,
         descripcion: `Solicitud de mantenimiento para ${activo.nombre} (${activo.marca || ""} ${activo.modelo || ""}). Último servicio: ${fmtDate(activo.ultimoMantenimiento)}.`,
         ciudad:    "",
-        urgencia:  calcularSalud(activo) < 50 ? "Alta" : "Normal",
+        urgencia:  (calcularSalud(activo) ?? 100) < 50 ? "Alta" : "Normal",
         userId:    user.uid,
         activoId,
       });
@@ -121,7 +128,7 @@ export default function DetalleActivo({ nav, user, params }) {
   const proxima = calcularProxima(activo);
   const dias    = diasHasta(proxima);
   const cfg     = TIPOS_ACTIVO[activo.tipo] || { icono:"🔧", intervalo: 180 };
-  const color   = salud > 80 ? "#10B981" : salud > 50 ? "#F59E0B" : "#EF4444";
+  const color   = salud == null ? "#94A3B8" : salud > 80 ? "#10B981" : salud > 50 ? "#F59E0B" : "#EF4444";
 
   return (
     <div style={{ background:"#F1F5F9", minHeight:"100vh" }}>

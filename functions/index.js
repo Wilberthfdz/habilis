@@ -315,6 +315,18 @@ exports.agenteCare = onSchedule(
       const baseDate = baseRaw ? (baseRaw.toDate ? baseRaw.toDate() : new Date(baseRaw)) : null;
       const intervalo = INTERVALOS_CARE[a.tipo] || 180;
 
+      // Este agente corre a diario sobre TODOS los equipos: sin freno, cada
+      // activo registrado costaba una llamada a Gemini cada 24 h para llegar
+      // casi siempre a la misma conclusión. Un equipo recién revisado se
+      // vuelve a analizar cada 7 días; conforme se acerca su fecha, a diario.
+      const diasDesde = baseDate ? (Date.now() - baseDate.getTime()) / 86400000 : null;
+      const cercaDeVencer = diasDesde == null || diasDesde >= intervalo - 30;
+      const ultimoAnalisis = a.ultimoAnalisisIA?.toDate?.();
+      const diasSinAnalizar = ultimoAnalisis
+        ? (Date.now() - ultimoAnalisis.getTime()) / 86400000
+        : Infinity;
+      if (!cercaDeVencer && diasSinAnalizar < 7) continue;
+
       const prompt = `Eres el agente de mantenimiento de Habilis Care. Hoy es ${hoy}.
 Equipo: ${a.tipo} marca "${a.marca || "desconocida"}" modelo "${a.modelo || "desconocido"}".
 Última fecha de referencia (compra o último mantenimiento): ${baseDate ? baseDate.toISOString().slice(0, 10) : "desconocida"}.
@@ -410,6 +422,40 @@ exports.contarTrabajoCreado = onDocumentCreated("trabajos/{id}", async (event) =
     trabajosCreados: admin.firestore.FieldValue.increment(1),
   }, { merge: true });
 });
+
+// El chat funcionaba, pero en silencio: un cliente escribía y el técnico solo
+// se enteraba si por casualidad volvía a abrir la conversación. La campana
+// anunciaba "notificaciones de actividad" que para el chat no existían.
+exports.notificarMensajeChat = onDocumentCreated(
+  "solicitudes_chat/{solicitudId}/mensajes/{mensajeId}",
+  async (event) => {
+    const m = event.data.data();
+    // Los avisos que el propio sistema escribe no se notifican a nadie:
+    // duplicarían lo que la pantalla ya muestra.
+    if (!m || m.tipo !== "mensaje" || !m.autorId) return;
+
+    const solId = event.params.solicitudId;
+    const snap = await db.collection("solicitudes_chat").doc(solId).get();
+    const chat = snap.data();
+    if (!chat) return;
+
+    // El destinatario es la otra parte de la conversación.
+    const destinatario = m.autorId === chat.clienteId ? chat.tecnicoId
+                       : m.autorId === chat.tecnicoId ? chat.clienteId
+                       : null;
+    if (!destinatario) return;
+
+    const texto = String(m.texto || "").replace(/\s+/g, " ").trim();
+    await db.collection("notificaciones").add({
+      userId: destinatario,
+      tipo: "chat",
+      mensaje: `💬 Mensaje nuevo${chat.titulo ? ` en "${String(chat.titulo).slice(0, 40)}"` : ""}: "${texto.slice(0, 70)}${texto.length > 70 ? "…" : ""}"`,
+      leida: false,
+      link: "chat",
+      solicitudId: solId,
+      fecha: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  });
 
 exports.contarValidacion = onDocumentCreated("validaciones/{id}", async (event) => {
   const v = event.data.data();

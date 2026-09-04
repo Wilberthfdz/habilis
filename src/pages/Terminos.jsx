@@ -148,7 +148,21 @@ export default function Terminos({ nav }) {
             medio.
           </p>
 
-          <h3 style={H3}>3.4 Trabajos regulados</h3>
+          <h3 style={H3}>3.4 Distintivos de la plataforma</h3>
+          <p style={P}>
+            El distintivo <strong>"Verificado"</strong> significa únicamente que Habilis cotejó la
+            identidad del técnico contra una identificación oficial y confirmó un medio de contacto.
+            Es una revisión manual que el técnico solicita; <strong>no constituye recomendación,
+            aval, certificación profesional ni garantía sobre la calidad, seguridad o resultado de
+            su trabajo</strong>. El distintivo <strong>"Pro"</strong> indica que el técnico tiene una
+            suscripción de pago activa y no expresa juicio alguno sobre su desempeño. El número de
+            trabajos documentados refleja las publicaciones que superaron la moderación de la
+            plataforma; su contenido lo aporta el técnico y es su responsabilidad. Habilis puede
+            retirar cualquier distintivo si la información que lo sustenta resulta falsa o deja de
+            estar vigente.
+          </p>
+
+          <h3 style={H3}>3.5 Trabajos regulados</h3>
           <p style={P}>
             Algunos trabajos exigen certificaciones oficiales (por ejemplo, instalaciones de gas o
             media tensión). Habilis muestra la información que los técnicos declaran; el cliente es
