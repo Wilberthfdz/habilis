@@ -239,6 +239,13 @@ service cloud.firestore {
       allow write: if false; // solo los agentes (Admin SDK)
     }
 
+    // Webhooks de pago que fallaron: quedan para reprocesar y conciliar.
+    // Contienen el cuerpo crudo de Mercado Pago, así que no salen del admin.
+    match /webhooksFallidos/{id} {
+      allow read:  if isAdmin();
+      allow write: if false; // solo el backend (Admin SDK)
+    }
+
     // Rate limiting interno — nunca accesible desde el cliente
     match /rateLimits/{id} {
       allow read, write: if false;

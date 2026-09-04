@@ -95,7 +95,13 @@ export async function buscarTecnicos({ limite = 100 } = {}) {
   // not exist. Buscar.jsx applies case-insensitive client-side filtering.
   const q = query(collection(db, "tecnicos"), where("disponible", "==", true), limit(limite));
   const snap = await getDocs(q);
-  const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  // Un técnico suspendido por el admin seguía apareciendo en los resultados:
+  // el campo se escribía pero nadie lo miraba. Se filtra aquí porque
+  // Firestore no admite un `!=` combinado con el `where` de arriba sin un
+  // índice adicional, y el conjunto ya está acotado por `limite`.
+  const docs = snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(t => t.suspendido !== true);
   // Sort Pro first, then by rating descending, client-side
   return docs.sort((a, b) => {
     if (a.plan === "pro" && b.plan !== "pro") return -1;

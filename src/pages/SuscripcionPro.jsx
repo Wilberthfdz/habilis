@@ -176,7 +176,21 @@ export default function SuscripcionPro({ nav, user }) {
           </div>
         )}
 
-        {user && tecnico !== undefined && !esPro && !confirmando && (
+        {user && tecnico === null && !confirmando && (
+          <div className="h-card" style={{ padding:"36px", textAlign:"center" }}>
+            <h1 style={{ fontSize:"21px", fontWeight:900, color:"#0F172A", marginBottom:"10px" }}>
+              Primero completa tu perfil
+            </h1>
+            <p style={{ fontSize:"14px", color:"#64748B", marginBottom:"20px", lineHeight:1.7 }}>
+              La suscripción se asocia a tu perfil de técnico, así que necesitamos
+              tenerlo antes de cobrarte. Son dos minutos.
+            </p>
+            <button className="h-btn-orange" style={{ padding:"12px 26px", fontSize:"14px" }}
+              onClick={() => nav("completarPerfil")}>Completar mi perfil</button>
+          </div>
+        )}
+
+        {user && tecnico && !esPro && !confirmando && (
           <div className="h-card" style={{ padding:"clamp(24px,5vw,36px)" }}>
             <p style={{ fontSize:"11px", fontWeight:800, color:"#F97316", letterSpacing:"0.1em",
                         textTransform:"uppercase", marginBottom:"8px" }}>Suscripción</p>

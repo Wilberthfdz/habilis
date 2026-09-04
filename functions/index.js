@@ -110,7 +110,11 @@ exports.agenteMatching = onDocumentCreated(
     if (sol.asignadoPorIA) return; // evita reprocesar
 
     const snap = await db.collection("tecnicos").where("disponible", "==", true).limit(60).get();
-    const tecnicos = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    // Suspender a un técnico no lo sacaba del reparto de solicitudes: el
+    // agente lo seguía proponiendo y notificando.
+    const tecnicos = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .filter((t) => t.suspendido !== true);
     if (tecnicos.length === 0) return;
 
     const lista = tecnicos
@@ -442,6 +446,16 @@ exports.transcribirRegistro = onCall({ secrets: [GEMINI_KEY] }, async (request) 
 exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
   const uid = requireAuth(request);
   await checkRateLimit(uid, "crearSuscripcion", 10);
+
+  // Sin perfil de técnico no hay a quién darle el plan: el webhook fallaría
+  // al activarlo y el cobro quedaría vivo sin contraprestación. Se comprueba
+  // ANTES de tocar la API de Mercado Pago para no crear la suscripción.
+  const perfil = await db.collection("tecnicos").doc(uid).get();
+  if (!perfil.exists) {
+    throw new HttpsError("failed-precondition",
+      "Antes de suscribirte necesitas completar tu perfil de técnico.");
+  }
+
   const { email, codigo } = request.data;
   if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new HttpsError("invalid-argument", "Email requerido.");
@@ -529,7 +543,22 @@ exports.cancelarSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) =>
   await checkRateLimit(uid, "cancelarSuscripcion", 10);
 
   const tecnico = await db.collection("tecnicos").doc(uid).get();
-  const suscripcionId = tecnico.data()?.suscripcionId;
+  let suscripcionId = tecnico.data()?.suscripcionId;
+
+  // Hubo caminos que activaban Pro sin guardar el id de la suscripción, y el
+  // técnico quedaba sin poder cancelar mientras se le seguía cobrando. Si
+  // falta, se busca en Mercado Pago por la referencia externa (su uid).
+  if (!suscripcionId) {
+    const busqueda = await mpGet(`/preapproval/search?external_reference=${encodeURIComponent(uid)}`);
+    const viva = (busqueda?.results || []).find(
+      (p) => p.status === "authorized" || p.status === "pending"
+    );
+    if (viva?.id) {
+      suscripcionId = viva.id;
+      await db.collection("tecnicos").doc(uid).set({ suscripcionId }, { merge: true });
+    }
+  }
+
   if (!suscripcionId) {
     throw new HttpsError("failed-precondition", "No tienes una suscripción activa que cancelar.");
   }
@@ -576,6 +605,37 @@ async function mpGet(ruta) {
   return r.json();
 }
 
+// En las notificaciones de suscripción, el id que manda Mercado Pago
+// identifica un "authorized payment", que vive en /authorized_payments/{id}
+// y no en /v1/payments/{id}. Consultar el endpoint equivocado devolvía null y
+// la notificación se descartaba en silencio: el cobro mensual nunca quedaba
+// registrado, no se podía facturar y Finanzas mostraba cero ingresos.
+// Se prueban los dos y se normaliza la forma del resultado.
+async function obtenerPagoRecurrente(id) {
+  const ap = await mpGet(`/authorized_payments/${id}`);
+  if (ap) {
+    const p = ap.payment || {};
+    return {
+      id: p.id ?? ap.id ?? id,
+      status: p.status ?? ap.status ?? "desconocido",
+      transaction_amount: p.transaction_amount ?? ap.transaction_amount ?? 0,
+      date_approved: p.date_approved ?? ap.date_created ?? null,
+      preapproval_id: ap.preapproval_id ?? null,
+      external_reference: ap.external_reference ?? null,
+    };
+  }
+  const pago = await mpGet(`/v1/payments/${id}`);
+  if (!pago) return null;
+  return {
+    id: pago.id ?? id,
+    status: pago.status ?? "desconocido",
+    transaction_amount: pago.transaction_amount ?? 0,
+    date_approved: pago.date_approved ?? null,
+    preapproval_id: pago.metadata?.preapproval_id ?? pago.preapproval_id ?? null,
+    external_reference: pago.external_reference ?? null,
+  };
+}
+
 // Un pago recurrente no siempre trae el uid: se busca en el pago, luego en
 // la preaprobación que lo originó y por último en el técnico que ya tiene
 // esa suscripción asociada.
@@ -595,19 +655,22 @@ async function resolverUid(pago, preapprovalId) {
 // `cancelled` lo retiran. Antes solo se contemplaban los dos extremos, así que
 // una suscripción pausada conservaba el plan Pro indefinidamente.
 async function aplicarEstadoSuscripcion(uid, sub) {
+  // `set(..., { merge: true })` en vez de `update()`: si el documento del
+  // técnico no existe todavía, `update()` lanza NOT_FOUND y el aviso de
+  // Mercado Pago se pierde para siempre — quedaba cobrando sin plan.
   const ref = db.collection("tecnicos").doc(uid);
   if (sub.status === "authorized") {
-    await ref.update({
+    await ref.set({
       plan: "pro",
       suscripcionId: sub.id,
       suscripcionEstado: "authorized",
       fechaPago: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    }, { merge: true });
     await consumirPromo(uid);
   } else if (sub.status === "paused" || sub.status === "cancelled") {
-    await ref.update({ plan: "gratis", suscripcionEstado: sub.status });
+    await ref.set({ plan: "gratis", suscripcionEstado: sub.status }, { merge: true });
   } else {
-    await ref.update({ suscripcionEstado: sub.status || "desconocido" });
+    await ref.set({ suscripcionEstado: sub.status || "desconocido" }, { merge: true });
   }
 }
 
@@ -654,10 +717,14 @@ async function registrarPagoSuscripcion(uid, pago, preapprovalId) {
   });
 
   if (aprobado) {
-    await db.collection("tecnicos").doc(uid).update({
+    // Se escribe también `suscripcionId`: sin él, el botón de cancelar del
+    // técnico devuelve un error permanente mientras se le sigue cobrando.
+    await db.collection("tecnicos").doc(uid).set({
       plan: "pro",
+      suscripcionEstado: "authorized",
+      ...(preapprovalId ? { suscripcionId: preapprovalId } : {}),
       fechaPago: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    }, { merge: true });
   }
 }
 
@@ -700,18 +767,36 @@ exports.webhookMP = onRequest({ secrets: [MP_TOKEN, MP_WEBHOOK_SECRET] }, async 
     // Sin esto solo quedaba registrado el primer pago y las renovaciones
     // mensuales eran invisibles para Finanzas.
     if (type === "subscription_authorized_payment" && data?.id) {
-      const pago = await mpGet(`/v1/payments/${data.id}`);
+      const pago = await obtenerPagoRecurrente(data.id);
       if (pago) {
-        const preapprovalId = pago.metadata?.preapproval_id || pago.preapproval_id || null;
+        const preapprovalId = pago.preapproval_id || null;
         const uid = await resolverUid(pago, preapprovalId);
         if (uid) await registrarPagoSuscripcion(uid, pago, preapprovalId);
+        else console.error(`webhookMP: cobro ${data.id} sin técnico identificable.`);
+      } else {
+        console.error(`webhookMP: no se pudo leer el cobro ${data.id} en Mercado Pago.`);
       }
     }
 
     res.status(200).send("OK");
   } catch (e) {
+    // Responder 200 ante un fallo hacía que Mercado Pago diera la entrega por
+    // buena y no reintentara: el cobro se perdía sin dejar rastro. Ahora el
+    // evento crudo queda guardado para poder reprocesarlo, y se devuelve 500
+    // para que Mercado Pago lo reintente.
     console.error("webhookMP error:", e.message);
-    res.status(200).send("OK"); // siempre 200 para que MP no reintente infinito
+    try {
+      await db.collection("webhooksFallidos").add({
+        origen: "mercadopago",
+        cuerpo: JSON.stringify(req.body || {}).slice(0, 4000),
+        error: String(e.message).slice(0, 500),
+        reprocesado: false,
+        fecha: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch (e2) {
+      console.error("webhookMP: tampoco se pudo registrar el fallo:", e2.message);
+    }
+    res.status(500).send("ERROR");
   }
 });
 
