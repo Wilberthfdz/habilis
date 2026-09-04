@@ -1,11 +1,15 @@
 import Logo from "../components/Logo.jsx";
 import Nav from "../components/Nav.jsx";
 
+// Cada línea de esta lista es una promesa que la plataforma tiene que poder
+// cumplir hoy. "Habilis Care" figuraba como beneficio Pro cuando es gratuito
+// para cualquiera, y "soporte prioritario" no tenía ningún mecanismo detrás.
 const FREE = [
   [true,  "Perfil profesional básico"],
   [true,  "Aparece en resultados de búsqueda"],
   [true,  "Hasta 5 trabajos documentados"],
   [true,  "Feed público"],
+  [true,  "Cotizaciones y Habilis Care"],
   [false, "Sin prioridad en búsquedas"],
   [false, "Sin herramientas de IA"],
 ];
@@ -14,16 +18,17 @@ const PRO = [
   [true, "Prioridad en los resultados de búsqueda"],
   [true, "Insignia Pro visible en tu perfil y en los resultados"],
   [true, "Trabajos ilimitados documentados"],
-  [true, "Herramientas de IA con Gemini"],
-  [true, "Generación de cotizaciones"],
-  [true, "🛡️ Habilis Care — mantenimiento preventivo"],
-  [true, "Soporte prioritario en español"],
+  [true, "Cotizaciones redactadas con IA a partir del problema del cliente"],
+  [true, "Respuestas y resúmenes automáticos en el chat"],
+  [true, "Consejos de mantenimiento con IA en Habilis Care"],
+  [true, "Análisis de tu mercado y sugerencias de colaboradores"],
 ];
 
 const FAQ = [
   ["¿Puedo cancelar en cualquier momento?","Sí. Sin contratos de permanencia. Cancelas desde tu página de suscripción cuando quieras, y conservas los beneficios hasta el fin del mes pagado."],
   ["¿Cómo se realiza el cobro?","Cobro mensual de $100 MXN por suscripción a través de Mercado Pago, con tarjeta de débito o crédito. Puedes solicitar factura CFDI con tus datos fiscales."],
   ["¿El plan Gratis es realmente gratis?","Sí, siempre. Los clientes también pueden buscar y contactar técnicos sin costo alguno."],
+  ["¿Qué cambia exactamente con Pro?","Documentas trabajos sin tope, apareces antes en los resultados, llevas la insignia Pro y se te abren las herramientas de inteligencia artificial. Crear cotizaciones y usar Habilis Care no cuesta: lo que agrega Pro es que la IA te ayude a redactarlas y a interpretar tus equipos."],
 ];
 
 export default function Precios({ nav, user }) {

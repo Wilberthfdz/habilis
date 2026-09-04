@@ -92,6 +92,7 @@ function ModalAgregar({ onClose, onSaved, userId }) {
   });
   const [saving, setSaving]   = useState(false);
   const [tips,   setTips]     = useState(null);
+  const [tipsPro, setTipsPro] = useState(false);
   const [genAI,  setGenAI]    = useState(false);
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
 
@@ -114,7 +115,11 @@ function ModalAgregar({ onClose, onSaved, userId }) {
       try {
         const t = await generarTipsMantenimiento(form.tipo, form.marca, form.modelo);
         setTips(t);
-      } catch { /* tips are optional */ }
+      } catch (e) {
+        // Los consejos con IA son del Plan Pro. Antes el error se tragaba en
+        // silencio y el equipo se guardaba sin explicación alguna.
+        if (e?.code === "functions/permission-denied") setTipsPro(true);
+      }
       setGenAI(false);
       onSaved(id);
     } finally { setSaving(false); }
@@ -132,7 +137,33 @@ function ModalAgregar({ onClose, onSaved, userId }) {
                                              width:"32px", height:"32px", fontSize:"18px", cursor:"pointer", color:"#64748B" }}>×</button>
         </div>
 
-        {tips ? (
+        {tipsPro ? (
+          // El equipo SÍ quedó guardado; lo que no se pudo generar son los
+          // consejos con IA, que son del Plan Pro.
+          <div>
+            <div style={{ background:"#F0FDF4", border:"1px solid #A7F3D0", borderRadius:"14px",
+                          padding:"16px 18px", marginBottom:"12px" }}>
+              <p style={{ fontWeight:700, fontSize:"13px", color:"#059669" }}>
+                ✅ Equipo guardado. Ya te avisaremos cuando toque su mantenimiento.
+              </p>
+            </div>
+            <div style={{ background:"#FFF7ED", border:"1px solid rgba(249,115,22,0.25)", borderRadius:"14px",
+                          padding:"16px 18px", marginBottom:"16px" }}>
+              <p style={{ fontWeight:700, fontSize:"13px", color:"#EA580C", marginBottom:"6px" }}>
+                Los consejos con IA son del Plan Pro
+              </p>
+              <p style={{ fontSize:"13px", color:"#7C2D12", lineHeight:1.6 }}>
+                Registrar equipos y recibir recordatorios es gratis. Con Pro, además, la IA te
+                arma el plan de mantenimiento para cada equipo.
+              </p>
+            </div>
+            <button onClick={onClose}
+              style={{ width:"100%", background:"#0F172A", color:"#fff", border:"none",
+                       borderRadius:"12px", padding:"13px", fontSize:"15px", fontWeight:700, cursor:"pointer" }}>
+              Ver mi equipo →
+            </button>
+          </div>
+        ) : tips ? (
           // Gemini tips after save
           <div>
             <div style={{ background:"#FFF7ED", border:"1px solid rgba(249,115,22,0.25)", borderRadius:"14px",

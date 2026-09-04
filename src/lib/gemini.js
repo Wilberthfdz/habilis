@@ -103,7 +103,11 @@ Responde SOLO con JSON válido:
   try {
     const raw = await callGemini(prompt, 0.4, "care");
     return JSON.parse(raw.replace(/```json|```/g, "").trim());
-  } catch {
+  } catch (e) {
+    // Al técnico del plan gratuito el backend le responde permission-denied.
+    // El catch genérico lo tapaba con consejos genéricos, así que nunca se
+    // enteraba de que esto es una herramienta del Plan Pro.
+    if (e?.code === "functions/permission-denied") throw e;
     return {
       tips: ["Realiza limpieza y revisión visual periódica", "Verifica conexiones y sellos contra humedad", "Registra cada servicio con fecha y costo en Habilis Care"],
       alerta: "Ruidos inusuales o caída de rendimiento indican servicio urgente",
