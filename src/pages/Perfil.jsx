@@ -23,7 +23,11 @@ export default function Perfil({ nav, params, user }) {
         const t = await obtenerTecnico(tecnicoId);
         if (!t) { setNotFound(true); setLoading(false); return; }
         setTecnico(t);
-        const tr = await obtenerTrabajosDelTecnico(tecnicoId).catch(() => []);
+        // Mismo criterio que el feed: el perfil público no exhibe trabajos
+        // que la moderación rechazó. El técnico sí los ve en su panel, con
+        // el motivo, para poder corregirlos.
+        const tr = (await obtenerTrabajosDelTecnico(tecnicoId).catch(() => []))
+          .filter(t => t.aprobadoIA !== false);
         setTrabajos(tr.filter(t => ["terminado","validado"].includes(t.estado)));
         if (user?.uid && user.uid !== tecnicoId) {
           estaEnRed(user.uid, tecnicoId).then(setEnRed).catch(() => {});

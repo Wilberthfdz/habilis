@@ -17,7 +17,13 @@ export default function Feed({ nav, user }) {
           getDocs(query(collection(db,"trabajos"),   orderBy("createdAt","desc"), limit(30))).catch(() => ({ docs:[] })),
           getDocs(query(collection(db,"solicitudes"),orderBy("createdAt","desc"), limit(20))).catch(() => ({ docs:[] })),
         ]);
-        const tList = snapTr.docs.map(d => ({ id:d.id,...d.data(), feedType:"trabajo" }));
+        // El moderador marca aprobadoIA:false lo que no debe publicarse, pero
+        // el feed lo mostraba igual: la moderación existía y no servía de
+        // nada. Los trabajos sin veredicto (recién creados o anteriores al
+        // agente) sí se muestran; solo se oculta lo rechazado.
+        const tList = snapTr.docs
+          .map(d => ({ id:d.id,...d.data(), feedType:"trabajo" }))
+          .filter(t => t.aprobadoIA !== false);
         const sList = snapSol.docs.map(d => ({ id:d.id,...d.data(), feedType:"solicitud" }));
         const all = [...tList,...sList].sort((a,b) => {
           const tA = a.createdAt?.toMillis?.() || 0;

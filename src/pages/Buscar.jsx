@@ -15,25 +15,32 @@ export default function Buscar({ nav, user, params }) {
   const [tecnicos, setTecnicos] = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [q,        setQ]        = useState(params?.oficio || "");
+  // El landing manda oficio Y ciudad, pero aquí solo se leía el oficio: quien
+  // escribía "Cancún" en la portada llegaba a un directorio nacional.
+  const [ciudad,   setCiudad]   = useState(params?.ciudad || "");
 
   useEffect(() => {
     buscarTecnicos({}).then(r => {
       setTodos(r);
-      const init = params?.oficio || "";
-      setTecnicos(init ? filtrar(r, init) : r);
+      const oficioInicial = params?.oficio || "";
+      const ciudadInicial = params?.ciudad || "";
+      setTecnicos(oficioInicial || ciudadInicial
+        ? filtrar(r, oficioInicial, ciudadInicial)
+        : r);
     }).catch(() => { setTodos([]); setTecnicos([]); })
       .finally(() => setLoading(false));
   }, []);
 
   const score = t =>
     (t.totalTrabajos || 0) * 2 +
-    (t.validaciones  || 0) * 1.5 +
+    (t.totalValidaciones || 0) * 1.5 +
     (t.experiencia   || 0) * 1 +
     (t.verificado    ? 3 : 0) +
     (t.plan === "pro"? 5 : 0);
 
-  const filtrar = (lista, f) => {
+  const filtrar = (lista, f, ciudadF = "") => {
     const l = f.trim().toLowerCase();
+    const c = ciudadF.trim().toLowerCase();
     // La búsqueda entiende la taxonomía: "clima" también encuentra técnicos
     // registrados con categoriaId "clima" aunque su oficio diga "Minisplits".
     const hits = l ? buscarPorTexto(l, 10) : [];
@@ -48,12 +55,20 @@ export default function Buscar({ nav, user, params }) {
           (t.subcategoriaId && subIds.has(t.subcategoriaId))
         )
       : [...lista];
+    // La ciudad se filtra aparte del oficio: son dos preguntas distintas y
+    // combinarlas en un solo texto hacía que "Electricista Cancún" no
+    // encontrara a nadie.
+    const enCiudad = c
+      ? matched.filter(t => (t.ciudad || "").toLowerCase().includes(c))
+      : matched;
     // Alcance filter: hide "estado"-only technicians when searching outside their city
-    const conAlcance = matched.filter(t => {
+    const conAlcance = enCiudad.filter(t => {
       if (!t.alcance || t.alcance === "nacional" || t.alcance === "latam") return true;
       if (t.alcance === "estado") {
-        if (!l) return true; // no filter active → show all
-        return (t.ciudad||"").toLowerCase().includes(l);
+        // Comparaba contra el texto del oficio, no contra la ciudad: buscar
+        // "Electricista" descartaba a todos los de alcance estatal.
+        if (!c) return true;
+        return (t.ciudad||"").toLowerCase().includes(c);
       }
       return true;
     });
@@ -61,10 +76,10 @@ export default function Buscar({ nav, user, params }) {
     return conAlcance.sort((a, b) => score(b) - score(a));
   };
 
-  const buscar   = () => setTecnicos(filtrar(todos, q));
+  const buscar   = () => setTecnicos(filtrar(todos, q, ciudad));
   const onKey    = e => { if (e.key === "Enter") buscar(); };
-  const setChip  = cat => { setQ(cat); setTecnicos(filtrar(todos, cat)); };
-  const clearQ   = () => { setQ(""); setTecnicos(todos); };
+  const setChip  = cat => { setQ(cat); setTecnicos(filtrar(todos, cat, ciudad)); };
+  const clearQ   = () => { setQ(""); setCiudad(""); setTecnicos(todos); };
 
   return (
     <div style={{ background:"#F1F5F9", minHeight:"100vh" }}>
@@ -96,7 +111,13 @@ export default function Buscar({ nav, user, params }) {
               style={{ flex:"2 1 200px", background:"rgba(255,255,255,0.09)", border:"1px solid rgba(255,255,255,0.12)",
                        borderRadius:"10px", padding:"12px 16px", color:"#fff", fontSize:"14px", outline:"none" }}
               value={q} onChange={e => setQ(e.target.value)} onKeyDown={onKey}
-              placeholder="Oficio, nombre o ciudad..."
+              placeholder="Oficio o nombre..."
+            />
+            <input
+              style={{ flex:"1 1 140px", background:"rgba(255,255,255,0.09)", border:"1px solid rgba(255,255,255,0.12)",
+                       borderRadius:"10px", padding:"12px 16px", color:"#fff", fontSize:"14px", outline:"none" }}
+              value={ciudad} onChange={e => setCiudad(e.target.value)} onKeyDown={onKey}
+              placeholder="Ciudad"
             />
             <button onClick={buscar}
               style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"10px",
@@ -111,8 +132,8 @@ export default function Buscar({ nav, user, params }) {
       <div style={{ background:"#fff", borderBottom:"1px solid #E2E8F0", padding:"12px 20px", overflowX:"auto" }}>
         <div style={{ display:"flex", gap:"8px", maxWidth:"960px", margin:"0 auto", width:"max-content" }}>
           <button onClick={clearQ}
-            style={{ padding:"6px 16px", background: !q ? "#0F172A" : "#F1F5F9",
-                     color: !q ? "#fff" : "#374151", border:"none",
+            style={{ padding:"6px 16px", background: (!q && !ciudad) ? "#0F172A" : "#F1F5F9",
+                     color: (!q && !ciudad) ? "#fff" : "#374151", border:"none",
                      borderRadius:"20px", fontSize:"12px", fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
             Todos
           </button>
