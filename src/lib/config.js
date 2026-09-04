@@ -31,3 +31,8 @@ export const APPCHECK_SITE_KEY = "";
 
 // ── PRECIOS ─────────────────────────────────────────────────────────────────
 export const PRECIO_PRO_MXN = 100;
+
+// Versión del clausulado vigente. Al publicar términos nuevos se sube la
+// fecha: permite saber qué versión aceptó cada usuario y a quién hay que
+// pedirle que vuelva a aceptar.
+export const VERSION_TERMINOS = "2026-09-04";

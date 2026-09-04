@@ -101,8 +101,26 @@ const STEPS = [
   { n:"03", title:"Contrata directo",  desc:"Acuerdas precio y fecha directo con el técnico. Sin comisión por trabajo, sin comisiones ocultas." },
 ];
 
-/* ─── Hero Illustration ─────────────────────────────────────────────── */
-function HeroCard() {
+/* ─── Hero ──────────────────────────────────────────────────────────── */
+// Esta tarjeta mostraba un técnico inventado — "Roberto Méndez", 127 trabajos,
+// 4.9 de rating y la insignia de verificado — junto al mensaje de que en
+// Habilis los perfiles son reales. Ahora enseña al mejor técnico que haya en
+// la plataforma; mientras no haya ninguno, se presenta abiertamente como
+// ejemplo y sin cifras ni insignias que nadie se ganó.
+function HeroCard({ tecnico, nav }) {
+  const real   = !!tecnico;
+  const nombre = real ? tecnico.nombre : "Tu perfil aquí";
+  const linea  = real
+    ? [tecnico.oficio, tecnico.ciudad].filter(Boolean).join(" · ")
+    : "Electricista · Tu ciudad";
+  const ciudad = real ? (tecnico.ciudad || "México") : "México";
+  const stats  = real
+    ? [
+        [String(tecnico.totalTrabajos || 0), "trabajos"],
+        [tecnico.rating > 0 ? String(tecnico.rating) : "—", "★ rating"],
+        [`${tecnico.experiencia || 0} años`, "exp."],
+      ]
+    : [["—", "trabajos"], ["—", "★ rating"], ["—", "exp."]];
   return (
     <div style={{ position:"relative", width:"100%", maxWidth:"380px", margin:"0 auto" }}>
       {/* Glow */}
@@ -125,7 +143,9 @@ function HeroCard() {
           width:"8px", height:"8px", borderRadius:"50%", background:"#10B981",
           boxShadow:"0 0 0 3px rgba(16,185,129,0.25)", flexShrink:0
         }}/>
-        <span style={{ fontSize:"12px", fontWeight:700, color:"#fff", whiteSpace:"nowrap" }}>Disponible hoy</span>
+        <span style={{ fontSize:"12px", fontWeight:700, color:"#fff", whiteSpace:"nowrap" }}>
+          {real ? "Disponible hoy" : "Ejemplo de perfil"}
+        </span>
       </div>
       {/* Main card */}
       <div style={{
@@ -150,14 +170,16 @@ function HeroCard() {
             </svg>
           </div>
           <div style={{ flex:1 }}>
-            <div style={{ fontWeight:800, color:"#fff", fontSize:"14px", marginBottom:"2px" }}>Roberto Méndez</div>
-            <div style={{ color:"#F07020", fontSize:"12px", fontWeight:600 }}>Electricista · CDMX</div>
+            <div style={{ fontWeight:800, color:"#fff", fontSize:"14px", marginBottom:"2px" }}>{nombre}</div>
+            <div style={{ color:"#F07020", fontSize:"12px", fontWeight:600 }}>{linea}</div>
           </div>
-          <div style={{
-            background:"rgba(16,185,129,0.12)", border:"1px solid rgba(16,185,129,0.3)",
-            borderRadius:"20px", padding:"4px 10px", fontSize:"10px", fontWeight:700, color:"#10B981",
-            whiteSpace:"nowrap"
-          }}>✓ Verificado</div>
+          {real && tecnico.verificado && (
+            <div style={{
+              background:"rgba(16,185,129,0.12)", border:"1px solid rgba(16,185,129,0.3)",
+              borderRadius:"20px", padding:"4px 10px", fontSize:"10px", fontWeight:700, color:"#10B981",
+              whiteSpace:"nowrap"
+            }}>✓ Verificado</div>
+          )}
         </div>
         {/* Stats */}
         <div style={{
@@ -165,7 +187,7 @@ function HeroCard() {
           background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.06)",
           borderRadius:"12px", padding:"12px 8px", marginBottom:"18px"
         }}>
-          {[["127","trabajos"],["4.9","★ rating"],["8 años","exp."]].map(([v,l],i) => (
+          {stats.map(([v,l],i) => (
             <div key={l} style={{
               textAlign:"center",
               borderRight: i < 2 ? "1px solid rgba(255,255,255,0.06)" : "none"
@@ -175,7 +197,9 @@ function HeroCard() {
             </div>
           ))}
         </div>
-        {/* Work thumbnails */}
+        {/* Iconografía ilustrativa. Bajo un nombre real daría a entender que
+            son SUS trabajos, así que solo acompaña al perfil de ejemplo. */}
+        {!real && (
         <div style={{ marginBottom:"16px" }}>
           <div style={{ fontSize:"9px", fontWeight:700, color:"rgba(255,255,255,0.35)",
                         letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:"8px" }}>
@@ -217,9 +241,11 @@ function HeroCard() {
             </div>
           </div>
         </div>
+        )}
         {/* Button */}
-        <button className="hab-btn-card">
-          Ver perfil completo
+        <button className="hab-btn-card"
+          onClick={() => nav(real ? "perfil" : "registro", real ? { tecnicoId: tecnico.id } : {})}>
+          {real ? "Ver perfil completo" : "Crear mi perfil gratis"}
           <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
             <path d="M6.22 3.22a.75.75 0 011.06 0l4.25 4.25a.75.75 0 010 1.06l-4.25 4.25a.75.75 0 01-1.06-1.06L9.94 8 6.22 4.28a.75.75 0 010-1.06z"/>
           </svg>
@@ -236,7 +262,7 @@ function HeroCard() {
         <svg viewBox="0 0 16 16" width="12" height="12" fill="#F07020">
           <path d="M8 0C5.24 0 3 2.24 3 5c0 3.75 5 11 5 11s5-7.25 5-11c0-2.76-2.24-5-5-5zm0 6.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/>
         </svg>
-        <span style={{ fontSize:"11px", fontWeight:600, color:"rgba(255,255,255,0.65)" }}>Ciudad de México</span>
+        <span style={{ fontSize:"11px", fontWeight:600, color:"rgba(255,255,255,0.65)" }}>{ciudad}</span>
       </div>
     </div>
   );
@@ -440,7 +466,7 @@ export default function Landing({ nav, user }) {
             flex:"0 0 380px", animation:"fadeUp 1s ease 0.2s both",
             paddingBottom:"24px", paddingTop:"24px"
           }}>
-            <HeroCard/>
+            <HeroCard tecnico={featured[0] || null} nav={nav} />
           </div>
         </div>
 

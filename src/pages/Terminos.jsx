@@ -1,6 +1,8 @@
 import Logo from "../components/Logo.jsx";
 
-const ACTUALIZADO = "23 de agosto de 2026";
+import { VERSION_TERMINOS } from "../lib/config.js";
+
+const ACTUALIZADO = "4 de septiembre de 2026";
 
 const H2 = { fontSize:"17px", fontWeight:800, color:"#0F172A", margin:"30px 0 10px" };
 const H3 = { fontSize:"14.5px", fontWeight:800, color:"#334155", margin:"18px 0 8px" };
@@ -33,7 +35,7 @@ export default function Terminos({ nav }) {
             Términos y Condiciones de Uso
           </h1>
           <p style={{ fontSize:"12px", color:"#94A3B8", marginBottom:"20px" }}>
-            Última actualización: {ACTUALIZADO}
+            Última actualización: {ACTUALIZADO} · Versión {VERSION_TERMINOS}
           </p>
 
           <div style={{ background:"#F8FAFC", border:"1px solid #E2E8F0", borderRadius:"12px",
@@ -68,6 +70,14 @@ export default function Terminos({ nav }) {
             de los Servicios después de una modificación constituye tu aceptación de los Términos
             modificados. El Aviso de Privacidad, disponible en <strong>/privacidad</strong>, forma
             parte integral de estos Términos.
+          </p>
+          <p style={P}>
+            Al crear tu cuenta se registra la fecha y la versión de los Términos y del Aviso de
+            Privacidad que aceptaste. Si publicamos una versión nueva que modifique de forma
+            sustancial tus derechos u obligaciones, te lo notificaremos por correo o dentro de la
+            plataforma con al menos <strong>15 días naturales</strong> de anticipación y te
+            pediremos aceptarla de nuevo; si no estás de acuerdo, puedes cancelar tu cuenta o tu
+            suscripción antes de que entre en vigor, sin penalización.
           </p>
 
           <h2 style={H2}>2. Los Servicios</h2>
@@ -126,7 +136,19 @@ export default function Terminos({ nav }) {
             <li style={LI}>Está prohibido publicar spam, contenido ofensivo, discriminatorio, político, promociones ajenas, información de terceros sin su consentimiento, o material que no sea trabajo técnico documentado.</li>
             <li style={LI}>Habilis utiliza moderación asistida por inteligencia artificial y puede marcar, ocultar o retirar contenido que incumpla estas reglas, así como suspender o cancelar cuentas reincidentes.</li>
           </ul>
-          <h3 style={H3}>3.3 Trabajos regulados</h3>
+          <h3 style={H3}>3.3 Reporte de contenido y cuentas</h3>
+          <p style={P}>
+            Si encuentras un perfil, un trabajo documentado o un mensaje que consideres falso,
+            ofensivo, que suplante tu identidad o que use fotografías o contenido tuyo sin
+            autorización, escríbenos a <strong>habilisempresa@gmail.com</strong> con el enlace o
+            los datos que permitan identificarlo. Revisamos cada reporte y respondemos en un plazo
+            máximo de <strong>10 días hábiles</strong>; si el reporte procede, retiramos el
+            contenido y, según la gravedad y la reincidencia, suspendemos o cancelamos la cuenta.
+            El usuario afectado por una decisión de moderación puede pedir su revisión por el mismo
+            medio.
+          </p>
+
+          <h3 style={H3}>3.4 Trabajos regulados</h3>
           <p style={P}>
             Algunos trabajos exigen certificaciones oficiales (por ejemplo, instalaciones de gas o
             media tensión). Habilis muestra la información que los técnicos declaran; el cliente es
@@ -145,7 +167,8 @@ export default function Terminos({ nav }) {
           <ul style={{ paddingLeft:"20px" }}>
             <li style={LI}>El plan gratuito permite crear perfil y documentar hasta 5 trabajos.</li>
             <li style={LI}>El plan Pro cuesta <strong>$100 MXN al mes</strong> (IVA incluido) y se cobra por suscripción recurrente a través de Mercado Pago, procesador independiente con sus propios términos.</li>
-            <li style={LI}>La suscripción se renueva automáticamente cada mes hasta que la canceles. Puedes cancelar en cualquier momento desde Mercado Pago; conservas los beneficios hasta el fin del periodo pagado.</li>
+            <li style={LI}>La suscripción se renueva automáticamente cada mes hasta que la canceles. <strong>Puedes cancelarla en cualquier momento y por el mismo medio en que la contrataste</strong>, con el botón "Cancelar suscripción" de tu panel Pro, o desde tu cuenta de Mercado Pago. La cancelación surte efecto de inmediato: no se genera ningún cobro posterior y conservas los beneficios hasta el fin del periodo ya pagado.</li>
+            <li style={LI}>Si un cobro te resulta indebido o duplicado, escríbenos a <strong>habilisempresa@gmail.com</strong> dentro de los 30 días naturales siguientes: lo revisamos y, si procede, gestionamos la devolución a través de Mercado Pago.</li>
             <li style={LI}>No hay reembolsos por periodos parciales, salvo los casos previstos por la ley aplicable.</li>
             <li style={LI}>El Titular puede modificar el precio del plan Pro notificándolo con al menos 15 días de anticipación; el nuevo precio aplica a partir de la siguiente renovación.</li>
           </ul>

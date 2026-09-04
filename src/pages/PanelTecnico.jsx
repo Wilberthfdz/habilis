@@ -603,7 +603,7 @@ export default function PanelTecnico({ nav, user }) {
                 </div>
               ))}
               <div style={{ display:"flex", gap:"10px", marginTop:"16px" }}>
-                <button style={{ ...BTN, flex:1 }} onClick={() => alert("Edición de perfil próximamente")}>Editar perfil</button>
+                <button style={{ ...BTN, flex:1 }} onClick={() => nav("editarPerfil")}>Editar perfil</button>
                 <button style={{ flex:1, background:"#F1F5F9", color:"#0F172A", border:"1px solid #E2E8F0", borderRadius:"9px", padding:"9px 16px", fontSize:"13px", fontWeight:600, cursor:"pointer" }}
                   onClick={() => nav("perfil", { tecnicoId:user?.uid })}>
                   Ver perfil público →

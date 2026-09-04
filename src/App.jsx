@@ -10,10 +10,10 @@ import Buscar                        from "./pages/Buscar.jsx";
 import PanelTecnico                  from "./pages/PanelTecnico.jsx";
 import RegistrarTrabajo              from "./pages/RegistrarTrabajo.jsx";
 import Bienvenida                    from "./pages/Bienvenida.jsx";
+import EditarPerfil                  from "./pages/EditarPerfil.jsx";
 import CompletarPerfil               from "./pages/CompletarPerfil.jsx";
 import HabilisCare                   from "./pages/HabilisCare.jsx";
 import DetalleActivo                 from "./pages/DetalleActivo.jsx";
-import PlanCare                      from "./pages/PlanCare.jsx";
 import Cotizaciones                  from "./pages/Cotizaciones.jsx";
 import EditorCotizacion              from "./pages/EditorCotizacion.jsx";
 import VistaCotizacion               from "./pages/VistaCotizacion.jsx";
@@ -99,32 +99,59 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-// Si entras directo por URL (ej. myhabilis.com/admin), arranca ahí en vez
-// del landing. El resto de la navegación sigue siendo por estado (nav()),
-// esto solo cubre la carga inicial de la página.
-const screenInicial = () => {
-  const path = window.location.pathname.replace(/\/+$/, "");
-  if (path === "/admin") return "admin";
-  if (path === "/inversion") return "inversion";
-  if (path === "/privacidad") return "privacidad";
-  if (path === "/terminos") return "terminos";
-  if (path === "/quienes-somos") return "quienesSomos";
-  if (path === "/como-funciona") return "comoFunciona";
-  if (path === "/soporte") return "soporte";
-  if (path === "/pro") return "suscripcionPro";
-  return "landing";
+// Rutas compartibles. Antes solo unas pocas pantallas tenían URL: entrar a
+// /registro desde un anuncio, compartir una búsqueda o usar el botón "atrás"
+// del navegador devolvía al landing, y ninguna de esas pantallas era
+// indexable. La tabla es la única fuente de verdad en los dos sentidos.
+const RUTAS_URL = {
+  landing:         "/",
+  registro:        "/registro",
+  login:           "/entrar",
+  precios:         "/precios",
+  buscar:          "/buscar",
+  feed:            "/feed",
+  panel:           "/panel",
+  editarPerfil:    "/panel/editar",
+  completarPerfil: "/completar-perfil",
+  bienvenida:      "/bienvenida",
+  habilisCare:     "/care",
+  cotizaciones:    "/cotizaciones",
+  miRed:           "/mi-red",
+  quienesSomos:    "/quienes-somos",
+  comoFunciona:    "/como-funciona",
+  soporte:         "/soporte",
+  suscripcionPro:  "/pro",
+  terminos:        "/terminos",
+  privacidad:      "/privacidad",
+  inversion:       "/inversion",
+  admin:           "/admin",
 };
 
-// Pantallas que se reflejan en la URL (compartibles por link directo)
-const RUTAS_URL = {
-  admin: "/admin", inversion: "/inversion", privacidad: "/privacidad", terminos: "/terminos",
-  quienesSomos: "/quienes-somos", comoFunciona: "/como-funciona", soporte: "/soporte",
-  suscripcionPro: "/pro",
+const PANTALLA_POR_RUTA = Object.fromEntries(
+  Object.entries(RUTAS_URL).map(([pantalla, ruta]) => [ruta, pantalla]));
+
+// Pantallas que necesitan un parámetro para tener sentido (un perfil, un
+// chat, una cotización). No se reflejan en la URL: sin el id la pantalla
+// llegaría vacía, así que al recargar o volver atrás se cae al landing.
+const rutaDe = pantalla => RUTAS_URL[pantalla] || null;
+
+// Pantallas que no existen sin sesión. Al abrirlas por URL sin haber
+// iniciado sesión mandamos al login en vez de renderizar una pantalla rota.
+const REQUIEREN_SESION = new Set([
+  "panel", "editarPerfil", "completarPerfil", "bienvenida", "habilisCare",
+  "cotizaciones", "miRed", "admin",
+]);
+// /pro se queda fuera a propósito: la página explica el plan y ofrece
+// iniciar sesión sin perder la intención de compra.
+
+const pantallaDe = path => {
+  const limpio = path.replace(/\/+$/, "") || "/";
+  return PANTALLA_POR_RUTA[limpio] || "landing";
 };
 
 export default function App() {
   const [user,    setUser]    = useState(undefined);
-  const [screen,  setScreen]  = useState(screenInicial);
+  const [screen,  setScreen]  = useState(() => pantallaDe(window.location.pathname));
   const [params,  setParams]  = useState({});
 
   useEffect(() => {
@@ -132,11 +159,25 @@ export default function App() {
     return unsub;
   }, []);
 
+  // Botón "atrás" del navegador. Sin esto la URL cambiaba pero la pantalla
+  // no, y el usuario quedaba viendo /precios con el contenido del panel.
+  useEffect(() => {
+    const alVolver = () => {
+      setScreen(pantallaDe(window.location.pathname));
+      setParams({});
+      window.scrollTo(0, 0);
+    };
+    window.addEventListener("popstate", alVolver);
+    return () => window.removeEventListener("popstate", alVolver);
+  }, []);
+
   const nav = (screen, params = {}) => {
-    // Refleja las pantallas compartibles en la URL; el resto de la
-    // navegación se queda igual (por estado).
-    const path = RUTAS_URL[screen] || "/";
-    if (window.location.pathname !== path) window.history.pushState({}, "", path);
+    const path = rutaDe(screen);
+    // Las pantallas con parámetro conservan la URL de donde vienen: no se
+    // pueden reconstruir desde la barra de direcciones.
+    if (path && window.location.pathname !== path) {
+      window.history.pushState({ screen }, "", path);
+    }
     setScreen(screen);
     setParams(params);
     window.scrollTo(0, 0);
@@ -154,10 +195,14 @@ export default function App() {
     );
   }
 
+  // Cortafuegos de navegación: /panel o /pro abiertos por URL sin sesión
+  // aterrizaban en una pantalla vacía; ahora llevan al login.
+  const pantalla = (!user && REQUIEREN_SESION.has(screen)) ? "login" : screen;
+
   const screenProps = { nav, user };
 
   const renderScreen = () => {
-    switch (screen) {
+    switch (pantalla) {
       case "landing": return <Landing {...screenProps} />;
       case "registro": return <Registro {...screenProps} params={params} />;
       case "login": return <Login {...screenProps} params={params} />;
@@ -169,9 +214,9 @@ export default function App() {
       case "registrarTrabajo": return <RegistrarTrabajo {...screenProps} params={params} />;
       case "bienvenida":      return <Bienvenida {...screenProps} />;
       case "completarPerfil": return <CompletarPerfil {...screenProps} />;
+      case "editarPerfil":    return <EditarPerfil     {...screenProps} />;
       case "habilisCare":      return <HabilisCare      {...screenProps} />;
       case "detalleActivo":   return <DetalleActivo   {...screenProps} params={params} />;
-      case "planCare":        return <PlanCare         {...screenProps} />;
       case "cotizaciones":    return <Cotizaciones     {...screenProps} />;
       case "editorCotizacion":return <EditorCotizacion {...screenProps} params={params} />;
       case "vistaCotizacion":    return <VistaCotizacion    {...screenProps} params={params} />;

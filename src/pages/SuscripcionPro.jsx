@@ -152,7 +152,7 @@ export default function SuscripcionPro({ nav, user }) {
               Necesitas una cuenta de técnico para suscribirte al Plan Pro.
             </p>
             <button className="h-btn-orange" style={{ padding:"12px 26px", fontSize:"14px" }}
-              onClick={() => nav("login")}>Iniciar sesión</button>
+              onClick={() => nav("login", { plan:"pro" })}>Iniciar sesión</button>
           </div>
         )}
 

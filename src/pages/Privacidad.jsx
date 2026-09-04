@@ -3,7 +3,7 @@ import Logo from "../components/Logo.jsx";
 // Aviso de privacidad conforme a la LFPDPPP (México).
 // La SAPI está en proceso de constitución: al quedar inscrita, quitar la
 // mención transitoria a la persona física de la sección 1.
-const ACTUALIZADO = "23 de agosto de 2026";
+const ACTUALIZADO = "4 de septiembre de 2026";
 
 const H2 = { fontSize:"17px", fontWeight:800, color:"#0F172A", margin:"28px 0 10px" };
 const P  = { fontSize:"14px", color:"#475569", lineHeight:1.75, marginBottom:"10px" };
@@ -81,14 +81,34 @@ export default function Privacidad({ nav }) {
             editar o eliminar tu perfil directamente desde tu panel.
           </p>
 
-          <h2 style={H2}>7. Conservación y seguridad</h2>
+          <h2 style={H2}>7. Cookies y tecnologías de rastreo</h2>
+          <p style={P}>
+            La plataforma usa almacenamiento local del navegador y cookies estrictamente necesarias
+            para mantener tu sesión iniciada y recordar preferencias de la interfaz. También
+            utilizamos las cookies que instalan nuestros proveedores de infraestructura y de pagos
+            para operar el servicio y prevenir fraude. <strong>No usamos cookies de publicidad ni
+            vendemos tus datos a terceros con fines mercadológicos.</strong> Puedes bloquear o
+            eliminar cookies desde la configuración de tu navegador; si lo haces, es posible que no
+            puedas iniciar sesión ni usar algunas funciones.
+          </p>
+
+          <h2 style={H2}>8. Datos personales sensibles</h2>
+          <p style={P}>
+            <strong>No recabamos datos personales sensibles</strong> —origen racial o étnico, estado
+            de salud, creencias religiosas, opiniones políticas, afiliación sindical o preferencia
+            sexual—. Te pedimos no incluirlos en tu perfil, en las descripciones de tus trabajos ni
+            en las fotografías que subas. Si detectamos datos sensibles o datos de terceros
+            publicados sin su consentimiento, retiramos el contenido.
+          </p>
+
+          <h2 style={H2}>9. Conservación y seguridad</h2>
           <p style={P}>
             Conservamos tus datos mientras tu cuenta esté activa. La información se almacena en
             infraestructura de Google Cloud con acceso restringido por reglas de seguridad. Las
             contraseñas nunca se almacenan en texto plano.
           </p>
 
-          <h2 style={H2}>8. Cambios a este aviso</h2>
+          <h2 style={H2}>10. Cambios a este aviso</h2>
           <p style={P}>
             Cualquier cambio a este aviso se publicará en esta página con su fecha de actualización.
             El uso continuado de la plataforma después de un cambio implica tu conformidad.

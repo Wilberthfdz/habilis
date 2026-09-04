@@ -34,6 +34,10 @@ service cloud.firestore {
         && request.resource.data.get("rating", 0) == 0
         && request.resource.data.get("totalTrabajos", 0) == 0
         && !request.resource.data.keys().hasAny(['rankScore','suscripcionId','suscripcionEstado','fechaPago','suspendido'])
+        // Consentimiento expreso obligatorio. La casilla del alta ya lo
+        // exige en el cliente; aquí se vuelve infranqueable, para que no
+        // exista un solo perfil sin constancia de aceptación.
+        && request.resource.data.get("aceptoTerminos", false) == true
       );
       // El dueño solo puede tocar campos de perfil "seguros" — plan, verificado,
       // rating, rankScore, etc. son SOLO backend (agentes / webhook de pago).

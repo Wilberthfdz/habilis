@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Logo from "../components/Logo.jsx";
+import AceptarTerminos from "../components/AceptarTerminos.jsx";
 import { registrarUsuario, crearPerfilTecnico } from "../lib/firebase.js";
 
 const OFICIOS = [
@@ -20,6 +21,7 @@ export default function Registro({ nav, params = {} }) {
   const [step,    setStep]    = useState(1);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState("");
+  const [acepto,  setAcepto]  = useState(false);
   const [form, setForm] = useState({
     nombre:"", apellido:"", email:"", password:"",
     oficio:"Electricista", ciudad:"", experiencia:"",
@@ -37,6 +39,7 @@ export default function Registro({ nav, params = {} }) {
   };
 
   const submit = async () => {
+    if (!acepto) { setError("Debes aceptar los Términos y el Aviso de Privacidad para crear tu cuenta."); return; }
     setError(""); setLoading(true);
     try {
       const cred = await registrarUsuario(form.email.trim(), form.password);
@@ -50,6 +53,7 @@ export default function Registro({ nav, params = {} }) {
         disponibilidad:form.disponibilidad.trim(),
         herramientas:  form.herramientas,
         tipo:"tecnico", plan:"gratis", rating:0, totalTrabajos:0, disponible:true,
+        aceptoTerminos: true,
       });
       nav(quierePro ? "suscripcionPro" : "bienvenida");
     } catch (e) {
@@ -206,10 +210,11 @@ export default function Registro({ nav, params = {} }) {
                     </div>
                   ))}
                 </div>
+                <AceptarTerminos nav={nav} valor={acepto} onChange={setAcepto} />
                 {error && <div style={{ background:"rgba(239,68,68,0.12)", border:"1px solid rgba(239,68,68,0.28)", borderRadius:"10px", padding:"10px 14px", fontSize:"13px", color:"#FCA5A5" }}>{error}</div>}
                 <div style={{ display:"flex", gap:"10px" }}>
                   <button onClick={() => setStep(2)} style={{ flex:1, background:"rgba(255,255,255,0.06)", color:"rgba(255,255,255,0.6)", border:"1px solid rgba(255,255,255,0.12)", borderRadius:"10px", padding:"13px", fontWeight:600, cursor:"pointer" }}>← Atrás</button>
-                  <button onClick={submit} disabled={loading} style={{ flex:2, background:"#F97316", color:"#fff", border:"none", borderRadius:"10px", padding:"13px", fontSize:"15px", fontWeight:700, cursor:"pointer", opacity: loading ? 0.75 : 1 }}>
+                  <button onClick={submit} disabled={loading || !acepto} style={{ flex:2, background:"#F97316", color:"#fff", border:"none", borderRadius:"10px", padding:"13px", fontSize:"15px", fontWeight:700, cursor: acepto ? "pointer" : "not-allowed", opacity: (loading || !acepto) ? 0.55 : 1 }}>
                     {loading ? "Creando cuenta..." : "Crear mi perfil gratis →"}
                   </button>
                 </div>

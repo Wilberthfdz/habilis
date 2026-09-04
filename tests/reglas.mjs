@@ -101,7 +101,11 @@ probar("alta: NO se puede nacer verificado",
 probar("alta: NO se puede nacer con rating inflado",
   assertFails(setDoc(doc(env.authenticatedContext("nuevo3").firestore(), "tecnicos/nuevo3"), { nombre: "X", plan: "gratis", rating: 5 })));
 probar("alta: un registro legítimo sí funciona",
-  assertSucceeds(setDoc(doc(env.authenticatedContext("nuevo4").firestore(), "tecnicos/nuevo4"), { nombre: "X", oficio: "Electricista", ciudad: "Cancún", plan: "gratis" })));
+  assertSucceeds(setDoc(doc(env.authenticatedContext("nuevo4").firestore(), "tecnicos/nuevo4"), { nombre: "X", oficio: "Electricista", ciudad: "Cancún", plan: "gratis", aceptoTerminos: true })));
+probar("alta: NO se puede crear perfil sin aceptar los términos",
+  assertFails(setDoc(doc(env.authenticatedContext("nuevo5").firestore(), "tecnicos/nuevo5"), { nombre: "X", oficio: "Electricista", ciudad: "Cancún", plan: "gratis" })));
+probar("alta: NO basta con mandar aceptoTerminos en falso",
+  assertFails(setDoc(doc(env.authenticatedContext("nuevo6").firestore(), "tecnicos/nuevo6"), { nombre: "X", plan: "gratis", aceptoTerminos: false })));
 probar("perfil: el técnico NO puede ascenderse después",
   assertFails(updateDoc(doc(tec, "tecnicos/tecnico1"), { plan: "pro" })));
 probar("perfil: el técnico sí puede editar su bio",

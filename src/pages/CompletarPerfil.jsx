@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import Logo from "../components/Logo.jsx";
 import Avatar from "../components/Avatar.jsx";
+import AceptarTerminos from "../components/AceptarTerminos.jsx";
 import { crearPerfilTecnico, cerrarSesion } from "../lib/firebase.js";
 import { transcribirRegistro } from "../lib/gemini.js";
 import { TAXONOMIA, buscarPorTexto } from "../lib/taxonomia.js";
@@ -26,6 +27,7 @@ export default function CompletarPerfil({ nav, user }) {
   const [herramientas, setHerramientas] = useState(false);
   const [loading,      setLoading]      = useState(false);
   const [error,        setError]        = useState("");
+  const [acepto,       setAcepto]       = useState(false);
 
   // ── Registro por voz ──────────────────────────────────────────
   const [grabando,       setGrabando]       = useState(false);
@@ -91,6 +93,7 @@ export default function CompletarPerfil({ nav, user }) {
 
   const submit = async () => {
     if (!ciudad.trim()) { setError("Ingresa tu ciudad para continuar."); return; }
+    if (!acepto) { setError("Debes aceptar los Términos y el Aviso de Privacidad para continuar."); return; }
     setError(""); setLoading(true);
     try {
       await crearPerfilTecnico(user.uid, {
@@ -110,6 +113,7 @@ export default function CompletarPerfil({ nav, user }) {
         rating:        0,
         totalTrabajos: 0,
         disponible:    true,
+        aceptoTerminos: true,
       });
       nav("bienvenida");
     } catch (e) {
@@ -259,28 +263,16 @@ export default function CompletarPerfil({ nav, user }) {
                 </div>
               )}
 
-              <button onClick={submit} disabled={loading}
+              <AceptarTerminos nav={nav} valor={acepto} onChange={setAcepto} />
+
+              <button onClick={submit} disabled={loading || !acepto}
                 style={{ width:"100%", background:"#F97316", color:"#fff", border:"none",
                          borderRadius:"12px", padding:"14px", fontSize:"15px", fontWeight:800,
-                         cursor:"pointer", opacity: loading ? 0.75 : 1, marginTop:"4px",
+                         cursor: acepto ? "pointer" : "not-allowed",
+                         opacity: (loading || !acepto) ? 0.55 : 1, marginTop:"4px",
                          boxShadow:"0 4px 14px rgba(249,115,22,0.3)" }}>
                 {loading ? "Creando perfil..." : "Crear mi perfil gratis →"}
               </button>
-
-              <p style={{ fontSize:"12px", color:"rgba(255,255,255,0.25)", textAlign:"center" }}>
-                Al continuar aceptas los{" "}
-                <button onClick={() => nav("terminos")}
-                  style={{ background:"none", border:"none", color:"rgba(249,115,22,0.8)",
-                           fontSize:"12px", cursor:"pointer", padding:0, textDecoration:"underline" }}>
-                  términos y condiciones
-                </button>
-                {" "}y el{" "}
-                <button onClick={() => nav("privacidad")}
-                  style={{ background:"none", border:"none", color:"rgba(249,115,22,0.8)",
-                           fontSize:"12px", cursor:"pointer", padding:0, textDecoration:"underline" }}>
-                  aviso de privacidad
-                </button>.
-              </p>
             </div>
           </div>
         </div>

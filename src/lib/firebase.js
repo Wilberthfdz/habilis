@@ -4,7 +4,7 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, si
 import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, where, orderBy, limit, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 // Storage SDK removed — profile photos use base64-in-Firestore (no Blaze plan needed)
 import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
-import { firebaseConfig, APPCHECK_SITE_KEY }   from "./config.js";
+import { firebaseConfig, APPCHECK_SITE_KEY, VERSION_TERMINOS } from "./config.js";
 
 // Inicializar Firebase (Google Cloud — satisface requisito de competencia)
 const app     = initializeApp(firebaseConfig);
@@ -65,6 +65,12 @@ export async function crearPerfilTecnico(uid, datos) {
     totalReviews: 0,
     totalTrabajos: 0,
     disponible: true,
+    // Consentimiento expreso: la casilla del alta lo manda como true. Se
+    // sella aquí con hora de servidor para que quede constancia de cuándo
+    // se aceptaron los términos (LFPDPPP art. 8 y LFPC art. 76 BIS).
+    aceptoTerminos: datos.aceptoTerminos === true,
+    fechaAceptacionTerminos: serverTimestamp(),
+    versionTerminos: VERSION_TERMINOS,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
