@@ -29,6 +29,12 @@ jobs:
       - name: Compilar frontend
         run: npm run build
 
+      # Las reglas de Firestore son la única barrera entre los datos
+      # personales y quien pida la colección: se prueban contra el emulador
+      # real en cada cambio, no a ojo.
+      - name: Reglas de seguridad de Firestore
+        run: npm run test:reglas
+
       # Un error de sintaxis aquí tumba el webhook de cobros al desplegar,
       # así que se valida en cada cambio.
       - name: Validar sintaxis del backend

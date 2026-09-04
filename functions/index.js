@@ -67,17 +67,22 @@ function requireAuth(request) {
   return request.auth.uid;
 }
 
+// Leer y escribir por separado no serializa nada: varias llamadas
+// simultáneas leían el mismo contador y todas pasaban, así que el límite se
+// saltaba con solo disparar en paralelo. La transacción lo hace real.
 async function checkRateLimit(uid, action, maxPerHour = 20) {
   const ref = db.collection("rateLimits").doc(`${uid}_${action}`);
-  const doc = await ref.get();
   const now = Date.now();
-  const hourAgo = now - 3600000;
-  const calls = doc.exists ? (doc.data().calls || []).filter((t) => t > hourAgo) : [];
-  if (calls.length >= maxPerHour) {
-    throw new HttpsError("resource-exhausted", "Límite de uso alcanzado. Intenta en 1 hora.");
-  }
-  calls.push(now);
-  await ref.set({ calls });
+  const haceUnaHora = now - 3600000;
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const calls = snap.exists ? (snap.data().calls || []).filter((t) => t > haceUnaHora) : [];
+    if (calls.length >= maxPerHour) {
+      throw new HttpsError("resource-exhausted", "Límite de uso alcanzado. Intenta en 1 hora.");
+    }
+    calls.push(now);
+    tx.set(ref, { calls });
+  });
 }
 
 // Evidencia de decisión de agente — leída por el panel admin y por los jueces.

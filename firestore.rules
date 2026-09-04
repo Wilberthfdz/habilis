@@ -2,13 +2,39 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // El correo por sí solo no acredita: un proveedor de identidad mal
+    // configurado puede emitir un token con un email ajeno sin verificar.
     function isAdmin() {
-      return request.auth != null && request.auth.token.email == "wilberthfdz@gmail.com";
+      return request.auth != null
+        && request.auth.token.get("email", "") == "wilberthfdz@gmail.com"
+        && request.auth.token.get("email_verified", false) == true;
+    }
+
+    function esDuenio(campo) {
+      return request.auth != null && resource.data[campo] == request.auth.uid;
+    }
+
+    function creaComoDuenio(campo) {
+      return request.auth != null && request.resource.data[campo] == request.auth.uid;
+    }
+
+    function cambia() {
+      return request.resource.data.diff(resource.data).affectedKeys();
     }
 
     match /tecnicos/{uid} {
       allow read:   if true;
-      allow create: if request.auth != null && request.auth.uid == uid;
+      // Sin esto, el propio documento de alta podía nacer con plan:"pro",
+      // verificado:true o rating:5 — el usuario se regalaba la suscripción y
+      // la insignia en su primera escritura.
+      allow create: if isAdmin() || (
+        request.auth != null && request.auth.uid == uid
+        && request.resource.data.plan == "gratis"
+        && request.resource.data.get("verificado", false) == false
+        && request.resource.data.get("rating", 0) == 0
+        && request.resource.data.get("totalTrabajos", 0) == 0
+        && !request.resource.data.keys().hasAny(['rankScore','suscripcionId','suscripcionEstado','fechaPago','suspendido'])
+      );
       // El dueño solo puede tocar campos de perfil "seguros" — plan, verificado,
       // rating, rankScore, etc. son SOLO backend (agentes / webhook de pago).
       // Antes cualquier usuario podía hacer updateDoc({plan:"pro"}) directo
@@ -24,12 +50,19 @@ service cloud.firestore {
     match /trabajos/{trabajoId} {
       allow read:   if true;
       allow create: if request.auth != null && request.resource.data.tecnicoId == request.auth.uid;
-      allow update: if (request.auth != null && resource.data.tecnicoId == request.auth.uid) || isAdmin();
+      // El técnico puede corregir su propio trabajo, pero NO el veredicto de
+      // moderación ni los contadores de reputación: eso es del backend.
+      allow update: if isAdmin() || (
+        esDuenio('tecnicoId')
+        && cambia().hasOnly(['titulo','descripcion','problema','solucion','fotos','updatedAt'])
+      );
       allow delete: if isAdmin();
     }
 
     match /solicitudes/{solicitudId} {
-      allow read:   if true;
+      // Contienen la descripción del problema y la ciudad de un domicilio:
+      // no es información pública.
+      allow read:   if request.auth != null;
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow update: if isAdmin();
       allow delete: if isAdmin();
@@ -44,18 +77,21 @@ service cloud.firestore {
     }
 
     // Service history records
+    // El historial de mantenimiento es del dueño del equipo. Antes cualquier
+    // usuario registrado podía leerlo y EDITARLO, con costos incluidos.
     match /servicios/{servicioId} {
-      allow read:   if request.auth != null;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null;
-      allow delete: if isAdmin();
+      allow read:   if esDuenio('userId') || isAdmin();
+      allow create: if creaComoDuenio('userId');
+      allow update: if esDuenio('userId') || isAdmin();
+      allow delete: if esDuenio('userId') || isAdmin();
     }
 
     // Care subscription plans
     match /planes_care/{planId} {
       allow read:   if (request.auth != null && resource.data.clienteId == request.auth.uid) || isAdmin();
-      allow create: if request.auth != null;
-      allow update: if (request.auth != null && resource.data.clienteId == request.auth.uid) || isAdmin();
+      allow create: if creaComoDuenio('clienteId');
+      // El estado y el cobro del plan los decide el backend, no el cliente.
+      allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
@@ -64,7 +100,11 @@ service cloud.firestore {
     // aceptada/rechazada — antes "allow update: if true" dejaba reescribir
     // precio, datos del técnico o cualquier campo del documento completo.
     match /cotizaciones/{cotId} {
-      allow read:   if true;
+      // `get` abierto conserva el enlace que el técnico manda por WhatsApp;
+      // `list` cerrado impide descargar la cartera de clientes completa —
+      // con RFC, correo y teléfono— de todos los técnicos de la plataforma.
+      allow get:    if true;
+      allow list:   if esDuenio('tecnicoId') || isAdmin();
       allow create: if request.auth != null && request.resource.data.tecnicoId == request.auth.uid;
       allow update: if isAdmin()
         || (request.auth != null && resource.data.tecnicoId == request.auth.uid)
@@ -97,25 +137,61 @@ service cloud.firestore {
       allow update, delete: if (request.auth != null && resource.data.tecnicoId == request.auth.uid) || isAdmin();
     }
 
-    // Chat solicitudes — readable by both parties, writable by authenticated users
+    // Conversaciones privadas: solo el cliente y el técnico de cada una.
+    // Antes bastaba una cuenta gratuita para leer TODOS los chats de la
+    // plataforma, y para mover cualquier solicitud a "aceptado".
     match /solicitudes_chat/{solicitudId} {
-      allow read:   if request.auth != null;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null;
+      function esParte() {
+        return request.auth != null && (
+          resource.data.clienteId == request.auth.uid ||
+          resource.data.tecnicoId == request.auth.uid
+        );
+      }
+
+      allow read:   if esParte() || isAdmin();
+      allow create: if creaComoDuenio('clienteId');
+      allow update: if isAdmin() || (
+        esParte()
+        && cambia().hasOnly(['estado','resumenIA','trabajoId','updatedAt'])
+      );
       allow delete: if false;
 
       match /mensajes/{mensajeId} {
-        allow read:   if request.auth != null;
-        allow create: if request.auth != null;
+        function parteDelChat() {
+          let chat = get(/databases/$(database)/documents/solicitudes_chat/$(solicitudId)).data;
+          return request.auth != null &&
+            (chat.clienteId == request.auth.uid || chat.tecnicoId == request.auth.uid);
+        }
+
+        allow read:   if parteDelChat() || isAdmin();
+        // El autor no se puede falsificar: sin esto se podían inyectar
+        // mensajes firmados como la otra persona. Los avisos de sistema
+        // siguen permitidos a las partes (los escribe la propia pantalla al
+        // aceptar o rechazar) pero con autor fijo; moverlos al backend queda
+        // pendiente para que nadie pueda imitar a Habilis dentro del chat.
+        allow create: if parteDelChat() && (
+          (request.resource.data.tipo == 'mensaje' && request.resource.data.autorId == request.auth.uid)
+          || (request.resource.data.tipo == 'sistema' && request.resource.data.autorId == 'sistema')
+        );
         allow update: if false;
         allow delete: if false;
       }
     }
 
-    // Social validations — one per user-work-type combination
+    // Validación social — un voto por persona, trabajo y tipo. El ID del
+    // documento codifica esa unicidad, así que la regla exige que coincida:
+    // de lo contrario se podían crear votos a nombre de otros, de tipos
+    // inventados, o votarse a uno mismo desde otro ID.
     match /validaciones/{validacionId} {
       allow read:   if true;
-      allow create: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.validadorId == request.auth.uid
+        && request.resource.data.tipo in ['util','bien_hecho']
+        && validacionId == request.resource.data.trabajoId + '_'
+                         + request.auth.uid + '_'
+                         + request.resource.data.tipo
+        && get(/databases/$(database)/documents/trabajos/$(request.resource.data.trabajoId)).data.tecnicoId
+             != request.auth.uid;
       allow update: if false;
       allow delete: if isAdmin();
     }
