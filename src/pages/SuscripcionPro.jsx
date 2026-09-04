@@ -4,8 +4,8 @@ import { obtenerTecnico, obtenerFacturas } from "../lib/firebase.js";
 import { iniciarSuscripcionPro, solicitarFactura, cancelarSuscripcionPro } from "../lib/gemini.js";
 
 const BENEFICIOS = [
-  "Prioridad alta en búsquedas",
-  "Sin anuncios en tu perfil",
+  "Prioridad en los resultados de búsqueda",
+  "Insignia Pro en tu perfil y en las búsquedas",
   "Trabajos documentados ilimitados",
   "Herramientas de IA completas",
   "Cotizaciones profesionales",

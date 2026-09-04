@@ -6,16 +6,14 @@ const FREE = [
   [true,  "Aparece en resultados de búsqueda"],
   [true,  "Hasta 5 trabajos documentados"],
   [true,  "Feed público"],
-  [false, "Con anuncios en tu perfil"],
   [false, "Sin prioridad en búsquedas"],
   [false, "Sin herramientas de IA"],
 ];
 
 const PRO = [
-  [true, "Prioridad alta en búsquedas"],
-  [true, "Sin anuncios en tu perfil"],
+  [true, "Prioridad en los resultados de búsqueda"],
+  [true, "Insignia Pro visible en tu perfil y en los resultados"],
   [true, "Trabajos ilimitados documentados"],
-  [true, "4 leads garantizados al mes"],
   [true, "Herramientas de IA con Gemini"],
   [true, "Generación de cotizaciones"],
   [true, "🛡️ Habilis Care — mantenimiento preventivo"],
@@ -25,7 +23,6 @@ const PRO = [
 const FAQ = [
   ["¿Puedo cancelar en cualquier momento?","Sí. Sin contratos de permanencia. Cancelas desde tu página de suscripción cuando quieras, y conservas los beneficios hasta el fin del mes pagado."],
   ["¿Cómo se realiza el cobro?","Cobro mensual de $100 MXN por suscripción a través de Mercado Pago, con tarjeta de débito o crédito. Puedes solicitar factura CFDI con tus datos fiscales."],
-  ["¿Qué son los leads garantizados?","Son solicitudes de clientes que coinciden con tu oficio y ciudad, enviadas directo a tu panel."],
   ["¿El plan Gratis es realmente gratis?","Sí, siempre. Los clientes también pueden buscar y contactar técnicos sin costo alguno."],
 ];
 

@@ -132,8 +132,10 @@ export default function PanelTecnico({ nav, user }) {
         <p style={{ color:"#64748B", fontSize:"14px", marginBottom:"24px" }}>
           No encontramos tu perfil técnico. Puede que tu registro no se completó.
         </p>
-        <button style={{ ...BTN, width:"100%", marginBottom:"10px" }} onClick={() => nav("registro")}>
-          Completar registro
+        {/* Mandaba a `registro`, que intenta crear otra cuenta con un correo
+            que ya existe: el usuario quedaba atrapado sin salida. */}
+        <button style={{ ...BTN, width:"100%", marginBottom:"10px" }} onClick={() => nav("completarPerfil")}>
+          Completar mi perfil
         </button>
         <button style={{ background:"none", border:"none", color:"#94A3B8", fontSize:"13px", cursor:"pointer" }} onClick={logout}>
           Cerrar sesión
@@ -319,23 +321,33 @@ export default function PanelTecnico({ nav, user }) {
                 <h3 style={{ fontWeight:800, fontSize:"15px", color:"#0F172A" }}>Solicitudes recientes</h3>
                 <button style={BTN_SM} onClick={() => nav("registrarTrabajo")}>+ Registrar trabajo</button>
               </div>
-              {[
-                { cliente:"Roberto G.", servicio:"Instalación eléctrica", ciudad:"Benito Juárez", hora:"Hace 20 min", nuevo:true },
-                { cliente:"María T.",   servicio:"Revisión tablero",      ciudad:"Coyoacán",     hora:"Hace 1 hr",  nuevo:true },
-                { cliente:"Luis P.",    servicio:"Panel 200A",            ciudad:"Tlalpan",      hora:"Hace 3 hrs", nuevo:false },
-              ].map((r, i) => (
-                <div key={i} style={{ display:"flex", alignItems:"center", gap:"12px", padding:"12px 14px",
-                                      background: r.nuevo ? "#FFF7ED" : "#F8FAFC",
-                                      borderRadius:"10px", border:`1px solid ${r.nuevo ? "rgba(249,115,22,0.25)" : "#E2E8F0"}`,
-                                      marginBottom: i < 2 ? "8px" : 0 }}>
-                  <div style={{ flex:1 }}>
+              {/* Solicitudes reales del técnico. Antes había tres clientes
+                  inventados en duro —Roberto G., María T., Luis P.— que se
+                  mostraban a todos, todos los días, con etiqueta NUEVO. */}
+              {solicitudesPend.length === 0 ? (
+                <div style={{ padding:"20px 14px", background:"#F8FAFC", borderRadius:"10px",
+                              border:"1px dashed #E2E8F0", textAlign:"center" }}>
+                  <p style={{ fontSize:"13px", color:"#64748B", lineHeight:1.6 }}>
+                    Todavía no tienes solicitudes. Documenta tus trabajos: los clientes
+                    encuentran antes a quien muestra lo que sabe hacer.
+                  </p>
+                </div>
+              ) : solicitudesPend.slice(0, 3).map((r, i) => (
+                <div key={r.id} style={{ display:"flex", alignItems:"center", gap:"12px", padding:"12px 14px",
+                                      background:"#FFF7ED", borderRadius:"10px",
+                                      border:"1px solid rgba(249,115,22,0.25)",
+                                      marginBottom: i < Math.min(solicitudesPend.length, 3) - 1 ? "8px" : 0 }}>
+                  <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:"flex", gap:"6px", alignItems:"center", marginBottom:"3px" }}>
-                      <span style={{ fontWeight:700, fontSize:"13px" }}>{r.cliente}</span>
-                      {r.nuevo && <span style={{ background:"#F97316", color:"#fff", fontSize:"9px", fontWeight:800, padding:"2px 7px", borderRadius:"20px" }}>NUEVO</span>}
+                      <span style={{ fontWeight:700, fontSize:"13px" }}>{r.clienteNombre || "Cliente"}</span>
+                      <span style={{ background:"#F97316", color:"#fff", fontSize:"9px", fontWeight:800, padding:"2px 7px", borderRadius:"20px" }}>NUEVO</span>
                     </div>
-                    <p style={{ color:"#94A3B8", fontSize:"12px" }}>{r.servicio} · 📍 {r.ciudad} · {r.hora}</p>
+                    <p style={{ color:"#94A3B8", fontSize:"12px", overflow:"hidden",
+                                textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                      {r.descripcion || "Sin descripción"}{r.urgencia ? ` · ${r.urgencia}` : ""}
+                    </p>
                   </div>
-                  <button style={BTN_SM} onClick={() => setTab("ia")}>Responder</button>
+                  <button style={BTN_SM} onClick={() => nav("chat", { solicitudId: r.id })}>Responder</button>
                 </div>
               ))}
             </div>
@@ -365,22 +377,6 @@ export default function PanelTecnico({ nav, user }) {
               </div>
             </div>
 
-            <div style={CARD}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                <div>
-                  <h3 style={{ fontWeight:800, fontSize:"15px", color:"#0F172A" }}>Posición en búsquedas</h3>
-                  <p style={{ color:"#64748B", fontSize:"12px", marginTop:"3px" }}>"{tecnico.oficio}" en {tecnico.ciudad}</p>
-                </div>
-                <div style={{ textAlign:"center" }}>
-                  <div style={{ fontSize:"44px", fontWeight:900, color:"#F97316" }}>#{esPro ? "1" : "8"}</div>
-                  {!esPro && (
-                    <button onClick={() => nav("precios")} style={{ color:"#2563EB", background:"none", border:"none", fontSize:"11px", fontWeight:700, cursor:"pointer" }}>
-                      Subir al #1 con Pro →
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
           </div>
         )}
 
@@ -486,24 +482,23 @@ export default function PanelTecnico({ nav, user }) {
               )}
             </div>
 
+            {/* Cada tarjeta lleva ahora a una pantalla que existe. Se retiró
+                "Análisis de mercado": se anunciaba, con etiqueta PRO, y no
+                había ninguna funcionalidad detrás. */}
             {[
-              { icon:"👤", title:"Mejorar mi perfil",   desc:"Gemini mejora la descripción de tu perfil para que más clientes te contraten.", pro:false },
-              { icon:"📄", title:"Generar cotización",  desc:"Describe el trabajo y Gemini redacta una cotización profesional para el cliente.", pro:true },
-              { icon:"📊", title:"Análisis de mercado", desc:"Ve qué servicios tienen más demanda en tu ciudad esta semana.", pro:true },
+              { icon:"👤", title:"Mejorar mi perfil",  desc:"La IA reescribe la descripción de tu perfil a partir de lo que ya tienes.", destino:"completarPerfil", accion:"Editar mi perfil" },
+              { icon:"📄", title:"Generar cotización", desc:"Arma una cotización con desglose, IVA y tu catálogo, lista para enviar al cliente.", destino:"cotizaciones", accion:"Ir a cotizaciones" },
             ].map(h => (
-              <div key={h.title} style={{ ...CARD, display:"flex", gap:"14px", alignItems:"flex-start", opacity: h.pro && !esPro ? 0.6 : 1 }}>
+              <div key={h.title} style={{ ...CARD, display:"flex", gap:"14px", alignItems:"flex-start" }}>
                 <span style={{ fontSize:"24px", flexShrink:0 }}>{h.icon}</span>
                 <div style={{ flex:1 }}>
                   <div style={{ display:"flex", gap:"8px", alignItems:"center", marginBottom:"4px" }}>
                     <p style={{ fontWeight:700, fontSize:"14px" }}>{h.title}</p>
-                    {h.pro && <span style={{ background:"#FFF7ED", color:"#EA580C", fontSize:"10px", fontWeight:700, padding:"2px 7px", borderRadius:"6px" }}>PRO</span>}
                   </div>
-                  <p style={{ color:"#64748B", fontSize:"13px", marginBottom: h.pro && !esPro ? "8px" : 0 }}>{h.desc}</p>
-                  {h.pro && !esPro && (
-                    <button onClick={() => nav("precios")} style={{ ...BTN_SM, background:"#fff", color:"#F97316", border:"1px solid #F97316" }}>
-                      Requiere Plan Pro →
-                    </button>
-                  )}
+                  <p style={{ color:"#64748B", fontSize:"13px", marginBottom:"8px" }}>{h.desc}</p>
+                  <button onClick={() => nav(h.destino)} style={{ ...BTN_SM, background:"#fff", color:"#F97316", border:"1px solid #F97316" }}>
+                    {h.accion} →
+                  </button>
                 </div>
               </div>
             ))}

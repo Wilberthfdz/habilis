@@ -70,13 +70,17 @@ export default function Login({ nav, user, params = {} }) {
     if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return "";
     if (code === "auth/popup-blocked")
       return `El navegador bloqueó la ventana de ${providerLabel}. Permite ventanas emergentes para este sitio e intenta de nuevo.`;
-    if (code === "auth/unauthorized-domain")
-      return "Este dominio no está autorizado en Firebase. Agrega el dominio en Firebase Console → Authentication → Authorized domains.";
-    if (code === "auth/operation-not-allowed")
-      return `${providerLabel} Sign-In no está habilitado. Actívalo en Firebase Console → Authentication → Sign-in method → ${providerLabel}.`;
     if (code === "auth/network-request-failed")
       return "Sin conexión. Verifica tu internet e intenta de nuevo.";
-    return `No se pudo iniciar sesión con ${providerLabel}. (${code || "error desconocido"})`;
+    // Un fallo de configuración es problema nuestro, no del usuario: antes
+    // se le mostraban instrucciones de la consola de Firebase, que además
+    // revelaban cómo está montado el proyecto. El detalle va al registro.
+    if (code === "auth/unauthorized-domain" || code === "auth/operation-not-allowed") {
+      console.error(`Login con ${providerLabel} mal configurado: ${code}`);
+      return `Ahora mismo no podemos iniciar sesión con ${providerLabel}. Entra con tu correo y contraseña, o escríbenos a habilisempresa@gmail.com.`;
+    }
+    console.error(`Login con ${providerLabel}: ${code || "error desconocido"}`);
+    return `No se pudo iniciar sesión con ${providerLabel}. Intenta de nuevo o entra con tu correo.`;
   };
 
   const handleGoogle = async () => {

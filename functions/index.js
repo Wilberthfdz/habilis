@@ -170,37 +170,48 @@ Trabajo: título "${t.titulo}", descripción "${t.descripcion || ""}", problema 
 DECIDE y responde SOLO JSON:
 {"aprobadoIA":true|false,"razonIA":"breve","categoriaIA":"Electricidad|Plomería|HVAC|Redes|Cámaras|Herrería|Tablaroca|Pintura|Mecánica|Otro","urgenciaIA":"baja|media|alta","calidadIA":1-10}`;
 
-    const out = parseJsonLoose(await callGemini(prompt, GEMINI_KEY.value(), { maxTokens: 300, temperature: 0.1 }), {
-      aprobadoIA: true,
-      razonIA: "",
-      categoriaIA: "Otro",
-      urgenciaIA: "media",
-      calidadIA: 5,
-    });
+    // Si Gemini falla o devuelve algo ilegible, el trabajo queda SIN aprobar
+    // y a revisión manual. Antes el respaldo era `aprobadoIA: true`: una
+    // caída del proveedor publicaba automáticamente todo lo que llegara,
+    // que es justo lo contrario de lo que debe hacer un moderador.
+    const out = parseJsonLoose(await callGemini(prompt, GEMINI_KEY.value(), { maxTokens: 500, temperature: 0.1 }), null);
+    const moderado = out !== null && typeof out.aprobadoIA === "boolean";
 
     await db.collection("trabajos").doc(tId).update({
-      aprobadoIA: out.aprobadoIA,
-      razonModeracionIA: out.razonIA,
-      categoriaIA: out.categoriaIA,
-      urgenciaIA: out.urgenciaIA,
-      calidadIA: out.calidadIA,
-      moderadoPorIA: true,
+      aprobadoIA: moderado ? out.aprobadoIA : false,
+      razonModeracionIA: moderado ? (out.razonIA || "") : "La moderación automática no pudo evaluarlo; queda pendiente de revisión manual.",
+      categoriaIA: moderado ? out.categoriaIA : "Otro",
+      urgenciaIA: moderado ? out.urgenciaIA : "media",
+      calidadIA: moderado ? out.calidadIA : null,
+      moderadoPorIA: moderado,
+      requiereRevisionManual: !moderado,
     });
+
+    if (!moderado) {
+      console.error(`Moderación no concluyente para trabajo ${tId}: queda sin publicar.`);
+    }
 
     if (t.tecnicoId) {
       await db.collection("notificaciones").add({
         userId: t.tecnicoId,
         tipo: "moderacion",
-        mensaje: out.aprobadoIA
-          ? `✅ Tu trabajo "${t.titulo}" fue revisado por IA (calidad ${out.calidadIA}/10)`
-          : `⚠️ Tu trabajo "${t.titulo}" fue marcado por IA: ${out.razonIA}`,
+        mensaje: !moderado
+          ? `⏳ Tu trabajo "${t.titulo}" está en revisión: no pudimos evaluarlo automáticamente. Lo revisamos a mano y te avisamos.`
+          : out.aprobadoIA
+            ? `✅ Tu trabajo "${t.titulo}" fue revisado por IA (calidad ${out.calidadIA}/10)`
+            : `⚠️ Tu trabajo "${t.titulo}" fue marcado por IA: ${out.razonIA}`,
         leida: false,
         link: "panel",
         fecha: admin.firestore.FieldValue.serverTimestamp(),
       });
     }
 
-    await logDecision("moderador", out.aprobadoIA ? "APROBÓ" : "MARCÓ", tId, out.razonIA || out.categoriaIA);
+    await logDecision(
+      "moderador",
+      !moderado ? "NO CONCLUYENTE" : out.aprobadoIA ? "APROBÓ" : "MARCÓ",
+      tId,
+      moderado ? (out.razonIA || out.categoriaIA) : "La IA no devolvió un veredicto legible"
+    );
   }
 );
 
