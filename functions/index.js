@@ -210,6 +210,16 @@ DECIDE y responde SOLO JSON:
       });
     }
 
+    // El historial profesional es el producto entero, y hasta ahora no se
+    // acumulaba: `totalTrabajos` se ponía a cero al registrarse y nadie lo
+    // volvía a tocar, así que el ranking diario calculaba un puntaje con
+    // campos permanentemente vacíos. Solo cuenta el trabajo aprobado.
+    if (moderado && out.aprobadoIA && t.tecnicoId) {
+      await db.collection("tecnicos").doc(t.tecnicoId).set({
+        totalTrabajos: admin.firestore.FieldValue.increment(1),
+      }, { merge: true });
+    }
+
     await logDecision(
       "moderador",
       !moderado ? "NO CONCLUYENTE" : out.aprobadoIA ? "APROBÓ" : "MARCÓ",
@@ -370,17 +380,55 @@ exports.agenteRanking = onSchedule({ schedule: "every day 08:30", timeZone: "Ame
   let n = 0;
   for (const doc of snap.docs) {
     const t = doc.data();
+    // Fórmula sobre señales reales. Antes pesaba `rating` y `totalReviews`,
+    // que no los escribía nadie: el puntaje era, en la práctica, "años
+    // declarados + ser Pro". Ahora manda el trabajo documentado y validado.
     const score =
-      (t.totalTrabajos || 0) * 2 +
-      (t.rating || 0) * 3 +
-      (t.totalReviews || 0) * 1 +
-      (t.experiencia || 0) * 0.5 +
+      (t.totalTrabajos || 0) * 3 +
+      (t.totalValidaciones || 0) * 2 +
+      Math.min(t.experiencia || 0, 30) * 0.5 +
       (t.verificado ? 5 : 0) +
       (t.plan === "pro" ? 8 : 0);
-    await db.collection("tecnicos").doc(doc.id).update({ rankScore: score });
+    await db.collection("tecnicos").doc(doc.id).set({ rankScore: score }, { merge: true });
     n++;
   }
   await logDecision("ranking", `recalculó ${n} técnico(s)`, "batch", "fórmula diaria transparente");
+});
+
+// ═══════════════════════════════════════════════════════════════
+// ⭐ VALIDACIÓN SOCIAL — corre al recibir un voto de un cliente
+// Los votos se guardaban uno por documento, pero nadie los contaba: el
+// trabajo no mostraba cuántos tenía y el técnico no acumulaba reputación.
+// ═══════════════════════════════════════════════════════════════
+// Lleva la cuenta de trabajos creados por técnico. Es lo que consulta la
+// regla de Firestore para aplicar el tope de 5 del plan gratuito, que se
+// anunciaba desde el principio y no existía en ninguna parte.
+exports.contarTrabajoCreado = onDocumentCreated("trabajos/{id}", async (event) => {
+  const tecnicoId = event.data.data()?.tecnicoId;
+  if (!tecnicoId) return;
+  await db.collection("tecnicos").doc(tecnicoId).set({
+    trabajosCreados: admin.firestore.FieldValue.increment(1),
+  }, { merge: true });
+});
+
+exports.contarValidacion = onDocumentCreated("validaciones/{id}", async (event) => {
+  const v = event.data.data();
+  if (!v?.trabajoId || !v?.tipo) return;
+
+  const campo = v.tipo === "util" ? "validacionesUtil" : "validacionesBienHecho";
+  const trabajoRef = db.collection("trabajos").doc(v.trabajoId);
+  await trabajoRef.set({
+    [campo]: admin.firestore.FieldValue.increment(1),
+  }, { merge: true });
+
+  // El técnico dueño acumula el total, que es lo que alimenta el ranking.
+  const trabajo = await trabajoRef.get();
+  const tecnicoId = trabajo.data()?.tecnicoId;
+  if (tecnicoId) {
+    await db.collection("tecnicos").doc(tecnicoId).set({
+      totalValidaciones: admin.firestore.FieldValue.increment(1),
+    }, { merge: true });
+  }
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -389,12 +437,29 @@ exports.agenteRanking = onSchedule({ schedule: "every day 08:30", timeZone: "Ame
 // generarResumenChat, sugerirColaboradores. El prompt lo arma el cliente
 // (gemini.js) y este proxy solo añade auth + rate limit + log.
 // ═══════════════════════════════════════════════════════════════
+// Herramientas de IA reservadas al Plan Pro. Se anunciaban como beneficio
+// exclusivo y no había ninguna comprobación: el plan gratuito las usaba
+// igual, así que no había razón para pagar. Quedan fuera de la reserva el
+// soporte (bloquearlo sería hostil con quien tiene un problema) y la mejora
+// del perfil, que ocurre al registrarse, antes de poder ser Pro.
+const IA_SOLO_PRO = new Set([
+  "cotizacion", "respuesta", "resumen", "colaboradores", "care", "mercado",
+]);
+
 exports.geminiProxy = onCall({ secrets: [GEMINI_KEY] }, async (request) => {
   const uid = requireAuth(request);
   await checkRateLimit(uid, "geminiProxy", 60);
   const { prompt, temperature = 0.7, agentName = "generic" } = request.data;
   if (!prompt || typeof prompt !== "string" || !prompt.trim() || prompt.length > 4000) {
     throw new HttpsError("invalid-argument", "El campo 'prompt' es requerido y debe ser válido.");
+  }
+
+  if (IA_SOLO_PRO.has(agentName)) {
+    const perfil = await db.collection("tecnicos").doc(uid).get();
+    if (perfil.data()?.plan !== "pro") {
+      throw new HttpsError("permission-denied",
+        "Esta herramienta es del Plan Pro. Puedes activarlo desde tu página de suscripción.");
+    }
   }
   const text = await callGemini(prompt, GEMINI_KEY.value(), { temperature, maxTokens: 1024 });
   await logDecision(agentName, "respuesta generada", uid, "");

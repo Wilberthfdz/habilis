@@ -49,7 +49,16 @@ service cloud.firestore {
 
     match /trabajos/{trabajoId} {
       allow read:   if true;
-      allow create: if request.auth != null && request.resource.data.tecnicoId == request.auth.uid;
+      // Tope de 5 trabajos del plan gratuito. Se anunciaba en Precios desde
+      // el principio y no existía: el plan gratuito documentaba tantos como
+      // quisiera, así que "trabajos ilimitados" no era ventaja del Pro. El
+      // contador lo mantiene una Cloud Function al crear cada trabajo; ante
+      // creaciones simultáneas puede quedar corto un instante, y es un tope
+      // de producto, no una barrera de seguridad.
+      allow create: if creaComoDuenio('tecnicoId') && (
+        get(/databases/$(database)/documents/tecnicos/$(request.auth.uid)).data.plan == "pro"
+        || get(/databases/$(database)/documents/tecnicos/$(request.auth.uid)).data.get("trabajosCreados", 0) < 5
+      );
       // El técnico puede corregir su propio trabajo, pero NO el veredicto de
       // moderación ni los contadores de reputación: eso es del backend.
       allow update: if isAdmin() || (

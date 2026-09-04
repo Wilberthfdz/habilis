@@ -37,6 +37,9 @@ await env.withSecurityRulesDisabled(async (ctx) => {
   await setDoc(doc(d, "solicitudes_chat/ch1/mensajes/m1"), { autorId: "cliente1", texto: "hola", tipo: "mensaje" });
   await setDoc(doc(d, "solicitudes/sol1"), { userId: "cliente1", descripcion: "fuga en cocina", ciudad: "Cancún" });
   await setDoc(doc(d, "planes_care/p1"), { clienteId: "cliente1", estado: "activo" });
+  // Para el tope del plan gratuito: uno al límite y otro Pro.
+  await setDoc(doc(d, "tecnicos/tope"), { nombre: "Tope", plan: "gratis", trabajosCreados: 5 });
+  await setDoc(doc(d, "tecnicos/proSinTope"), { nombre: "Pro", plan: "pro", trabajosCreados: 40 });
 });
 
 const casos = [];
@@ -111,6 +114,16 @@ probar("trabajo: el dueño sí puede corregir su descripción",
   assertSucceeds(updateDoc(doc(tec, "trabajos/t1"), { descripcion: "corregida" })));
 probar("trabajo: un tercero no puede tocarlo",
   assertFails(updateDoc(doc(otro, "trabajos/t1"), { descripcion: "hackeado" })));
+
+// ── B6 · Tope de trabajos del plan gratuito ─────────────────────────────
+const tope = env.authenticatedContext("tope").firestore();
+const proSinTope = env.authenticatedContext("proSinTope").firestore();
+probar("plan gratis: el técnico dentro del tope sí puede documentar",
+  assertSucceeds(addDoc(collection(tec, "trabajos"), { tecnicoId: "tecnico1", titulo: "Nuevo" })));
+probar("plan gratis: al llegar a 5 trabajos ya no puede documentar más",
+  assertFails(addDoc(collection(tope, "trabajos"), { tecnicoId: "tope", titulo: "Sexto" })));
+probar("plan Pro: documenta sin tope",
+  assertSucceeds(addDoc(collection(proSinTope, "trabajos"), { tecnicoId: "proSinTope", titulo: "Cuarenta y uno" })));
 
 // ── B4 · Validaciones sociales ──────────────────────────────────────────
 probar("validación: NO se puede votar a nombre de otro",

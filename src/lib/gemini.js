@@ -30,7 +30,7 @@ Reglas:
 - No uses frases como "con mucho gusto" o "a sus órdenes"
 
 Responde SOLO con el perfil mejorado, sin explicaciones.`;
-  return callGemini(prompt, 0.5);
+  return callGemini(prompt, 0.5, "perfil");
 }
 
 // ── 2. CLASIFICACIÓN DE TRABAJO ─────────────────────────────────────────────
@@ -47,7 +47,7 @@ Responde SOLO con JSON válido:
   "palabrasClave": ["keyword1", "keyword2"]
 }`;
   try {
-    const raw = await callGemini(prompt, 0.1);
+    const raw = await callGemini(prompt, 0.1, "clasificacion");
     return JSON.parse(raw.replace(/```json|```/g, "").trim());
   } catch {
     return { tipo: "Otro", categoria: "Otro", urgencia: "media", palabrasClave: [] };
@@ -69,7 +69,7 @@ Escribe una respuesta profesional y directa (máximo 80 palabras) que:
 - Sea amable pero no exagerada
 
 Responde SOLO con el texto de la respuesta.`;
-  return callGemini(prompt, 0.6);
+  return callGemini(prompt, 0.6, "respuesta");
 }
 
 // ── 4. DETECCIÓN DE SPAM ─────────────────────────────────────────────────────
@@ -101,7 +101,7 @@ Responde SOLO con JSON válido:
   "frecuencia": "resumen de frecuencia recomendada en una línea"
 }`;
   try {
-    const raw = await callGemini(prompt, 0.4);
+    const raw = await callGemini(prompt, 0.4, "care");
     return JSON.parse(raw.replace(/```json|```/g, "").trim());
   } catch {
     return {
@@ -119,7 +119,7 @@ export async function sugerirTecnicos(solicitud, tecnicos) {
   ).join("\n");
   const prompt = `Cliente necesita: "${solicitud}"\n\nTécnicos:\n${lista}\n\nSelecciona los 3 más relevantes.\nResponde SOLO con JSON: { "recomendados": ["ID1","ID2","ID3"], "razon": "explicación" }`;
   try {
-    const raw = await callGemini(prompt, 0.2);
+    const raw = await callGemini(prompt, 0.2, "matching");
     return JSON.parse(raw.replace(/```json|```/g, "").trim());
   } catch {
     return { recomendados: tecnicos.slice(0, 3).map(t => t.id), razon: "Top calificados" };
@@ -157,7 +157,7 @@ export async function generarResumenChat(mensajes, descripcionOriginal) {
 Solicitud original: "${descripcionOriginal}"
 Conversación:\n${chatText}
 Responde SOLO con el resumen en español.`;
-  try { return await callGemini(prompt, 0.4); }
+  try { return await callGemini(prompt, 0.4, "resumen"); }
   catch { return "Trabajo completado satisfactoriamente."; }
 }
 
@@ -169,7 +169,7 @@ export async function sugerirColaboradores(oficio, ciudad, tecnicos) {
 ${lista}
 Responde SOLO JSON: {"sugeridos":["nombre1","nombre2","nombre3"],"razon":"explicación breve"}`;
   try {
-    const raw = await callGemini(prompt, 0.3);
+    const raw = await callGemini(prompt, 0.3, "colaboradores");
     return JSON.parse(raw.replace(/```json|```/g,"").trim());
   } catch {
     return { sugeridos: tecnicos.slice(0,3).map(t => t.nombre), razon:"Técnicos complementarios" };
