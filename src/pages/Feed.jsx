@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Logo from "../components/Logo.jsx";
 import Nav from "../components/Nav.jsx";
+import Footer from "../components/Footer.jsx";
 import { db, validarTrabajo, obtenerValidaciones } from "../lib/firebase.js";
 import { collection, query, orderBy, limit, getDocs } from "firebase/firestore";
 
@@ -262,6 +263,7 @@ export default function Feed({ nav, user }) {
           </div>
         )}
       </div>
+      <Footer nav={nav} />
     </div>
   );
 }

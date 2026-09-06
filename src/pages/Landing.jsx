@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Logo from "../components/Logo.jsx";
 import Nav from "../components/Nav.jsx";
 import Avatar from "../components/Avatar.jsx";
+import Footer from "../components/Footer.jsx";
 import { buscarTecnicos } from "../lib/firebase.js";
 
 /* ─── SVG Icons (reemplazan emojis) ──────────────────────────────────── */
@@ -759,86 +760,7 @@ export default function Landing({ nav, user }) {
         </div>
       </section>
 
-      {/* ── FOOTER ───────────────────────────────────────────────── */}
-      <footer style={{ background:"#fff", borderTop:"1px solid #EDE8E1", padding:"52px clamp(20px,5vw,64px) 28px" }}>
-        <div style={{ maxWidth:"1100px", margin:"0 auto" }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start",
-                        gap:"36px", flexWrap:"wrap", marginBottom:"40px" }}>
-            <div style={{ maxWidth:"240px" }}>
-              <Logo size={28} textColor="#0A1120"/>
-              <p style={{ color:"#6B6560", fontSize:"13px", marginTop:"12px", lineHeight:1.65 }}>
-                Infraestructura de confianza para trabajadores técnicos en México.
-              </p>
-              <p style={{ color:"#B5AFA8", fontSize:"12px", marginTop:"8px", fontWeight:700,
-                          letterSpacing:"0.04em" }}>myhabilis.com</p>
-            </div>
-            <div style={{ display:"flex", gap:"56px", flexWrap:"wrap" }}>
-              <div>
-                <p style={{ fontWeight:800, fontSize:"12px", color:"#0A1120",
-                            marginBottom:"14px", letterSpacing:"0.06em", textTransform:"uppercase" }}>Plataforma</p>
-                {[["Buscar técnicos","buscar"],["Feed de trabajos","feed"],["Precios","precios"]].map(([l,r]) => (
-                  <button key={l} onClick={() => nav(r)}
-                    style={{ display:"block", background:"none", border:"none", color:"#6B6560",
-                             fontSize:"13px", marginBottom:"10px", cursor:"pointer", padding:0,
-                             textAlign:"left", fontFamily:"inherit", transition:"color 0.15s" }}
-                    onMouseEnter={e => e.currentTarget.style.color="#F07020"}
-                    onMouseLeave={e => e.currentTarget.style.color="#6B6560"}>
-                    {l}
-                  </button>
-                ))}
-              </div>
-              <div>
-                <p style={{ fontWeight:800, fontSize:"12px", color:"#0A1120",
-                            marginBottom:"14px", letterSpacing:"0.06em", textTransform:"uppercase" }}>Para técnicos</p>
-                {[["Crear perfil gratis","registro"],["Mi panel","panel"],["Iniciar sesión","login"]].map(([l,r]) => (
-                  <button key={l} onClick={() => nav(r)}
-                    style={{ display:"block", background:"none", border:"none", color:"#6B6560",
-                             fontSize:"13px", marginBottom:"10px", cursor:"pointer", padding:0,
-                             textAlign:"left", fontFamily:"inherit", transition:"color 0.15s" }}
-                    onMouseEnter={e => e.currentTarget.style.color="#F07020"}
-                    onMouseLeave={e => e.currentTarget.style.color="#6B6560"}>
-                    {l}
-                  </button>
-                ))}
-              </div>
-              <div>
-                <p style={{ fontWeight:800, fontSize:"12px", color:"#0A1120",
-                            marginBottom:"14px", letterSpacing:"0.06em", textTransform:"uppercase" }}>Acerca de</p>
-                {[["Quiénes somos","quienesSomos"],["Cómo funciona la app","comoFunciona"],["Soporte","soporte"]].map(([l,r]) => (
-                  <button key={l} onClick={() => nav(r)}
-                    style={{ display:"block", background:"none", border:"none", color:"#6B6560",
-                             fontSize:"13px", marginBottom:"10px", cursor:"pointer", padding:0,
-                             textAlign:"left", fontFamily:"inherit", transition:"color 0.15s" }}
-                    onMouseEnter={e => e.currentTarget.style.color="#F07020"}
-                    onMouseLeave={e => e.currentTarget.style.color="#6B6560"}>
-                    {l}
-                  </button>
-                ))}
-              </div>
-              <div>
-                <p style={{ fontWeight:800, fontSize:"12px", color:"#0A1120",
-                            marginBottom:"14px", letterSpacing:"0.06em", textTransform:"uppercase" }}>Legal</p>
-                {[["Aviso de privacidad","privacidad"],["Términos y condiciones","terminos"]].map(([l,r]) => (
-                  <button key={l} onClick={() => nav(r)}
-                    style={{ display:"block", background:"none", border:"none", color:"#6B6560",
-                             fontSize:"13px", marginBottom:"10px", cursor:"pointer", padding:0,
-                             textAlign:"left", fontFamily:"inherit", transition:"color 0.15s" }}
-                    onMouseEnter={e => e.currentTarget.style.color="#F07020"}
-                    onMouseLeave={e => e.currentTarget.style.color="#6B6560"}>
-                    {l}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div style={{ borderTop:"1px solid #EDE8E1", paddingTop:"20px",
-                        display:"flex", justifyContent:"space-between",
-                        alignItems:"center", flexWrap:"wrap", gap:"12px" }}>
-            <p style={{ color:"#B5AFA8", fontSize:"12px" }}>© 2026 Habilis Tecnology, S.A.P.I. de C.V. · Todos los derechos reservados</p>
-            <p style={{ color:"#B5AFA8", fontSize:"12px" }}>Hecho en México</p>
-          </div>
-        </div>
-      </footer>
+      <Footer nav={nav} />
     </div>
   );
 }

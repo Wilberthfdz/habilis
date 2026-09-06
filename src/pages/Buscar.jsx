@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Logo from "../components/Logo.jsx";
 import Nav from "../components/Nav.jsx";
+import Footer from "../components/Footer.jsx";
 import Avatar from "../components/Avatar.jsx";
 import { buscarTecnicos } from "../lib/firebase.js";
 import { TAXONOMIA, buscarPorTexto } from "../lib/taxonomia.js";
@@ -67,6 +68,8 @@ export default function Buscar({ nav, user, params }) {
       : matched;
     // Alcance filter: hide "estado"-only technicians when searching outside their city
     const conAlcance = enCiudad.filter(t => {
+      // "latam" ya no se ofrece, pero perfiles antiguos pueden tenerlo: se
+      // trata como nacional en vez de dejarlos fuera de las búsquedas.
       if (!t.alcance || t.alcance === "nacional" || t.alcance === "latam") return true;
       if (t.alcance === "estado") {
         // Comparaba contra el texto del oficio, no contra la ciudad: buscar
@@ -226,6 +229,7 @@ export default function Buscar({ nav, user, params }) {
           </>
         )}
       </div>
+      <Footer nav={nav} />
     </div>
   );
 }

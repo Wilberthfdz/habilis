@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Nav from "../components/Nav.jsx";
-import { obtenerActivos, actualizarActivo, crearServicio, obtenerServicios, crearSolicitud } from "../lib/firebase.js";
+import { fmtFecha } from "../lib/fechas.js";
+import { obtenerActivos, actualizarActivo, eliminarActivo, crearServicio, obtenerServicios, crearSolicitud } from "../lib/firebase.js";
 import { TIPOS_ACTIVO, calcularSalud, calcularProxima } from "./HabilisCare.jsx";
 
 // Re-export AnilloSalud if needed by other components
@@ -43,13 +44,16 @@ const INP  = { width:"100%", border:"1px solid #E2E8F0", borderRadius:"10px",
                padding:"10px 13px", fontSize:"14px", outline:"none",
                background:"#F8FAFC", color:"#0F172A", boxSizing:"border-box" };
 
-const fmtDate   = d => d ? (d.toDate ? d.toDate() : new Date(d)).toLocaleDateString("es-MX", { day:"2-digit", month:"short", year:"numeric" }) : "—";
+const fmtDate   = fmtFecha;
 const diasHasta = d => d ? Math.ceil((d - Date.now()) / 86400000) : null;
 
 export default function DetalleActivo({ nav, user, params }) {
   const [activo,    setActivo]    = useState(null);
   const [servicios, setServicios] = useState([]);
   const [loading,   setLoading]   = useState(true);
+  const [errorCarga,      setErrorCarga]      = useState("");
+  const [confirmandoBaja, setConfirmandoBaja] = useState(false);
+  const [borrando,        setBorrando]        = useState(false);
   const [showServForm, setShowServForm] = useState(false);
   const [solicitando, setSolicitando]  = useState(false);
   const [solicOk,     setSolicOk]      = useState(false);
@@ -73,6 +77,11 @@ export default function DetalleActivo({ nav, user, params }) {
       setActivo(a);
       const sv = await obtenerServicios(activoId);
       setServicios(sv);
+    } catch (e) {
+      // Sin esto, un error de red o de permisos devolvía una pantalla
+      // completamente en blanco: ni menú, ni mensaje, ni forma de volver.
+      console.error(e);
+      setErrorCarga("No pudimos cargar este equipo. Revisa tu conexión e intenta de nuevo.");
     } finally { setLoading(false); }
   };
 
@@ -122,7 +131,23 @@ export default function DetalleActivo({ nav, user, params }) {
     </div>
   );
 
-  if (!activo) return null;
+  // Antes devolvía null: ni menú, ni mensaje, ni forma de volver.
+  if (!activo) return (
+    <div style={{ background:"#F1F5F9", minHeight:"100vh" }}>
+      <div style={{ background:"#0F172A" }}><Nav nav={nav} user={user} /></div>
+      <div style={{ textAlign:"center", padding:"80px 20px" }}>
+        <p style={{ fontSize:"48px" }}>🔧</p>
+        <p style={{ fontWeight:800, color:"#0F172A", marginTop:"12px" }}>
+          {errorCarga || "No encontramos este equipo"}
+        </p>
+        <button onClick={() => nav("habilisCare")}
+          style={{ marginTop:"20px", background:"#F97316", color:"#fff", border:"none",
+                   borderRadius:"10px", padding:"11px 22px", fontWeight:700, cursor:"pointer" }}>
+          Volver a Habilis Care
+        </button>
+      </div>
+    </div>
+  );
 
   const salud   = calcularSalud(activo);
   const proxima = calcularProxima(activo);
@@ -287,6 +312,50 @@ export default function DetalleActivo({ nav, user, params }) {
               {s.tecnico && <p style={{ fontSize:"12px", color:"#94A3B8", marginTop:"3px" }}>👤 {s.tecnico}</p>}
             </div>
           ))}
+        </div>
+
+        {/* Borrar el equipo. `eliminarActivo` existía en la librería y no la
+            llamaba nadie: un equipo registrado por error no se podía quitar
+            de ninguna manera. */}
+        <div style={{ ...CARD, borderColor:"#FECACA" }}>
+          {!confirmandoBaja ? (
+            <button onClick={() => setConfirmandoBaja(true)}
+              style={{ background:"none", border:"none", color:"#DC2626", fontSize:"13px",
+                       fontWeight:600, cursor:"pointer", padding:0, textDecoration:"underline" }}>
+              Eliminar este equipo
+            </button>
+          ) : (
+            <div>
+              <p style={{ fontWeight:700, fontSize:"14px", color:"#B91C1C", marginBottom:"6px" }}>
+                ¿Eliminar {activo.nombre}?
+              </p>
+              <p style={{ fontSize:"13px", color:"#7F1D1D", lineHeight:1.6, marginBottom:"14px" }}>
+                Se pierde su historial de mantenimiento y dejarás de recibir avisos de este equipo.
+              </p>
+              <div style={{ display:"flex", gap:"10px" }}>
+                <button onClick={() => setConfirmandoBaja(false)}
+                  style={{ flex:1, background:"#F1F5F9", color:"#0F172A", border:"1px solid #E2E8F0",
+                           borderRadius:"10px", padding:"11px", fontWeight:600, cursor:"pointer" }}>
+                  Mejor no
+                </button>
+                <button disabled={borrando}
+                  onClick={async () => {
+                    setBorrando(true);
+                    try { await eliminarActivo(activoId); nav("habilisCare"); }
+                    catch (e) {
+                      console.error(e);
+                      setErrorCarga("No se pudo eliminar el equipo. Intenta de nuevo.");
+                      setBorrando(false);
+                    }
+                  }}
+                  style={{ flex:1, background:"#DC2626", color:"#fff", border:"none",
+                           borderRadius:"10px", padding:"11px", fontWeight:700, cursor:"pointer",
+                           opacity: borrando ? 0.6 : 1 }}>
+                  {borrando ? "Eliminando…" : "Sí, eliminar"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
       </div>

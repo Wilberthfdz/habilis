@@ -42,7 +42,7 @@ export default function EditarPerfil({ nav, user }) {
   const fileRef = useRef(null);
 
   const [form, setForm] = useState({
-    nombre:"", ciudad:"", experiencia:"", bio:"", alcance:"", disponible:true,
+    nombre:"", ciudad:"", experiencia:"", bio:"", zona:"", disponible:true,
   });
   // El oficio se maneja aparte porque es un objeto (categoría, especialidad
   // y, para quien no está en el catálogo, el texto libre).
@@ -68,7 +68,7 @@ export default function EditarPerfil({ nav, user }) {
           ciudad:      t.ciudad      || "",
           experiencia: t.experiencia != null ? String(t.experiencia) : "",
           bio:         t.bio         || "",
-          alcance:     t.alcance     || "",
+          zona:        t.zona        || "",
           disponible:  t.disponible !== false,
         });
       })
@@ -109,7 +109,10 @@ export default function EditarPerfil({ nav, user }) {
         ciudad:      form.ciudad.trim(),
         experiencia,
         bio:         form.bio.trim(),
-        alcance:     form.alcance.trim(),
+        // `alcance` NO se toca aquí: es la enumeración de visibilidad que se
+        // configura en el panel. Escribirla como texto libre desde esta
+        // pantalla borraba esa configuración en cada guardado.
+        zona:        form.zona.trim(),
         disponible:  form.disponible,
       });
       setOk(true);
@@ -199,7 +202,7 @@ export default function EditarPerfil({ nav, user }) {
 
             <div>
               <label style={lbl}>Zona de trabajo</label>
-              <input style={inp} value={form.alcance} onChange={set("alcance")}
+              <input style={inp} value={form.zona} onChange={set("zona")}
                 placeholder="Norte de la ciudad, hasta 20 km, zona metropolitana…" />
             </div>
 

@@ -1,4 +1,5 @@
 import Nav from "../components/Nav.jsx";
+import Footer from "../components/Footer.jsx";
 import Logo from "../components/Logo.jsx";
 
 const PASOS_TECNICO = [
@@ -146,10 +147,7 @@ export default function ComoFunciona({ nav, user }) {
         </div>
       </div>
 
-      <div style={{ padding:"22px", textAlign:"center", background:"#fff", borderTop:"1px solid #E2E8F0" }}>
-        <Logo size={22} textColor="#0A1120" onClick={() => nav("landing")} />
-        <p style={{ fontSize:"12px", color:"#94A3B8", marginTop:"8px" }}>© 2026 Habilis · Hecho en México</p>
-      </div>
+      <Footer nav={nav} />
     </div>
   );
 }

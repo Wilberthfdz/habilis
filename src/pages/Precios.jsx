@@ -1,5 +1,6 @@
 import Logo from "../components/Logo.jsx";
 import Nav from "../components/Nav.jsx";
+import Footer from "../components/Footer.jsx";
 import { PLAN_GRATIS as FREE, PLAN_PRO, PRECIO_PRO } from "../lib/planes.js";
 
 // La lista del Pro se dibuja con el mismo formato que la del gratuito.
@@ -125,6 +126,7 @@ export default function Precios({ nav, user }) {
           </div>
         ))}
       </div>
+      <Footer nav={nav} />
     </div>
   );
 }

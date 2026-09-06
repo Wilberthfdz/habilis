@@ -643,9 +643,11 @@ export default function PanelTecnico({ nav, user }) {
               </h3>
               <div style={{ display:"flex", flexDirection:"column", gap:"10px", marginBottom:"14px" }}>
                 {[
-                  { id:"estado",   label:"Solo mi estado",        desc:"Apareces solo en búsquedas de tu zona · Plan Gratis" },
-                  { id:"nacional", label:"Nacional",              desc:"Visible en toda la República Mexicana · Plan Gratis" },
-                  { id:"latam",    label:"México y LATAM",        desc:"Visible en toda Latinoamérica · Plan Pro" },
+                  // "México y LATAM · Plan Pro" se ofrecía sin candado alguno y
+                  // la plataforma solo opera en México: no hay búsquedas ni
+                  // técnicos fuera del país que respalden esa opción.
+                  { id:"estado",   label:"Solo mi ciudad y su zona", desc:"Apareces cuando alguien busca en tu ciudad" },
+                  { id:"nacional", label:"Todo México",              desc:"Apareces en búsquedas de cualquier ciudad del país" },
                 ].map(opt => (
                   <label key={opt.id} style={{ display:"flex", gap:"12px", cursor:"pointer",
                                                background: alcance===opt.id ? "#FFF7ED" : "#F8FAFC",

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Nav from "../components/Nav.jsx";
+import { fmtFecha } from "../lib/fechas.js";
 import { obtenerCotizaciones, eliminarCotizacion, crearCotizacion, obtenerSiguienteFolio, obtenerTecnico, actualizarCotizacion } from "../lib/firebase.js";
 
 const ESTADO_CFG = {
@@ -228,7 +229,7 @@ export default function Cotizaciones({ nav, user }) {
                     <div style={{ flex:"1 1 100px", textAlign:"right" }}>
                       <p style={{ fontWeight:900, fontSize:"16px", color:"#0F172A" }}>{fmt(cot.total)}</p>
                       <p style={{ fontSize:"11px", color:"#94A3B8" }}>
-                        {cot.moneda || "MXN"} · {cot.fecha ? new Date(cot.fecha).toLocaleDateString("es-MX") : ""}
+                        {cot.moneda || "MXN"} · {fmtFecha(cot.fecha)}
                       </p>
                     </div>
                     {/* Actions */}

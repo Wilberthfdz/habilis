@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Nav from "../components/Nav.jsx";
+import { fechaLocal, fmtFecha } from "../lib/fechas.js";
 import { crearActivo, obtenerActivos, crearSolicitud } from "../lib/firebase.js";
 import { generarTipsMantenimiento } from "../lib/gemini.js";
 
@@ -25,8 +26,8 @@ export function calcularSalud(activo) {
   // recién comprado sí está al día.
   const base = activo.ultimoMantenimiento || activo.fechaCompra;
   if (!base) return null;
-  const desde = base.toDate ? base.toDate() : new Date(base);
-  if (isNaN(desde.getTime())) return null;
+  const desde = fechaLocal(base);
+  if (!desde) return null;
   const dias = Math.floor((Date.now() - desde.getTime()) / 86400000);
   return Math.max(0, Math.round((1 - dias / cfg.intervalo) * 100));
 }
@@ -36,7 +37,8 @@ export function calcularProxima(activo) {
   if (!base) return null;
   const cfg = TIPOS_ACTIVO[activo.tipo];
   if (!cfg) return null;
-  const d = base.toDate ? base.toDate() : new Date(base);
+  const d = fechaLocal(base);
+  if (!d) return null;
   const p = new Date(d);
   p.setDate(p.getDate() + cfg.intervalo);
   return p;
@@ -45,7 +47,7 @@ export function calcularProxima(activo) {
 const COLOR_SALUD = pct => pct == null ? "#94A3B8" : pct > 80 ? "#10B981" : pct > 50 ? "#F59E0B" : "#EF4444";
 const LABEL_SALUD = pct => pct == null ? "Sin datos" : pct > 80 ? "Al día" : pct > 50 ? "Próximo" : "Vencido";
 const FONDO_SALUD = pct => pct == null ? "#F1F5F9" : pct > 80 ? "#F0FDF4" : pct > 50 ? "#FFFBEB" : "#FEF2F2";
-const fmtDate = d => d ? new Date(d).toLocaleDateString("es-MX", { day:"2-digit", month:"short", year:"numeric" }) : "—";
+const fmtDate = fmtFecha;
 const diasHasta = d => d ? Math.ceil((d - Date.now()) / 86400000) : null;
 
 // ── Health ring SVG ──────────────────────────────────────────────────────────

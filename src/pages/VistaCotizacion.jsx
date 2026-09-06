@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { obtenerCotizacion, actualizarCotizacion } from "../lib/firebase.js";
 import Logo from "../components/Logo.jsx";
+import { fmtFechaLarga } from "../lib/fechas.js";
 
 const fmt   = n => (Number(n)||0).toLocaleString("es-MX", { minimumFractionDigits:2 });
-const fmtD  = d => d ? new Date(d).toLocaleDateString("es-MX", { day:"2-digit", month:"long", year:"numeric" }) : "—";
+const fmtD  = fmtFechaLarga;
 
 export default function VistaCotizacion({ nav, params }) {
   const token = params?.token;
