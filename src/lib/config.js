@@ -36,3 +36,14 @@ export const PRECIO_PRO_MXN = 100;
 // fecha: permite saber qué versión aceptó cada usuario y a quién hay que
 // pedirle que vuelva a aceptar.
 export const VERSION_TERMINOS = "2026-09-04";
+
+// ── COBRO DENTRO DE LA APP ────────────────────────────────────────────────
+// Claves públicas de RevenueCat (son de cliente: van en el paquete a
+// propósito, como la configuración de Firebase). Mientras estén vacías, la
+// app compilada no ofrece la compra y todo sigue por Mercado Pago.
+export const REVENUECAT_APPLE_KEY  = "";
+export const REVENUECAT_GOOGLE_KEY = "";
+
+// Nombre del "entitlement" en RevenueCat: lo que se comprueba para saber si
+// alguien tiene Pro, independientemente del producto que haya comprado.
+export const ENTITLEMENT_PRO = "pro";

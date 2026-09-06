@@ -30,6 +30,8 @@ const GEMINI_KEY = defineSecret("GEMINI_KEY");
 const MP_TOKEN = defineSecret("MP_ACCESS_TOKEN");
 const MP_WEBHOOK_SECRET = defineSecret("MP_WEBHOOK_SECRET");
 const FACTURAPI_KEY = defineSecret("FACTURAPI_KEY");
+// Cabecera compartida con RevenueCat para acreditar que el aviso es suyo.
+const RC_WEBHOOK_SECRET = defineSecret("RC_WEBHOOK_SECRET");
 
 const db = admin.firestore();
 // Gemini puede omitir una clave del JSON que le pedimos. firebase-admin
@@ -813,6 +815,18 @@ exports.cancelarSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) =>
   await checkRateLimit(uid, "cancelarSuscripcion", 10);
 
   const tecnico = await db.collection("tecnicos").doc(uid).get();
+  const origen = tecnico.data()?.origenSuscripcion;
+
+  // Una suscripción comprada en App Store o Google Play NO se puede cancelar
+  // desde aquí: es una pantalla del sistema operativo, y ambas tiendas
+  // rechazan las apps que intentan hacerlo por su cuenta.
+  if (origen === "app_store" || origen === "play_store") {
+    throw new HttpsError("failed-precondition",
+      origen === "app_store"
+        ? "Tu suscripción se contrató en la App Store. Cancélala desde Ajustes → tu nombre → Suscripciones."
+        : "Tu suscripción se contrató en Google Play. Cancélala desde Play Store → Pagos y suscripciones.");
+  }
+
   let suscripcionId = tecnico.data()?.suscripcionId;
 
   // Hubo caminos que activaban Pro sin guardar el id de la suscripción, y el
@@ -1307,6 +1321,118 @@ exports.eliminarMiCuenta = onCall({ secrets: [MP_TOKEN], timeoutSeconds: 300 }, 
 });
 
 // ═══════════════════════════════════════════════════════════════
+// 🍏 COBRO DENTRO DE LA APP — App Store y Google Play
+//
+// Apple y Google exigen su propio sistema de cobro para lo que desbloquea
+// funciones dentro de la app. En la web se sigue cobrando por Mercado Pago,
+// que no paga comisión de tienda. Los dos caminos terminan aquí: en el
+// mismo `plan: "pro"` del documento del técnico.
+//
+// RevenueCat avisa de cada compra, renovación, cancelación y reembolso. Se
+// usa en lugar de hablar con cada tienda por separado porque la validación
+// de recibos de Apple y la de Google no se parecen en nada.
+// ═══════════════════════════════════════════════════════════════
+const EVENTOS_ALTA  = new Set([
+  "INITIAL_PURCHASE", "RENEWAL", "UNCANCELLATION",
+  "PRODUCT_CHANGE", "SUBSCRIPTION_EXTENDED", "TRANSFER",
+]);
+const EVENTOS_BAJA  = new Set(["EXPIRATION", "REFUND", "SUBSCRIPTION_PAUSED"]);
+
+exports.webhookTienda = onRequest({ secrets: [RC_WEBHOOK_SECRET] }, async (req, res) => {
+  try {
+    // RevenueCat manda el secreto en Authorization. Sin comprobarlo,
+    // cualquiera con la URL se regalaría el plan Pro.
+    const esperado = RC_WEBHOOK_SECRET.value();
+    if (!esperado || req.headers.authorization !== esperado) {
+      console.error("webhookTienda: autorización inválida");
+      res.status(401).send("NO AUTORIZADO");
+      return;
+    }
+
+    const ev = req.body?.event;
+    if (!ev?.type) { res.status(200).send("SIN EVENTO"); return; }
+
+    // `app_user_id` es el uid de Habilis: se lo pasamos al SDK con logIn().
+    const uid = ev.app_user_id;
+    if (!uid || uid.startsWith("$RCAnonymousID")) {
+      // Una compra anónima no se puede asociar a nadie. Se registra para
+      // poder reclamarla a mano en vez de perderla en silencio.
+      await db.collection("webhooksFallidos").add({
+        origen: "revenuecat", motivo: "compra sin usuario identificado",
+        evento: ev.type, cuerpo: JSON.stringify(req.body).slice(0, 4000),
+        fecha: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      res.status(200).send("SIN USUARIO");
+      return;
+    }
+
+    const tienda = ev.store === "APP_STORE" ? "app_store"
+                 : ev.store === "PLAY_STORE" ? "play_store"
+                 : String(ev.store || "desconocida").toLowerCase();
+    const ref = db.collection("tecnicos").doc(uid);
+
+    if (EVENTOS_ALTA.has(ev.type)) {
+      await ref.set({
+        plan: "pro",
+        suscripcionEstado: "authorized",
+        // De dónde viene el cobro. Importa: una suscripción de tienda NO se
+        // cancela desde aquí (lo hace el usuario en los ajustes del
+        // teléfono) y NO se factura con CFDI, porque quien cobró fue Apple
+        // o Google, no Habilis.
+        origenSuscripcion: tienda,
+        proHasta: ev.expiration_at_ms
+          ? admin.firestore.Timestamp.fromMillis(Number(ev.expiration_at_ms))
+          : null,
+        fechaPago: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+
+      // Se deja constancia del cobro para Finanzas, marcado como no
+      // facturable: el comprobante lo emite la tienda al usuario final.
+      if (ev.type !== "TRANSFER" && ev.id) {
+        await db.collection("pagos").doc(`rc_${ev.id}`).set({
+          userId: uid,
+          monto: Number(ev.price_in_purchased_currency) || 0,
+          moneda: ev.currency || "MXN",
+          metodo: tienda,
+          estado: "aprobado",
+          concepto: "Habilis Pro mensual",
+          // La tienda es el vendedor de cara al usuario y emite ella el
+          // comprobante; Habilis recibe el neto ya sin comisión.
+          facturable: false,
+          comisionTienda: Number(ev.tax_percentage) || null,
+          fecha: ev.purchased_at_ms
+            ? admin.firestore.Timestamp.fromMillis(Number(ev.purchased_at_ms))
+            : admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+      }
+    } else if (EVENTOS_BAJA.has(ev.type)) {
+      await ref.set({
+        plan: "gratis",
+        suscripcionEstado: ev.type === "REFUND" ? "refunded" : "expired",
+        proHasta: null,
+      }, { merge: true });
+    } else if (ev.type === "CANCELLATION") {
+      // Canceló la renovación, pero el periodo pagado sigue corriendo:
+      // conserva el Pro hasta que la tienda mande EXPIRATION.
+      await ref.set({
+        plan: "pro",
+        suscripcionEstado: "cancelled",
+        proHasta: ev.expiration_at_ms
+          ? admin.firestore.Timestamp.fromMillis(Number(ev.expiration_at_ms))
+          : null,
+      }, { merge: true });
+    }
+
+    await logDecision("tienda", `${ev.type} (${tienda})`, uid, "");
+    res.status(200).send("OK");
+  } catch (e) {
+    console.error("webhookTienda:", e);
+    // Un 500 hace que RevenueCat reintente en vez de dar el aviso por bueno.
+    res.status(500).send("ERROR");
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
 // FACTURAPI — CFDI para suscriptores Pro
 // ═══════════════════════════════════════════════════════════════
 exports.emitirFactura = onCall({ secrets: [FACTURAPI_KEY] }, async (request) => {
@@ -1325,6 +1451,19 @@ exports.emitirFactura = onCall({ secrets: [FACTURAPI_KEY] }, async (request) => 
   if (!regimenFiscal || typeof regimenFiscal !== "string" || !usoCFDI || typeof usoCFDI !== "string") {
     throw new HttpsError("invalid-argument", "Régimen fiscal y uso de CFDI son requeridos.");
   }
+  // Los cobros hechos por App Store o Google Play no los factura Habilis: el
+  // vendedor de cara al usuario es la tienda, que emite ella el comprobante
+  // y retiene el IVA. Se avisa en lugar de dejar al técnico buscando una
+  // factura que nunca va a aparecer.
+  const perfilFactura = await db.collection("tecnicos").doc(uid).get();
+  const origenPago = perfilFactura.data()?.origenSuscripcion;
+  if (origenPago === "app_store" || origenPago === "play_store") {
+    throw new HttpsError("failed-precondition",
+      "Tu suscripción se cobró a través de la tienda de aplicaciones, que emite su propio comprobante. " +
+      "Puedes descargarlo desde tu cuenta de " +
+      (origenPago === "app_store" ? "Apple" : "Google") + ".");
+  }
+
   // Se factura un cobro concreto, no la intención de compra: en una
   // suscripción hay un pago por mes y cada uno se timbra una sola vez.
   const pendientes = await db.collection("pagos")

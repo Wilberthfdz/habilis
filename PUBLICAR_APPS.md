@@ -111,3 +111,88 @@ y `npx cap sync`, o la app nativa seguirá mostrando la versión anterior.
       navegador.
 - [ ] Capturas de pantalla para ambas tiendas.
 - [ ] Texto de la ficha: descripción, novedades y palabras clave.
+
+---
+
+# Cobrar el Plan Pro en App Store y Google Play
+
+## Cuánto se llevan (México, septiembre 2026)
+
+| | Comisión | Sobre $100 MXN te quedan |
+|---|---|---|
+| **Mercado Pago** (web) | ~3.5 % + IVA | ~$96 |
+| **Google Play** | 15 % | $85 |
+| **App Store** | 15 % | $85 |
+
+Los dos 15 % no son el número de portada del 30 %:
+
+- **Apple**: el *Small Business Program* baja al 15 % a quien facturó menos
+  de 1 millón de USD el año anterior. Hay que **inscribirse a mano** en App
+  Store Connect; no es automático. Si no te inscribes, pagas 30 %.
+- **Google**: las suscripciones llevan 15 % desde el primer día. México
+  **conserva el esquema actual hasta el 30 de septiembre de 2027**; el
+  nuevo (10 % de servicio + 5 % de cobro, con opción de cobrar por tu
+  cuenta) arrancó en junio de 2026 solo para Estados Unidos, Reino Unido y
+  el Espacio Económico Europeo.
+
+**Lo que esto significa:** cada suscriptor que entre por la app te deja
+$85 en vez de $96. Son $11 al mes por técnico. No es un problema mientras
+la mayoría se suscriba desde la web, y por eso la app cobra por la tienda
+pero **la web sigue con Mercado Pago**: quien entra por myhabilis.com no
+paga comisión de tienda.
+
+## Cómo quedó montado
+
+Los dos caminos terminan en el mismo `plan: "pro"` del técnico:
+
+```
+Web  → Mercado Pago  → webhookMP       ─┐
+                                        ├→ tecnicos/{uid}.plan = "pro"
+App  → App Store     → RevenueCat      ─┘
+     → Google Play   → webhookTienda
+```
+
+`src/lib/tienda.js` decide cuál usar: `Capacitor.isNativePlatform()` es
+`true` solo dentro de la app compilada. En el navegador de un teléfono
+sigue mandando Mercado Pago.
+
+Se usa **RevenueCat** en lugar de hablar con cada tienda por separado
+porque la validación de recibos de Apple y la de Google no se parecen en
+nada, y hacer las dos a mano es donde se pierde el dinero de verdad: cobros
+que no activan el plan.
+
+### Lo que ya está en el código
+
+- Compra, restauración de compras (obligatoria en App Store) y lectura del
+  precio **desde la tienda** — Apple rechaza las apps cuyo precio anunciado
+  no coincide con el de la ficha.
+- `webhookTienda` en el backend: alta, renovación, cancelación, caducidad y
+  reembolso, con la cabecera de autorización comprobada.
+- Cancelar: una suscripción de tienda **no se puede cancelar desde la app**
+  (es una pantalla del sistema y hacerlo por tu cuenta es motivo de
+  rechazo). La pantalla lleva a los ajustes correctos según el teléfono.
+- Facturación: el CFDI solo se ofrece cuando cobró Habilis. Si cobró la
+  tienda, el vendedor de cara al usuario es Apple o Google, y son ellos
+  quienes emiten el comprobante y retienen el IVA. **Confírmalo con tu
+  contador antes de lanzar**: cambia cómo se registra ese ingreso.
+
+### Lo que falta para encenderlo
+
+1. Crear la suscripción **$100 MXN/mes** en App Store Connect y en Play
+   Console, con el mismo identificador de producto en las dos.
+2. Cuenta de RevenueCat (gratis hasta 2 500 USD de ingreso mensual):
+   conectar ambas tiendas y crear el *entitlement* llamado `pro`.
+3. Poner las dos claves públicas en `src/lib/config.js`
+   (`REVENUECAT_APPLE_KEY`, `REVENUECAT_GOOGLE_KEY`). Mientras estén
+   vacías, la app no ofrece la compra y todo sigue por Mercado Pago.
+4. Crear el secreto del webhook y apuntarlo a la función:
+   ```
+   firebase functions:secrets:set RC_WEBHOOK_SECRET
+   ```
+   Ese mismo valor va en RevenueCat → Integrations → Webhooks, en el campo
+   Authorization header.
+5. Inscribirte al **App Store Small Business Program**. Sin esto pagas el
+   doble de comisión.
+6. Probar con las cuentas de prueba (Sandbox en Apple, testers de licencia
+   en Google) que la compra activa el plan y que cancelar lo retira al
+   vencer.

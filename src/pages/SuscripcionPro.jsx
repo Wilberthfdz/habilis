@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import Nav from "../components/Nav.jsx";
 import { obtenerTecnico, obtenerFacturas } from "../lib/firebase.js";
 import { iniciarSuscripcionPro, solicitarFactura, cancelarSuscripcionPro } from "../lib/gemini.js";
-import { PLAN_PRO as BENEFICIOS } from "../lib/planes.js";
+import { PLAN_PRO as BENEFICIOS, PRECIO_PRO } from "../lib/planes.js";
+import { enApp, tiendaDelDispositivo, identificar, precioPro, comprarPro,
+         restaurarCompras, urlCancelacion } from "../lib/tienda.js";
 
 
 
@@ -33,6 +35,16 @@ export default function SuscripcionPro({ nav, user }) {
   const [facturas, setFacturas] = useState([]);
   const [error, setError]       = useState("");
   const [cargando, setCargando] = useState(false);
+  const [precioTienda, setPrecioTienda] = useState(null);
+  const [pagando, setPagando] = useState(false);
+
+  // Dentro de la app compilada la compra tiene que pasar por la tienda:
+  // Apple y Google lo exigen para todo lo que desbloquea funciones dentro
+  // de la app, y cobrarlo por fuera es motivo de rechazo. En la web se
+  // sigue usando Mercado Pago, que no paga comisión de tienda.
+  const porTienda    = enApp();
+  const nombreTienda = tiendaDelDispositivo();
+  const compradoEnTienda = ["app_store", "play_store"].includes(tecnico?.origenSuscripcion);
 
   const [fx, setFx] = useState({ rfc:"", razonSocial:"", codigoPostal:"", regimenFiscal:"612", usoCFDI:"G03" });
   const [fxEstado, setFxEstado] = useState({ cargando:false, error:"", url:"" });
@@ -110,6 +122,44 @@ export default function SuscripcionPro({ nav, user }) {
     } catch (e) {
       setFxEstado({ cargando:false, error: e.message || "No se pudo generar la factura.", url:"" });
     }
+  };
+
+  // El precio SIEMPRE se lee de la tienda: Apple y Google rechazan las apps
+  // cuyo precio anunciado no coincide con el de la ficha, y cada país tiene
+  // el suyo con sus impuestos.
+  useEffect(() => {
+    if (!porTienda || !user?.uid) return;
+    identificar(user.uid)
+      .then(() => precioPro())
+      .then(({ precio }) => setPrecioTienda(precio))
+      .catch(e => console.error("Tienda no disponible:", e));
+  }, [porTienda, user?.uid]);
+
+  const comprarEnTienda = async () => {
+    setError(""); setPagando(true);
+    try {
+      const ok = await comprarPro();
+      if (ok) setConfirmando(true);
+    } catch (e) {
+      // Cancelar la compra en la hoja del sistema no es un error que haya
+      // que enseñarle a nadie.
+      if (!/cancel/i.test(e?.message || "") && e?.code !== "1") {
+        console.error(e);
+        setError("No se pudo completar la compra. Intenta de nuevo.");
+      }
+    } finally { setPagando(false); }
+  };
+
+  const restaurar = async () => {
+    setError(""); setPagando(true);
+    try {
+      const ok = await restaurarCompras();
+      setError(ok ? "" : "No encontramos una suscripción activa en esta cuenta de la tienda.");
+      if (ok) setConfirmando(true);
+    } catch (e) {
+      console.error(e);
+      setError("No se pudieron restaurar tus compras.");
+    } finally { setPagando(false); }
   };
 
   const cancelar = async () => {
@@ -192,8 +242,9 @@ export default function SuscripcionPro({ nav, user }) {
               Plan Pro
             </h1>
             <p style={{ fontSize:"14px", color:"#64748B", marginBottom:"18px" }}>
-              <strong style={{ color:"#0F172A", fontSize:"20px" }}>$100 MXN/mes</strong> · IVA incluido ·
-              cancela cuando quieras
+              <strong style={{ color:"#0F172A", fontSize:"20px" }}>
+                {precioTienda || `$${PRECIO_PRO} MXN`}/mes
+              </strong> · IVA incluido · cancela cuando quieras
             </p>
             <ul style={{ listStyle:"none", marginBottom:"20px" }}>
               {BENEFICIOS.map(b => (
@@ -204,6 +255,37 @@ export default function SuscripcionPro({ nav, user }) {
               ))}
             </ul>
 
+            {porTienda ? (
+              // Dentro de la app la compra la cobra la tienda. No se puede
+              // enlazar al pago de la web ni mencionarlo: ambas tiendas lo
+              // prohíben expresamente.
+              <>
+                <button onClick={comprarEnTienda} disabled={pagando}
+                  className="h-btn-orange"
+                  style={{ width:"100%", padding:"14px", fontSize:"15px",
+                           opacity: pagando ? 0.7 : 1 }}>
+                  {pagando ? "Procesando…" : `Suscribirme por ${precioTienda || `$${PRECIO_PRO} MXN`}/mes`}
+                </button>
+                {/* Restaurar es obligatorio en App Store: quien ya pagó y
+                    reinstala tiene que poder recuperar su plan sin pagar
+                    otra vez. */}
+                <button onClick={restaurar} disabled={pagando}
+                  style={{ width:"100%", background:"none", border:"none", marginTop:"12px",
+                           fontSize:"13px", fontWeight:700, color:"#64748B", cursor:"pointer" }}>
+                  Ya pagué — restaurar mi suscripción
+                </button>
+                <p style={{ fontSize:"11.5px", color:"#94A3B8", lineHeight:1.6, marginTop:"12px",
+                            textAlign:"center" }}>
+                  Se cobra a tu cuenta de {nombreTienda} y se renueva cada mes hasta que
+                  la canceles desde los ajustes de tu teléfono.
+                </p>
+                {error && (
+                  <p style={{ fontSize:"13px", color:"#DC2626", background:"#FEE2E2",
+                              borderRadius:"8px", padding:"10px 14px", marginTop:"12px" }}>{error}</p>
+                )}
+              </>
+            ) : (
+            <>
             {/* El camino normal es un solo clic: los campos solo aparecen si
                 el técnico los necesita, para no convertir el pago en un
                 formulario. */}
@@ -263,6 +345,8 @@ export default function SuscripcionPro({ nav, user }) {
               Ahí registras tu tarjeta — Habilis nunca la ve. Se cobra cada mes hasta que
               canceles, y puedes cancelar desde esta misma página cuando quieras.
             </p>
+            </>
+            )}
           </div>
         )}
 
@@ -276,7 +360,9 @@ export default function SuscripcionPro({ nav, user }) {
               </h1>
               <p style={{ fontSize:"14px", color:"#64748B", lineHeight:1.7, marginBottom:"18px" }}>
                 Tu suscripción está activa y se renueva automáticamente cada mes.
-                El método de pago se administra desde tu cuenta de Mercado Pago.
+                {compradoEnTienda
+                  ? " La contrataste en la tienda de aplicaciones, así que el cobro y la cancelación se administran desde ahí."
+                  : " El método de pago se administra desde tu cuenta de Mercado Pago."}
               </p>
 
               {error && (
@@ -284,14 +370,43 @@ export default function SuscripcionPro({ nav, user }) {
                             padding:"10px 14px", marginBottom:"12px" }}>{error}</p>
               )}
 
-              <button onClick={cancelar} disabled={cancelando}
-                style={{ background:"none", border:"1px solid #E2E8F0", borderRadius:"10px",
-                         padding:"10px 18px", fontSize:"13px", fontWeight:700,
-                         color:"#64748B", cursor:"pointer", opacity: cancelando ? 0.6 : 1 }}>
-                {cancelando ? "Cancelando…" : "Cancelar suscripción"}
-              </button>
+              {compradoEnTienda ? (
+                // Ni Apple ni Google permiten cancelar desde la app: es una
+                // pantalla del sistema, y hacerlo por nuestra cuenta es
+                // motivo de rechazo. Se le lleva al sitio correcto.
+                <a href={urlCancelacion()} target="_blank" rel="noopener noreferrer"
+                  style={{ display:"inline-block", border:"1px solid #E2E8F0", borderRadius:"10px",
+                           padding:"10px 18px", fontSize:"13px", fontWeight:700,
+                           color:"#64748B", textDecoration:"none" }}>
+                  Administrar suscripción en {nombreTienda || "la tienda"}
+                </a>
+              ) : (
+                <button onClick={cancelar} disabled={cancelando}
+                  style={{ background:"none", border:"1px solid #E2E8F0", borderRadius:"10px",
+                           padding:"10px 18px", fontSize:"13px", fontWeight:700,
+                           color:"#64748B", cursor:"pointer", opacity: cancelando ? 0.6 : 1 }}>
+                  {cancelando ? "Cancelando…" : "Cancelar suscripción"}
+                </button>
+              )}
             </div>
 
+            {/* El CFDI solo aplica cuando cobró Habilis. Si cobró la tienda,
+                el vendedor de cara al usuario es Apple o Google, que emiten
+                su propio comprobante y retienen el IVA. */}
+            {compradoEnTienda ? (
+              <div className="h-card" style={{ padding:"clamp(24px,5vw,32px)" }}>
+                <h2 style={{ fontSize:"16px", fontWeight:900, color:"#0F172A", marginBottom:"6px" }}>
+                  Tu comprobante
+                </h2>
+                <p style={{ fontSize:"13px", color:"#64748B", lineHeight:1.7 }}>
+                  Como contrataste en {nombreTienda}, el cobro lo hace la tienda y es
+                  ella quien emite el comprobante. Lo encuentras en tu historial de
+                  compras de {nombreTienda === "App Store" ? "Apple" : "Google"}.
+                  Si necesitas una factura a nombre de tu empresa, escríbenos a
+                  habilisempresa@gmail.com y vemos cómo ayudarte.
+                </p>
+              </div>
+            ) : (
             <div className="h-card" style={{ padding:"clamp(24px,5vw,32px)" }}>
               <h2 style={{ fontSize:"16px", fontWeight:900, color:"#0F172A", marginBottom:"4px" }}>
                 Solicitar factura (CFDI)
@@ -376,6 +491,7 @@ export default function SuscripcionPro({ nav, user }) {
                 </div>
               )}
             </div>
+            )}
           </>
         )}
       </div>
