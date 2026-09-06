@@ -1355,6 +1355,7 @@ exports.eliminarMiCuenta = onCall({ secrets: [MP_TOKEN], timeoutSeconds: 300 }, 
   }
 
   await db.collection("tecnicos").doc(uid).delete().catch(() => {});
+  await db.collection("clientes").doc(uid).delete().catch(() => {});
   await logDecision("cuenta", "eliminó su cuenta", uid, "solicitud del propio usuario");
 
   // Lo último: sin la cuenta de acceso, nada de lo anterior sería reversible

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Logo from "../components/Logo.jsx";
-import { iniciarSesion, loginConGoogle, loginConApple, obtenerTecnico, enviarResetPassword } from "../lib/firebase.js";
+import { iniciarSesion, loginConGoogle, loginConApple, obtenerCuenta, enviarResetPassword } from "../lib/firebase.js";
 
 // Google "G" logo inline SVG
 function GoogleIcon() {
@@ -43,13 +43,15 @@ export default function Login({ nav, user, params = {} }) {
   useEffect(() => {
     if (!user) return;
     let vivo = true;
-    obtenerTecnico(user.uid)
-      .then(perfil => {
+    obtenerCuenta(user.uid)
+      .then(({ tipo }) => {
         if (!vivo) return;
-        if (!perfil) nav("completarPerfil", quierePro ? { plan:"pro" } : {});
-        else nav(quierePro ? "suscripcionPro" : "panel");
+        if (tipo === "tecnico") nav(quierePro ? "suscripcionPro" : "panel");
+        else if (tipo === "cliente") nav(params.volverA?.screen || "misSolicitudes", params.volverA?.params || {});
+        else if (quierePro) nav("completarPerfil", { plan:"pro" });
+        else nav("elegirTipo", { volverA: params.volverA });
       })
-      .catch(() => { if (vivo) nav("panel"); });
+      .catch(() => { if (vivo) nav("elegirTipo"); });
     return () => { vivo = false; };
   }, [user]);
 

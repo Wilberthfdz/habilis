@@ -48,12 +48,16 @@ export default function Registro({ nav, params = {} }) {
       await ponerNombreDeCuenta(cred.user, nombre).catch(() => {});
       // La aceptación viaja a la pantalla que crea el documento del perfil,
       // que es donde queda la constancia; no se pregunta dos veces.
-      nav("completarPerfil", { aceptoTerminos: true, nombre, plan: quierePro ? "pro" : undefined });
+      // Quien viene por el Plan Pro ya sabe que es técnico; el resto elige.
+      if (quierePro) nav("completarPerfil", { aceptoTerminos: true, nombre, plan: "pro" });
+      else nav("elegirTipo", { aceptoTerminos: true, nombre, volverA: params.volverA });
     } catch (e) {
       if (e.code === "auth/email-already-in-use") setError("Ese correo ya está registrado. Inicia sesión.");
       else if (e.code === "auth/weak-password")   setError("La contraseña debe tener al menos 6 caracteres.");
       else if (e.code === "auth/invalid-email")   setError("El correo electrónico no es válido.");
-      else setError("Error al crear la cuenta: " + e.message);
+      else if (e.code === "auth/network-request-failed") setError("Sin conexión. Revisa tu internet e intenta de nuevo.");
+      // Antes se enseñaba e.message tal cual: un texto en inglés de Firebase.
+      else { console.error(e); setError("No se pudo crear la cuenta. Intenta de nuevo en un momento."); }
       setLoading(false);
     }
   };
@@ -93,11 +97,11 @@ export default function Registro({ nav, params = {} }) {
             <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
               <div>
                 <h2 style={{ fontSize:"22px", fontWeight:900, color:"#fff", marginBottom:"4px" }}>
-                  Trabaja en Habilis
+                  Crea tu cuenta
                 </h2>
                 <p style={{ color:"rgba(255,255,255,0.45)", fontSize:"14px", lineHeight:1.55 }}>
-                  Sea cual sea tu oficio. Primero tu cuenta; en el siguiente paso
-                  puedes dictarle tu perfil a la IA en vez de escribirlo.
+                  Para trabajar como técnico o para encontrar uno. Es gratis y en el
+                  siguiente paso nos dices a qué vienes.
                 </p>
               </div>
 

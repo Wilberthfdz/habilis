@@ -11,6 +11,8 @@ import PanelTecnico                  from "./pages/PanelTecnico.jsx";
 import RegistrarTrabajo              from "./pages/RegistrarTrabajo.jsx";
 import Bienvenida                    from "./pages/Bienvenida.jsx";
 import EditarPerfil                  from "./pages/EditarPerfil.jsx";
+import ElegirTipo                    from "./pages/ElegirTipo.jsx";
+import MisSolicitudes                from "./pages/MisSolicitudes.jsx";
 import CompletarPerfil               from "./pages/CompletarPerfil.jsx";
 import HabilisCare                   from "./pages/HabilisCare.jsx";
 import DetalleActivo                 from "./pages/DetalleActivo.jsx";
@@ -116,6 +118,8 @@ const RUTAS_URL = {
   panel:           "/panel",
   editarPerfil:    "/panel/editar",
   completarPerfil: "/completar-perfil",
+  elegirTipo:      "/empezar",
+  misSolicitudes:  "/mis-solicitudes",
   bienvenida:      "/bienvenida",
   habilisCare:     "/care",
   cotizaciones:    "/cotizaciones",
@@ -141,8 +145,8 @@ const rutaDe = pantalla => RUTAS_URL[pantalla] || null;
 // Pantallas que no existen sin sesión. Al abrirlas por URL sin haber
 // iniciado sesión mandamos al login en vez de renderizar una pantalla rota.
 const REQUIEREN_SESION = new Set([
-  "panel", "editarPerfil", "completarPerfil", "bienvenida", "habilisCare",
-  "cotizaciones", "miRed", "admin",
+  "panel", "editarPerfil", "completarPerfil", "elegirTipo", "misSolicitudes",
+  "bienvenida", "habilisCare", "cotizaciones", "miRed", "admin",
 ]);
 // /pro se queda fuera a propósito: la página explica el plan y ofrece
 // iniciar sesión sin perder la intención de compra.
@@ -228,6 +232,8 @@ export default function App() {
       case "bienvenida":      return <Bienvenida {...screenProps} />;
       case "completarPerfil": return <CompletarPerfil {...screenProps} params={params} />;
       case "editarPerfil":    return <EditarPerfil     {...screenProps} />;
+      case "elegirTipo":      return <ElegirTipo       {...screenProps} params={params} />;
+      case "misSolicitudes":  return <MisSolicitudes   {...screenProps} />;
       case "habilisCare":      return <HabilisCare      {...screenProps} />;
       case "detalleActivo":   return <DetalleActivo   {...screenProps} params={params} />;
       case "cotizaciones":    return <Cotizaciones     {...screenProps} />;

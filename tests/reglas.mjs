@@ -116,6 +116,14 @@ probar("alta: NO se puede nacer con rating inflado",
   () => assertFails(setDoc(doc(env.authenticatedContext("nuevo3").firestore(), "tecnicos/nuevo3"), { nombre: "X", plan: "gratis", rating: 5 })));
 probar("alta: un registro legítimo sí funciona",
   () => assertSucceeds(setDoc(doc(env.authenticatedContext("nuevo4").firestore(), "tecnicos/nuevo4"), { nombre: "X", oficio: "Electricista", ciudad: "Cancún", plan: "gratis", aceptoTerminos: true })));
+probar("cliente: puede crear su propia cuenta aceptando términos",
+  () => assertSucceeds(setDoc(doc(cli, "clientes/cliente1"), { nombre: "Ana", aceptoTerminos: true })));
+probar("cliente: NO puede crearla sin aceptar términos",
+  () => assertFails(setDoc(doc(env.authenticatedContext("cli2").firestore(), "clientes/cli2"), { nombre: "X" })));
+probar("cliente: un tercero NO puede leer su cuenta",
+  () => assertFails(getDoc(doc(otro, "clientes/cliente1"))));
+probar("cliente: NO puede convertirse en técnico desde su propio documento",
+  () => assertFails(updateDoc(doc(cli, "clientes/cliente1"), { tipo: "tecnico" })));
 probar("alta: ni el admin puede fabricar un perfil de otra persona",
   () => assertFails(setDoc(doc(admin, "tecnicos/fabricado"), { nombre: "Fantasma", plan: "gratis", aceptoTerminos: true })));
 probar("alta: NO se puede crear perfil sin aceptar los términos",

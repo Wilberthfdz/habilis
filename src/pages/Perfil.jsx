@@ -165,7 +165,10 @@ export default function Perfil({ nav, params, user }) {
                   </button>
                 ) : (
                   <button style={{ ...BTN, flex:2 }}
-                    onClick={() => nav("login")}>
+                    // Al volver del login regresa AQUÍ, no al panel: el que
+                    // quiere contratar no tiene por qué pasar por el alta de
+                    // técnico.
+                    onClick={() => nav("login", { volverA: { screen: "perfil", params: { tecnicoId } } })}>
                     💬 Iniciar sesión para contactar
                   </button>
                 )}

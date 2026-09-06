@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Logo from "../components/Logo.jsx";
 import Nav from "../components/Nav.jsx";
-import { obtenerTecnico, obtenerTrabajosDelTecnico, cerrarSesion, subirFotoPerfil,
+import { obtenerTecnico, obtenerCuenta, obtenerTrabajosDelTecnico, cerrarSesion, subirFotoPerfil,
          obtenerSolicitudesChat, actualizarTecnico, obtenerColaboradores } from "../lib/firebase.js";
 import Avatar from "../components/Avatar.jsx";
 import { sugerirRespuesta } from "../lib/gemini.js";
@@ -41,7 +41,13 @@ export default function PanelTecnico({ nav, user }) {
     (async () => {
       try {
         const t = await obtenerTecnico(user.uid);
-        if (!t) { setNoProfile(true); setLoadingData(false); return; }
+        if (!t) {
+          // Un cliente que aterriza en el panel de técnico va a su casa; el
+          // que no tiene ningún perfil ve el aviso de completarlo.
+          const { tipo } = await obtenerCuenta(user.uid);
+          if (tipo === "cliente") { nav("misSolicitudes"); return; }
+          setNoProfile(true); setLoadingData(false); return;
+        }
         setTecnico(t);
         setAlcance(t.alcance || "nacional");
         const [tr, sols, red] = await Promise.all([

@@ -87,6 +87,51 @@ export async function crearPerfilTecnico(uid, datos) {
   });
 }
 
+// ── CUENTA DE CLIENTE ────────────────────────────────────────────────────
+// Hasta ahora no existía: quien quería contratar un servicio pasaba por el
+// alta de TÉCNICO, se le creaba un perfil de técnico y aparecía en el
+// directorio. La portada decía "gratis para clientes" y no había cuenta de
+// cliente. Vive en su propia colección: no se busca, no se rankea, no se
+// muestra.
+export async function crearPerfilCliente(uid, datos) {
+  await setDoc(doc(db, "clientes", uid), {
+    nombre: datos.nombre || "",
+    email:  datos.email  || "",
+    ciudad: datos.ciudad || "",
+    uid,
+    aceptoTerminos: datos.aceptoTerminos === true,
+    fechaAceptacionTerminos: serverTimestamp(),
+    versionTerminos: VERSION_TERMINOS,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function obtenerCliente(uid) {
+  const snap = await getDoc(doc(db, "clientes", uid));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
+// Qué es esta cuenta. Una sola función para que Login, App y Nav no
+// repitan la misma pregunta cada uno a su manera.
+export async function obtenerCuenta(uid) {
+  const tecnico = await obtenerTecnico(uid);
+  if (tecnico) return { tipo: "tecnico", perfil: tecnico };
+  const cliente = await obtenerCliente(uid);
+  if (cliente) return { tipo: "cliente", perfil: cliente };
+  return { tipo: null, perfil: null };
+}
+
+// Las conversaciones que abrió el cliente. Antes no había forma de volver a
+// una solicitud propia salvo por una notificación.
+export async function obtenerSolicitudesDelCliente(clienteId) {
+  const q = query(collection(db, "solicitudes_chat"), where("clienteId", "==", clienteId), limit(50));
+  const snap = await getDocs(q);
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+}
+
 // Facturas del propio técnico. Las reglas ya permiten que el dueño lea las
 // suyas; sin esto solo el admin podía verlas.
 export async function obtenerFacturas(uid) {

@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Logo from "./Logo.jsx";
 import NotifBell from "./NotifBell.jsx";
-import { cerrarSesion } from "../lib/firebase.js";
+import { cerrarSesion, obtenerCuenta } from "../lib/firebase.js";
 
 const aboutLinks = [
   { label:"Quiénes somos",          route:"quienesSomos" },
@@ -19,15 +19,32 @@ export default function Nav({ nav, user, onLogout }) {
   const salir = onLogout || (async () => { await cerrarSesion(); nav("landing"); });
   const [open, setOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  // Un cliente no tiene "panel de técnico": su casa es Mis solicitudes. El
+  // menú lo pregunta una vez por sesión y se acuerda.
+  const [tipo, setTipo] = useState(() => {
+    try { return sessionStorage.getItem("habilis.tipoCuenta") || null; } catch { return null; }
+  });
+  useEffect(() => {
+    if (!user?.uid) { setTipo(null); return; }
+    let vivo = true;
+    obtenerCuenta(user.uid).then(({ tipo: t }) => {
+      if (!vivo) return;
+      setTipo(t);
+      try { if (t) sessionStorage.setItem("habilis.tipoCuenta", t); } catch {}
+    }).catch(() => {});
+    return () => { vivo = false; };
+  }, [user?.uid]);
+  const esCliente = tipo === "cliente";
+  const casa      = esCliente ? "misSolicitudes" : "panel";
+  const casaLabel = esCliente ? "Mis solicitudes" : "Mi Panel";
 
   const primaryLinks = [
     { label:"Buscar",      route:"buscar" },
     { label:"Feed",        route:"feed" },
     { label:"Precios",     route:"precios" },
-    ...(user ? [
-      { label:"Habilis Care",      route:"habilisCare" },
-      { label:"Cotizaciones", route:"cotizaciones" },
-    ] : []),
+    // Care sirve a cualquiera con equipos; Cotizaciones es herramienta de técnico.
+    ...(user ? [{ label:"Habilis Care", route:"habilisCare" }] : []),
+    ...(user && !esCliente ? [{ label:"Cotizaciones", route:"cotizaciones" }] : []),
     ...(user?.email === "wilberthfdz@gmail.com" ? [
       { label:"⚙️ Admin",  route:"admin" },
     ] : []),
@@ -149,7 +166,7 @@ export default function Nav({ nav, user, onLogout }) {
         {user ? (
           <>
             <NotifBell nav={nav} user={user} />
-            <button className="nav-btn-panel" onClick={() => nav("panel")}>Mi Panel</button>
+            <button className="nav-btn-panel" onClick={() => nav(casa)}>{casaLabel}</button>
             <button className="nav-btn-logout" onClick={salir} style={{ marginLeft:"6px" }}>
               Salir
             </button>
@@ -216,7 +233,7 @@ export default function Nav({ nav, user, onLogout }) {
           {user ? (
             <>
               <button className="nav-link" style={{ width:"100%", justifyContent:"flex-start" }}
-                onClick={() => { nav("panel"); setOpen(false); }}>Mi Panel</button>
+                onClick={() => { nav(casa); setOpen(false); }}>{casaLabel}</button>
               {onLogout && (
                 <button className="nav-btn-logout" style={{ width:"100%", textAlign:"left", marginTop:"4px" }}
                   onClick={() => { onLogout(); setOpen(false); }}>

@@ -56,6 +56,17 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Cuenta de cliente. Es suya y de nadie más: no aparece en búsquedas ni
+    // la lee otro usuario. Misma exigencia de consentimiento que el técnico.
+    match /clientes/{uid} {
+      allow read:   if (request.auth != null && request.auth.uid == uid) || isAdmin();
+      allow create: if request.auth != null && request.auth.uid == uid
+                    && request.resource.data.get("aceptoTerminos", false) == true;
+      allow update: if request.auth != null && request.auth.uid == uid
+                    && cambia().hasOnly(['nombre','ciudad','updatedAt']);
+      allow delete: if isAdmin();
+    }
+
     match /trabajos/{trabajoId} {
       allow read:   if true;
       // Tope de 5 trabajos del plan gratuito. Se anunciaba en Precios desde
