@@ -18,6 +18,8 @@ export default function MiRed({ nav, user }) {
   const [referidoOk,  setReferidoOk]  = useState(null);
   const [avisoPro,    setAvisoPro]    = useState(false);
   const [error,       setError]       = useState("");
+  const [refiriendoA, setRefiriendoA] = useState(null);
+  const [textoReferido, setTextoReferido] = useState("");
 
   useEffect(() => {
     if (!user) { nav("login"); return; }
@@ -67,20 +69,31 @@ export default function MiRed({ nav, user }) {
     } finally { setCargandoAI(false); }
   };
 
-  const referirTrabajo = async (colaborador) => {
+  // "Referir trabajo" abría una conversación con el texto fijo "Referido
+  // desde mi red…": sin cliente, sin trabajo, sin nada que referir. Ahora
+  // se le pide al técnico que diga QUÉ refiere, y eso es lo que llega.
+  const referirTrabajo = async (colaborador, descripcion) => {
     if (!user) return;
-    setRefiriendo(colaborador.tecnicoId);
+    const texto = (descripcion || "").trim();
+    if (texto.length < 10) { setError("Cuéntale a tu colaborador de qué trabajo se trata (al menos unas palabras)."); return; }
+    setRefiriendo(colaborador.tecnicoId); setError("");
     try {
-      await crearSolicitudChat({
+      const id = await crearSolicitudChat({
         clienteId:    user.uid,
         clienteNombre:tecnico?.nombre || user.email,
         tecnicoId:    colaborador.tecnicoId,
         tecnicoNombre:colaborador.tecnicoNombre || colaborador.nombre,
-        descripcion:  "Referido desde mi red de colaboradores de Habilis.",
+        descripcion:  `Referido por ${tecnico?.nombre || "un colaborador"}: ${texto}`,
         urgencia:     "Normal",
         presupuesto:  "",
+        referido:     true,
       });
       setReferidoOk(colaborador.tecnicoId);
+      setTimeout(() => setReferidoOk(null), 3000);
+      nav("chat", { solicitudId: id });
+    } catch (e) {
+      console.error(e);
+      setError("No se pudo enviar el referido. Intenta de nuevo.");
     } finally { setRefiriendo(null); }
   };
 
@@ -223,7 +236,7 @@ export default function MiRed({ nav, user }) {
                           ✓ Referido
                         </span>
                       ) : (
-                        <button onClick={() => referirTrabajo(c)}
+                        <button onClick={() => setRefiriendoA(refiriendoA === c.tecnicoId ? null : c.tecnicoId)}
                           disabled={refiriendo === c.tecnicoId}
                           style={{ flex:1, background:"#F97316", color:"#fff", border:"none",
                                    borderRadius:"8px", padding:"7px", fontSize:"12px",
@@ -232,9 +245,27 @@ export default function MiRed({ nav, user }) {
                         </button>
                       )}
                     </div>
+                    {refiriendoA === c.tecnicoId && (
+                      <div style={{ marginTop:"10px" }}>
+                        <textarea value={textoReferido} onChange={e => setTextoReferido(e.target.value)}
+                          placeholder="¿Qué trabajo le refieres? Cliente, zona, qué necesita…"
+                          style={{ width:"100%", border:"1px solid #E2E8F0", borderRadius:"8px", padding:"9px 12px",
+                                   fontSize:"13px", minHeight:"64px", resize:"vertical", boxSizing:"border-box" }} />
+                        <button onClick={() => referirTrabajo(c, textoReferido)}
+                          disabled={refiriendo === c.tecnicoId}
+                          style={{ marginTop:"6px", width:"100%", background:"#0F172A", color:"#fff", border:"none",
+                                   borderRadius:"8px", padding:"9px", fontSize:"12.5px", fontWeight:700, cursor:"pointer" }}>
+                          Enviar referido
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
+            )}
+            {error && (
+              <div style={{ background:"#FEF2F2", border:"1px solid #FECACA", borderRadius:"12px",
+                            padding:"12px 16px", fontSize:"13px", color:"#DC2626", marginTop:"16px" }}>{error}</div>
             )}
           </>
         )}

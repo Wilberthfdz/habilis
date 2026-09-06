@@ -6,6 +6,19 @@ import { obtenerTecnico, obtenerTrabajosDelTecnico, agregarColaborador, estaEnRe
 
 const initials = n => ((n||"").trim().charAt(0).toUpperCase()) || "T";
 
+// Fuera del componente: definido dentro, React lo veía como un componente
+// NUEVO en cada render y desmontaba Nav y la campana de notificaciones
+// cada vez que cambiaba un estado (menús que se cerraban solos, avisos
+// que se volvían a pedir).
+function Shell({ nav, user, children }) {
+  return (
+    <div style={{ background:"#F1F5F9", minHeight:"100vh" }}>
+      <div style={{ background:"#0F172A" }}><Nav nav={nav} user={user} /></div>
+      {children}
+    </div>
+  );
+}
+
 export default function Perfil({ nav, params, user }) {
   const [tecnico,  setTecnico]  = useState(null);
   const [trabajos, setTrabajos] = useState([]);
@@ -42,15 +55,9 @@ export default function Perfil({ nav, params, user }) {
   const BTN  = { background:"#F97316", color:"#fff", border:"none", borderRadius:"10px",
                  padding:"11px 20px", fontSize:"14px", fontWeight:700, cursor:"pointer" };
 
-  const Shell = ({ children }) => (
-    <div style={{ background:"#F1F5F9", minHeight:"100vh" }}>
-      <div style={{ background:"#0F172A" }}><Nav nav={nav} user={user} /></div>
-      {children}
-    </div>
-  );
 
   if (loading) return (
-    <Shell>
+    <Shell nav={nav} user={user}>
       <div style={{ textAlign:"center", padding:"100px 20px" }}>
         <div style={{ width:"36px", height:"36px", border:"3px solid #F97316", borderTopColor:"transparent",
                       borderRadius:"50%", animation:"spin 0.8s linear infinite", margin:"0 auto 14px" }} />
@@ -60,7 +67,7 @@ export default function Perfil({ nav, params, user }) {
   );
 
   if (notFound) return (
-    <Shell>
+    <Shell nav={nav} user={user}>
       <div style={{ textAlign:"center", padding:"100px 20px" }}>
         <div style={{ fontSize:"52px", marginBottom:"14px" }}>🔍</div>
         <p style={{ fontWeight:800, fontSize:"20px", color:"#0F172A", marginBottom:"8px" }}>Perfil no encontrado</p>
@@ -73,7 +80,7 @@ export default function Perfil({ nav, params, user }) {
   const esOwner = user?.uid === tecnicoId;
 
   return (
-    <Shell>
+    <Shell nav={nav} user={user}>
       {/* HERO BANNER */}
       <div style={{ background:"#0F172A", padding:"36px 20px 32px", position:"relative", overflow:"hidden" }}>
         <div style={{ position:"absolute", top:"-40%", right:"-5%", width:"400px", height:"400px",

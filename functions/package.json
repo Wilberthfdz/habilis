@@ -1,7 +1,7 @@
 {
   "name": "habilis-functions",
   "description": "Habilis Cloud Functions — Gemini proxy",
-  "engines": { "node": "20" },
+  "engines": { "node": "22" },
   "main": "index.js",
   "scripts": {
     "serve":  "firebase emulators:start --only functions",

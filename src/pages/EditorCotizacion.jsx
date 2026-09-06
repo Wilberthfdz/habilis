@@ -56,6 +56,7 @@ export default function EditorCotizacion({ nav, user, params }) {
   const [newObra, setNewObra] = useState({ descripcion:"", costo:"" });
 
   const autoSaveTimer = useRef(null);
+  const [errorCarga, setErrorCarga] = useState("");
 
   useEffect(() => {
     if (!user || !cotId) { nav("cotizaciones"); return; }
@@ -83,16 +84,24 @@ export default function EditorCotizacion({ nav, user, params }) {
       setNotas(c.notas || "");
       setTerminos(c.terminos || TERMINOS_DEFAULT);
       setMetodoPago(c.metodoPago || "Transferencia");
+    }).catch(e => {
+      console.error(e);
+      // Sin esto el editor se abría vacío y el siguiente guardado
+      // sobrescribía la cotización real con campos en blanco.
+      setErrorCarga("No pudimos abrir esta cotización. Revisa tu conexión.");
     }).finally(() => setLoading(false));
   }, [cotId, user]);
 
-  // Auto-save every 30s
+  // Autoguardado a los 30 s de cualquier cambio. El temporizador llama
+  // SIEMPRE a la versión más reciente de guardar: antes se quedaba con la de
+  // un render anterior y podía persistir folio, fecha o condiciones viejas.
+  const guardarRef = useRef(null);
   useEffect(() => {
-    if (!cotId || loading) return;
+    if (!cotId || loading || !cot) return;
     clearTimeout(autoSaveTimer.current);
-    autoSaveTimer.current = setTimeout(() => guardar(false), 30000);
+    autoSaveTimer.current = setTimeout(() => guardarRef.current?.(false), 30000);
     return () => clearTimeout(autoSaveTimer.current);
-  }, [productos, manoObra, cliente, notas, iva, descPct]);
+  }, [productos, manoObra, cliente, notas, iva, descPct, folio, fecha, validez, terminos, metodoPago, moneda]);
 
   // Financial calculations
   const subtotalProds  = productos.reduce((s, p) => s + (Number(p.cantidad||1) * Number(p.precioUnitario||0)), 0);
@@ -108,7 +117,10 @@ export default function EditorCotizacion({ nav, user, params }) {
     if (showFeedback) setSaving(true);
     try {
       const data = {
-        folio, fecha, validez: Number(validez), estado:"borrador",
+        folio, fecha, validez: Number(validez),
+        // El estado NO se toca aquí. Guardar es guardar: antes ponía
+        // "borrador" siempre, así que el autoguardado devolvía a borrador
+        // una cotización ya enviada o incluso ya aceptada por el cliente.
         cliente, productos, manoObra,
         descuento: { tipo:"porcentaje", valor:Number(descPct) },
         iva, moneda, subtotal, total, ivaMonto,
@@ -122,12 +134,27 @@ export default function EditorCotizacion({ nav, user, params }) {
         if (p.descripcion) guardarProductoTecnico(user.uid, { descripcion:p.descripcion, precioUnitario:p.precioUnitario }).catch(() => {});
       });
       if (showFeedback) { setSaved(true); setTimeout(() => setSaved(false), 2500); }
+    } catch (e) {
+      console.error(e);
+      setErrorCarga("No se pudo guardar. Revisa tu conexión; tus cambios siguen en pantalla.");
     } finally { if (showFeedback) setSaving(false); }
   };
+  guardarRef.current = guardar;
 
   const enviarWA = async () => {
-    await guardar(false);
-    await actualizarCotizacion(cotId, { estado:"enviada" });
+    try {
+      await guardar(false);
+      // Enviar sí cambia el estado — es la única acción que lo hace desde
+      // el editor, y solo hacia adelante: una aceptada no vuelve a enviada.
+      if (!["aceptada", "rechazada"].includes(cot?.estado)) {
+        await actualizarCotizacion(cotId, { estado:"enviada" });
+        setCot(c => ({ ...c, estado: "enviada" }));
+      }
+    } catch (e) {
+      console.error(e);
+      setErrorCarga("No se pudo marcar como enviada. Revisa tu conexión.");
+      return;
+    }
     const url = `${window.location.origin}?vista=${cotId}`;
     const msg = `Hola ${cliente.nombre || ""}, te comparto la cotización ${folio} de Habilis: ${url}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
@@ -187,6 +214,7 @@ export default function EditorCotizacion({ nav, user, params }) {
           </div>
           <div style={{ display:"flex", gap:"8px" }}>
             {saved && <span style={{ color:"#10B981", fontSize:"12px", alignSelf:"center" }}>✓ Guardado</span>}
+            {errorCarga && <span style={{ color:"#DC2626", fontSize:"12px", alignSelf:"center" }}>{errorCarga}</span>}
             <button onClick={() => nav("vistaCotizacion", { token:cotId })}
               style={{ background:"rgba(255,255,255,0.08)", color:"#fff", border:"1px solid rgba(255,255,255,0.15)",
                        borderRadius:"8px", padding:"7px 14px", fontSize:"12px", fontWeight:600, cursor:"pointer" }}>

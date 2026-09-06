@@ -267,6 +267,34 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "notificaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tipo",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fecha",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "validaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "validadorId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "trabajoId",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

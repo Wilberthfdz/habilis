@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Logo from "../components/Logo.jsx";
 import Nav from "../components/Nav.jsx";
 import Footer from "../components/Footer.jsx";
-import { db, validarTrabajo, obtenerValidaciones } from "../lib/firebase.js";
+import { db, validarTrabajo, obtenerValidacionesDe } from "../lib/firebase.js";
 import { collection, query, orderBy, limit, getDocs } from "firebase/firestore";
 
 // "Publicado recientemente" estaba escrito a mano en todas las solicitudes,
@@ -23,6 +23,7 @@ export default function Feed({ nav, user }) {
   const [posts,       setPosts]       = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [validaciones,setValidaciones]= useState({}); // {trabajoId: {util, bienHecho, voted}}
+  const [error,       setError]       = useState("");
 
   useEffect(() => {
     (async () => {
@@ -45,23 +46,36 @@ export default function Feed({ nav, user }) {
           return tB - tA;
         });
         setPosts(all);
-        // Load validaciones for trabajo posts
-        const trabajoIds = tList.map(t => t.id);
-        const valResults = await Promise.all(trabajoIds.map(id => obtenerValidaciones(id).catch(() => [])));
+        // Los contadores los mantiene el backend en cada trabajo
+        // (validacionesUtil / validacionesBienHecho). Antes se lanzaba una
+        // consulta POR TRABAJO para recontarlos: 30 consultas por carga que
+        // con tráfico real se convierten en la factura de Firestore.
+        // Lo único que sigue requiriendo consulta es si ESTE usuario ya
+        // votó, y solo para lo que está en pantalla.
         const valMap = {};
-        trabajoIds.forEach((id, i) => {
-          const vs = valResults[i];
-          valMap[id] = {
-            util:      vs.filter(v => v.tipo === "util").length,
-            bienHecho: vs.filter(v => v.tipo === "bien_hecho").length,
-            voted:     user ? {
-              util:      vs.some(v => v.validadorId === user.uid && v.tipo === "util"),
-              bienHecho: vs.some(v => v.validadorId === user.uid && v.tipo === "bien_hecho"),
-            } : { util:false, bienHecho:false },
+        for (const t of tList) {
+          valMap[t.id] = {
+            util:      t.validacionesUtil      || 0,
+            bienHecho: t.validacionesBienHecho || 0,
+            voted:     { util:false, bienHecho:false },
           };
-        });
+        }
+        if (user && tList.length) {
+          const propios = await obtenerValidacionesDe(user.uid, tList.map(t => t.id)).catch(() => []);
+          for (const v of propios) {
+            if (valMap[v.trabajoId]) {
+              if (v.tipo === "util")       valMap[v.trabajoId].voted.util = true;
+              if (v.tipo === "bien_hecho") valMap[v.trabajoId].voted.bienHecho = true;
+            }
+          }
+        }
         setValidaciones(valMap);
-      } catch (err) { console.error(err); }
+      } catch (err) {
+        console.error(err);
+        // Antes el error se tragaba y la pantalla decía "No hay
+        // publicaciones aún", como si el feed estuviera vacío.
+        setError("No pudimos cargar el feed. Revisa tu conexión.");
+      }
       finally { setLoading(false); }
     })();
   }, [user]);
@@ -71,7 +85,15 @@ export default function Feed({ nav, user }) {
     if (user.uid === tecnicoId) return; // no self-validation
     const key = tipo === "util" ? "util" : "bienHecho";
     if (validaciones[trabajoId]?.voted?.[key]) return;
-    const ok = await validarTrabajo(trabajoId, user.uid, tipo);
+    let ok = false;
+    try { ok = await validarTrabajo(trabajoId, user.uid, tipo); }
+    catch (e) {
+      // Un rechazo de las reglas (por ejemplo votar dos veces) era una
+      // promesa sin capturar: ni aviso ni nada.
+      console.error(e);
+      setError("No se pudo registrar tu voto. Intenta de nuevo.");
+      return;
+    }
     if (ok) {
       setValidaciones(prev => ({
         ...prev,
@@ -125,6 +147,10 @@ export default function Feed({ nav, user }) {
           {filterBtn("solicitud","Solicitudes")}
         </div>
 
+        {error && (
+          <div style={{ background:"#FEF2F2", border:"1px solid #FECACA", borderRadius:"12px",
+                        padding:"12px 16px", fontSize:"13px", color:"#DC2626", marginBottom:"16px" }}>{error}</div>
+        )}
         {loading ? (
           <div style={{ textAlign:"center", padding:"72px 20px" }}>
             <div style={{ width:"36px", height:"36px", border:"3px solid #F97316", borderTopColor:"transparent",

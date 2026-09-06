@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Nav from "../components/Nav.jsx";
 import { fechaLocal, fmtFecha } from "../lib/fechas.js";
-import { crearActivo, obtenerActivos, crearSolicitud } from "../lib/firebase.js";
+import { crearActivo, obtenerActivos, actualizarActivo } from "../lib/firebase.js";
 import { generarTipsMantenimiento } from "../lib/gemini.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -95,6 +95,7 @@ function ModalAgregar({ onClose, onSaved, userId }) {
   const [saving, setSaving]   = useState(false);
   const [tips,   setTips]     = useState(null);
   const [tipsPro, setTipsPro] = useState(false);
+  const [errorGuardar, setErrorGuardar] = useState("");
   const [genAI,  setGenAI]    = useState(false);
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
 
@@ -117,6 +118,10 @@ function ModalAgregar({ onClose, onSaved, userId }) {
       try {
         const t = await generarTipsMantenimiento(form.tipo, form.marca, form.modelo);
         setTips(t);
+        // Se guardan en el equipo: antes se mostraban una vez y se perdían
+        // al cerrar, aunque la copia prometía "un plan de mantenimiento
+        // para cada equipo".
+        await actualizarActivo(id, { tipsIA: t }).catch(e => console.error(e));
       } catch (e) {
         // Los consejos con IA son del Plan Pro. Antes el error se tragaba en
         // silencio y el equipo se guardaba sin explicación alguna.
@@ -124,6 +129,12 @@ function ModalAgregar({ onClose, onSaved, userId }) {
       }
       setGenAI(false);
       onSaved(id);
+    } catch (e) {
+      // Un fallo al guardar el equipo dejaba el modal abierto, sin mensaje,
+      // como promesa sin capturar.
+      console.error(e);
+      setErrorGuardar("No se pudo guardar el equipo. Revisa tu conexión e intenta de nuevo.");
+      setGenAI(false);
     } finally { setSaving(false); }
   };
 
@@ -239,6 +250,12 @@ function ModalAgregar({ onClose, onSaved, userId }) {
                          borderRadius:"10px", padding:"12px", fontWeight:600, cursor:"pointer" }}>
                 Cancelar
               </button>
+              {errorGuardar && (
+                <div style={{ background:"#FEF2F2", border:"1px solid #FECACA", borderRadius:"10px",
+                              padding:"10px 14px", fontSize:"13px", color:"#DC2626", marginBottom:"10px" }}>
+                  {errorGuardar}
+                </div>
+              )}
               <button onClick={guardar} disabled={saving || genAI || !form.nombre.trim()}
                 style={{ flex:2, background:"#F97316", color:"#fff", border:"none",
                          borderRadius:"10px", padding:"12px", fontSize:"14px",

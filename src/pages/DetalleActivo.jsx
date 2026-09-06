@@ -314,6 +314,29 @@ export default function DetalleActivo({ nav, user, params }) {
           ))}
         </div>
 
+        {/* Plan de mantenimiento con IA, generado al registrar el equipo.
+            Antes se enseñaba una sola vez en el modal y se perdía. */}
+        {activo.tipsIA?.tips?.length > 0 && (
+          <div style={CARD}>
+            <p style={{ fontSize:"11px", fontWeight:800, color:"#EA580C", textTransform:"uppercase",
+                        letterSpacing:"0.06em", marginBottom:"10px" }}>✨ Plan de mantenimiento</p>
+            <ul style={{ paddingLeft:"18px", display:"flex", flexDirection:"column", gap:"6px" }}>
+              {activo.tipsIA.tips.map((t, i) => (
+                <li key={i} style={{ fontSize:"13.5px", color:"#374151", lineHeight:1.55 }}>{t}</li>
+              ))}
+            </ul>
+            {activo.tipsIA.alerta && (
+              <div style={{ marginTop:"12px", background:"#FEF2F2", borderRadius:"8px",
+                            padding:"9px 12px", fontSize:"12.5px", color:"#DC2626" }}>
+                ⚠️ {activo.tipsIA.alerta}
+              </div>
+            )}
+            {activo.tipsIA.frecuencia && (
+              <p style={{ fontSize:"12px", color:"#64748B", marginTop:"8px" }}>{activo.tipsIA.frecuencia}</p>
+            )}
+          </div>
+        )}
+
         {/* Borrar el equipo. `eliminarActivo` existía en la librería y no la
             llamaba nadie: un equipo registrado por error no se podía quitar
             de ninguna manera. */}

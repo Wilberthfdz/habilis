@@ -503,6 +503,20 @@ export async function validarTrabajo(trabajoId, validadorId, tipo) {
   await setDoc(ref, { trabajoId, validadorId, tipo, createdAt:serverTimestamp() });
   return true;
 }
+// Los votos de un usuario concreto sobre un conjunto de trabajos, en una
+// sola consulta. Firestore admite hasta 30 valores por `in`; se trocea.
+export async function obtenerValidacionesDe(validadorId, trabajoIds) {
+  const resultado = [];
+  for (let i = 0; i < trabajoIds.length; i += 30) {
+    const lote = trabajoIds.slice(i, i + 30);
+    const q = query(collection(db, "validaciones"),
+      where("validadorId", "==", validadorId), where("trabajoId", "in", lote));
+    const snap = await getDocs(q);
+    snap.docs.forEach(d => resultado.push({ id: d.id, ...d.data() }));
+  }
+  return resultado;
+}
+
 export async function obtenerValidaciones(trabajoId) {
   const snap = await getDocs(query(collection(db,"validaciones"), where("trabajoId","==",trabajoId)));
   return snap.docs.map(d => d.data());

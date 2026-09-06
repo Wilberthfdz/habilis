@@ -657,7 +657,13 @@ const AGENTES_VALIDOS = new Set([
   "generic", "soporte", "perfil", "clasificacion", "matching",
 ]);
 
-exports.geminiProxy = onCall({ secrets: [GEMINI_KEY] }, async (request) => {
+// `enforceAppCheck` rechaza llamadas sin la marca de App Check. Solo se
+// activa cuando el frontend ya la manda (APPCHECK_SITE_KEY configurada),
+// para no dejar fuera a la app mientras no esté listo; hasta entonces se
+// declara en `consumeAppCheckToken:false` y no bloquea.
+const APPCHECK = { enforceAppCheck: process.env.APPCHECK_ENFORCE === "1" };
+
+exports.geminiProxy = onCall({ secrets: [GEMINI_KEY], ...APPCHECK }, async (request) => {
   const uid = requireAuth(request);
   await checkRateLimit(uid, "geminiProxy", 60);
   const { prompt, temperature = 0.7, agentName = "generic" } = request.data ?? {};
@@ -691,7 +697,7 @@ exports.geminiProxy = onCall({ secrets: [GEMINI_KEY] }, async (request) => {
 // Requiere trabajo de frontend adicional (grabar audio) para activarse
 // de punta a punta — ver nota al final del documento de cierre.
 // ═══════════════════════════════════════════════════════════════
-exports.transcribirRegistro = onCall({ secrets: [GEMINI_KEY] }, async (request) => {
+exports.transcribirRegistro = onCall({ secrets: [GEMINI_KEY], ...APPCHECK }, async (request) => {
   const uid = requireAuth(request);
   await checkRateLimit(uid, "transcribir", 10);
   const { audioBase64, mimeType } = request.data;
@@ -1029,6 +1035,9 @@ async function aplicarEstadoSuscripcion(uid, sub) {
       suscripcionEstado: "cancelled",
       proHasta: finDePeriodoPagado(snap.data()?.fechaPago),
     }, { merge: true });
+    // Si la suscripción muere sin haberse cobrado nunca, el uso del código
+    // que se apartó al abrir el checkout se devuelve.
+    await liberarPromoSiNoSeCobro(uid);
   } else if (sub.status === "paused") {
     // Pausada casi siempre significa un cobro que falló: aquí no hay periodo
     // pagado que respetar.
@@ -1042,6 +1051,22 @@ async function aplicarEstadoSuscripcion(uid, sub) {
 // repita: la transacción marca la intención como consumida.
 // El uso del código ya se apartó al crear la suscripción; aquí solo se deja
 // constancia de que ese apartado terminó en un pago confirmado.
+// Devuelve a la bolsa el uso de un código que se apartó al abrir el
+// checkout y nunca terminó en cobro. Antes quedaba quemado para siempre:
+// abrir el checkout y cerrar la pestaña consumía un cupón limitado.
+async function liberarPromoSiNoSeCobro(uid) {
+  const ref = db.collection("suscripcionesPendientes").doc(uid);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const d = snap.data();
+    if (!snap.exists || !d?.promoId || d.promoConsumido || d.promoLiberado) return;
+    tx.update(db.collection("promos").doc(d.promoId), {
+      usosActuales: admin.firestore.FieldValue.increment(-1),
+    });
+    tx.update(ref, { promoLiberado: true });
+  });
+}
+
 async function consumirPromo(uid) {
   const ref = db.collection("suscripcionesPendientes").doc(uid);
   await db.runTransaction(async (tx) => {
@@ -1198,7 +1223,7 @@ exports.avisarCotizacionDecidida = onDocumentUpdated("cotizaciones/{id}", async 
 // dictado del PERFIL. Es justo la función que más falta le hace a quien
 // termina un trabajo con las manos sucias.
 // ═══════════════════════════════════════════════════════════════
-exports.transcribirTrabajo = onCall({ secrets: [GEMINI_KEY] }, async (request) => {
+exports.transcribirTrabajo = onCall({ secrets: [GEMINI_KEY], ...APPCHECK }, async (request) => {
   const uid = requireAuth(request);
   await checkRateLimit(uid, "transcribirTrabajo", 20);
   const { audioBase64, mimeType } = request.data ?? {};

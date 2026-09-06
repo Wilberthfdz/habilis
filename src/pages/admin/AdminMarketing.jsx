@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { db } from "../../lib/firebase.js";
-import { collection, getDocs, addDoc, serverTimestamp, query, orderBy, limit } from "firebase/firestore";
+import { where, collection, getDocs, addDoc, serverTimestamp, query, orderBy, limit } from "firebase/firestore";
 
 const CARD = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 14, padding: "16px 18px" };
 const inp = { border: "1px solid #E2E8F0", borderRadius: 8, padding: "8px 10px", fontSize: 13 };
@@ -26,8 +26,13 @@ function NotificacionMasiva() {
   const [result, setResult] = useState("");
 
   const cargarHistorial = async () => {
-    const snap = await getDocs(query(collection(db, "notificaciones"), orderBy("fecha", "desc"), limit(20)));
-    setHistorial(snap.docs.map((d) => d.data()).filter((n) => n.tipo === "marketing"));
+    // Antes traía las últimas 20 notificaciones DE CUALQUIER TIPO y luego
+    // filtraba: con tráfico real el historial salía casi siempre vacío.
+    try {
+      const snap = await getDocs(query(collection(db, "notificaciones"),
+        where("tipo", "==", "marketing"), orderBy("fecha", "desc"), limit(20)));
+      setHistorial(snap.docs.map((d) => d.data()));
+    } catch (e) { console.error(e); setHistorial([]); }
   };
   useEffect(() => { cargarHistorial(); }, []);
 
