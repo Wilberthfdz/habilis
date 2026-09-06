@@ -5,11 +5,13 @@ import { db } from "../lib/firebase.js";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 const TIPOS   = ["Instalación","Reparación","Mantenimiento","Diagnóstico","Otro"];
+// "Validado" era elegible por el propio técnico, y el perfil y el panel lo
+// tratan como señal de confianza: cualquiera se auto-validaba. Ese estado lo
+// otorgan los clientes al validar el trabajo, no quien lo publica.
 const ESTADOS = [
   { id:"pendiente", label:"Pendiente" },
   { id:"proceso",   label:"En proceso" },
   { id:"terminado", label:"Terminado" },
-  { id:"validado",  label:"Validado ✓" },
 ];
 
 const inp = { width:"100%", border:"1px solid #E2E8F0", borderRadius:"10px",

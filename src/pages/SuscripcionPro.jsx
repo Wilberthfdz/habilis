@@ -2,15 +2,9 @@ import { useState, useEffect } from "react";
 import Nav from "../components/Nav.jsx";
 import { obtenerTecnico, obtenerFacturas } from "../lib/firebase.js";
 import { iniciarSuscripcionPro, solicitarFactura, cancelarSuscripcionPro } from "../lib/gemini.js";
+import { PLAN_PRO as BENEFICIOS } from "../lib/planes.js";
 
-const BENEFICIOS = [
-  "Prioridad en los resultados de búsqueda",
-  "Insignia Pro en tu perfil y en las búsquedas",
-  "Trabajos documentados ilimitados",
-  "Herramientas de IA completas",
-  "Cotizaciones profesionales",
-  "Habilis Care y soporte prioritario",
-];
+
 
 const REGIMENES = [
   ["612", "Personas Físicas con Actividades Empresariales"],

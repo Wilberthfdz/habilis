@@ -16,6 +16,8 @@ export default function MiRed({ nav, user }) {
   const [cargandoAI,  setCargandoAI]  = useState(false);
   const [refiriendo,  setRefiriendo]  = useState(null);
   const [referidoOk,  setReferidoOk]  = useState(null);
+  const [avisoPro,    setAvisoPro]    = useState(false);
+  const [error,       setError]       = useState("");
 
   useEffect(() => {
     if (!user) { nav("login"); return; }
@@ -49,6 +51,14 @@ export default function MiRed({ nav, user }) {
         sug.sugeridos?.some(nombre => t.nombre?.toLowerCase().includes(nombre.toLowerCase()))
       ).slice(0, 5);
       setSugeridos(sugObjs);
+      setAvisoPro(false);
+    } catch (e) {
+      // Sugerir colaboradores es del Plan Pro. Antes el error se tragaba y
+      // se mostraban los tres primeros técnicos de la lista bajo el rótulo
+      // "✨ Gemini sugiere estos colaboradores para ti".
+      if (e?.code === "functions/permission-denied") setAvisoPro(true);
+      else console.error(e);
+      setSugeridos([]);
     } finally { setCargandoAI(false); }
   };
 
@@ -87,7 +97,7 @@ export default function MiRed({ nav, user }) {
                         flexWrap:"wrap", gap:"12px" }}>
             <div>
               <p style={{ fontSize:"11px", fontWeight:700, color:"#F97316", textTransform:"uppercase",
-                          letterSpacing:"0.1em", marginBottom:"6px" }}>🤝 Habilis Network</p>
+                          letterSpacing:"0.1em", marginBottom:"6px" }}>🤝 Mi red de colaboradores</p>
               <h1 style={{ fontSize:"clamp(20px,4vw,32px)", fontWeight:900, color:"#fff", marginBottom:"4px" }}>
                 Mi red de colaboradores
               </h1>
@@ -115,6 +125,24 @@ export default function MiRed({ nav, user }) {
           </div>
         ) : (
           <>
+            {avisoPro && (
+              <div style={{ background:"#FFF7ED", border:"1px solid rgba(249,115,22,0.25)",
+                            borderRadius:"14px", padding:"16px 18px", marginBottom:"20px" }}>
+                <p style={{ fontWeight:700, fontSize:"13px", color:"#EA580C", marginBottom:"6px" }}>
+                  Las sugerencias con IA son del Plan Pro
+                </p>
+                <p style={{ fontSize:"13px", color:"#7C2D12", lineHeight:1.6, marginBottom:"12px" }}>
+                  Armar tu red y referir trabajos es gratis. Con Pro, la IA te propone
+                  con qué técnicos te conviene colaborar según tu oficio y tu ciudad.
+                </p>
+                <button onClick={() => nav("suscripcionPro")}
+                  style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"9px",
+                           padding:"9px 18px", fontWeight:700, fontSize:"13px", cursor:"pointer" }}>
+                  Ver Plan Pro →
+                </button>
+              </div>
+            )}
+
             {/* Gemini suggestions */}
             {sugeridos.length > 0 && (
               <div style={{ background:"#FFF7ED", border:"1px solid rgba(249,115,22,0.25)",

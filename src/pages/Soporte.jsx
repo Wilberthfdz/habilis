@@ -1,17 +1,18 @@
 import { useState, useRef, useEffect } from "react";
 import Nav from "../components/Nav.jsx";
+import { PRECIO_PRO } from "../lib/planes.js";
 import Logo from "../components/Logo.jsx";
 import { soporteIA } from "../lib/gemini.js";
 
 const FAQ = [
-  ["¿Cuánto cuesta Habilis?", "Buscar y contactar técnicos es gratis, siempre. Para técnicos hay plan Gratis (perfil + 5 trabajos documentados) y plan Pro de $100 MXN/mes con IVA incluido: prioridad en los resultados de búsqueda, insignia Pro, herramientas de IA, cotizaciones y Habilis Care."],
+  ["¿Cuánto cuesta Habilis?", `Buscar y contactar técnicos es gratis, siempre. Para técnicos hay plan Gratis (perfil, 5 trabajos documentados, cotizaciones y Habilis Care) y plan Pro de $${PRECIO_PRO} MXN/mes con IVA incluido, que quita el tope de trabajos, te da prioridad en las búsquedas, la insignia Pro y todas las herramientas de inteligencia artificial.`],
   ["¿Habilis cobra comisión por trabajo?", "No. Habilis no intermedia pagos ni cobra comisión: el precio, la fecha y la garantía los acuerdan técnico y cliente directamente. Solo cobramos la suscripción Pro por visibilidad y herramientas."],
   ["¿Habilis se hace responsable de los trabajos?", "No. Habilis es una plataforma de intermediación tecnológica: conecta a técnicos independientes con clientes, pero no presta los servicios ni emplea a los técnicos, y no responde por el trabajo realizado. Cada técnico responde por su propio servicio. La plataforma te ayuda a elegir bien con historial documentado, validaciones y moderación con IA."],
-  ["¿Cómo cancelo mi plan Pro?", "Cuando quieras, desde Mercado Pago (donde se gestiona la suscripción). Conservas los beneficios hasta el fin del periodo pagado; no hay reembolsos por periodos parciales."],
-  ["¿Puedo pedir factura (CFDI)?", "Sí. Los suscriptores Pro pueden solicitar su CFDI desde el panel proporcionando RFC, razón social, código postal, régimen fiscal y uso de CFDI."],
+  ["¿Cómo cancelo mi plan Pro?", "Cuando quieras, con el botón Cancelar suscripción de tu página /pro, o desde tu cuenta de Mercado Pago. No se genera ningún cobro posterior y conservas los beneficios hasta el fin del periodo ya pagado; no hay reembolsos por periodos parciales."],
+  ["¿Puedo pedir factura (CFDI)?", "Sí. Los suscriptores Pro la solicitan en su página /pro con RFC, razón social, código postal, régimen fiscal y uso de CFDI. Ahí mismo queda el historial de las facturas emitidas."],
   ["Olvidé mi contraseña, ¿qué hago?", "En la pantalla de iniciar sesión hay una opción para recuperarla: te enviamos un enlace de restablecimiento a tu correo."],
   ["¿Cómo verifican a los técnicos?", "Cada trabajo publicado pasa por moderación asistida por IA y puede recibir validaciones de clientes reales. Para oficios regulados (gas, media tensión), pide siempre la certificación oficial: Habilis muestra lo que el técnico declara."],
-  ["Quiero borrar mi cuenta o mis datos", "Escríbenos a habilisempresa@gmail.com desde el correo de tu cuenta y atenderemos tu solicitud conforme al Aviso de Privacidad (derechos ARCO)."],
+  ["Quiero borrar mi cuenta o mis datos", "Puedes hacerlo tú mismo: Mi panel → Editar perfil → Eliminar mi cuenta. Se borran tu perfil, tus trabajos, cotizaciones y equipos, y si tienes suscripción activa la cancelamos antes. Los cobros y facturas se conservan cinco años sin tus datos personales porque la ley fiscal lo exige. Para cualquier otro derecho ARCO, escríbenos a habilisempresa@gmail.com."],
   ["Encontré contenido falso o inapropiado", "Repórtalo a habilisempresa@gmail.com con el enlace del perfil o trabajo. La moderación puede ocultar o retirar contenido y suspender cuentas reincidentes."],
 ];
 

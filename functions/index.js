@@ -1109,6 +1109,103 @@ exports.webhookMP = onRequest({ secrets: [MP_TOKEN, MP_WEBHOOK_SECRET] }, async 
 });
 
 // ═══════════════════════════════════════════════════════════════
+// 🗑️ BORRAR MI CUENTA
+// Apple rechaza (guía 5.1.1 v) cualquier app con registro que no permita
+// borrar la cuenta DESDE DENTRO, y Google Play exige lo mismo desde 2024.
+// Aquí sólo se podía pedir por correo. Además es el derecho de cancelación
+// de la LFPDPPP, que hoy se atendía a mano.
+//
+// Se borra lo que es del usuario y se ANONIMIZA lo que no puede
+// desaparecer: los cobros y las facturas tienen que conservarse por
+// obligación fiscal, y los mensajes de un chat son también de la otra parte.
+// ═══════════════════════════════════════════════════════════════
+async function borrarPorLotes(consulta) {
+  let borrados = 0;
+  while (true) {
+    const snap = await consulta.limit(300).get();
+    if (snap.empty) break;
+    const lote = db.batch();
+    snap.docs.forEach((d) => lote.delete(d.ref));
+    await lote.commit();
+    borrados += snap.size;
+    if (snap.size < 300) break;
+  }
+  return borrados;
+}
+
+exports.eliminarMiCuenta = onCall({ secrets: [MP_TOKEN], timeoutSeconds: 300 }, async (request) => {
+  const uid = requireAuth(request);
+  await checkRateLimit(uid, "eliminarCuenta", 5);
+
+  // La confirmación escrita evita el borrado por un toque accidental y es
+  // lo que las tiendas esperan ver en el flujo.
+  if (request.data?.confirmacion !== "ELIMINAR") {
+    throw new HttpsError("invalid-argument", "Falta la confirmación para eliminar la cuenta.");
+  }
+
+  const perfil = await db.collection("tecnicos").doc(uid).get();
+  const datos = perfil.data() || {};
+
+  // Primero se corta el cobro: borrar la cuenta dejando viva la suscripción
+  // sería seguir cobrando a alguien que ya no existe en la plataforma.
+  if (datos.suscripcionId) {
+    try {
+      await fetch(`https://api.mercadopago.com/preapproval/${datos.suscripcionId}`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${MP_TOKEN.value()}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "cancelled" }),
+      });
+    } catch (e) {
+      console.error(`No se pudo cancelar la suscripción de ${uid} al borrar su cuenta:`, e.message);
+      throw new HttpsError("failed-precondition",
+        "No pudimos cancelar tu suscripción activa. Cancélala primero desde tu panel y vuelve a intentarlo.");
+    }
+  }
+
+  // Lo que es enteramente suyo desaparece.
+  await borrarPorLotes(db.collection("trabajos").where("tecnicoId", "==", uid));
+  await borrarPorLotes(db.collection("activos").where("userId", "==", uid));
+  await borrarPorLotes(db.collection("servicios").where("userId", "==", uid));
+  await borrarPorLotes(db.collection("cotizaciones").where("tecnicoId", "==", uid));
+  await borrarPorLotes(db.collection("clientes_tecnico").where("tecnicoId", "==", uid));
+  await borrarPorLotes(db.collection("productos_tecnico").where("tecnicoId", "==", uid));
+  await borrarPorLotes(db.collection("solicitudes").where("userId", "==", uid));
+  await borrarPorLotes(db.collection("notificaciones").where("userId", "==", uid));
+  await borrarPorLotes(db.collection("validaciones").where("validadorId", "==", uid));
+  await db.collection("cotizaciones_folio").doc(uid).delete().catch(() => {});
+  await db.collection("suscripcionesPendientes").doc(uid).delete().catch(() => {});
+
+  // Las conversaciones son de dos personas: se anonimiza al que se va en
+  // lugar de borrar el hilo de la otra parte.
+  for (const campo of ["tecnicoId", "clienteId"]) {
+    const chats = await db.collection("solicitudes_chat").where(campo, "==", uid).get();
+    const lote = db.batch();
+    chats.docs.forEach((d) => lote.update(d.ref, {
+      [campo === "tecnicoId" ? "tecnicoNombre" : "clienteNombre"]: "Usuario eliminado",
+      cuentaEliminada: true,
+    }));
+    if (!chats.empty) await lote.commit();
+  }
+
+  // Cobros y facturas se conservan por obligación fiscal (CFF art. 30: cinco
+  // años), pero desligados de la persona.
+  for (const col of ["pagos", "facturas"]) {
+    const docs = await db.collection(col).where("userId", "==", uid).get();
+    const lote = db.batch();
+    docs.docs.forEach((d) => lote.update(d.ref, { userId: `eliminado_${uid.slice(0, 6)}`, cuentaEliminada: true }));
+    if (!docs.empty) await lote.commit();
+  }
+
+  await db.collection("tecnicos").doc(uid).delete().catch(() => {});
+  await logDecision("cuenta", "eliminó su cuenta", uid, "solicitud del propio usuario");
+
+  // Lo último: sin la cuenta de acceso, nada de lo anterior sería reversible
+  // por el usuario aunque quedara algo suelto.
+  await admin.auth().deleteUser(uid);
+  return { ok: true };
+});
+
+// ═══════════════════════════════════════════════════════════════
 // FACTURAPI — CFDI para suscriptores Pro
 // ═══════════════════════════════════════════════════════════════
 exports.emitirFactura = onCall({ secrets: [FACTURAPI_KEY] }, async (request) => {

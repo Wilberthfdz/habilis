@@ -1,4 +1,5 @@
 import Logo from "../components/Logo.jsx";
+import Nav from "../components/Nav.jsx";
 
 // Aviso de privacidad conforme a la LFPDPPP (México).
 // La SAPI está en proceso de constitución: al quedar inscrita, quitar la
@@ -9,12 +10,10 @@ const H2 = { fontSize:"17px", fontWeight:800, color:"#0F172A", margin:"28px 0 10
 const P  = { fontSize:"14px", color:"#475569", lineHeight:1.75, marginBottom:"10px" };
 const LI = { fontSize:"14px", color:"#475569", lineHeight:1.75, marginBottom:"6px" };
 
-export default function Privacidad({ nav }) {
+export default function Privacidad({ nav, user }) {
   return (
     <div style={{ minHeight:"100vh", background:"#F1F5F9" }}>
-      <div style={{ padding:"18px 24px", background:"#0F172A" }}>
-        <Logo size={28} onClick={() => nav("landing")} />
-      </div>
+      <div style={{ background:"#0F172A" }}><Nav nav={nav} user={user} /></div>
 
       <div style={{ maxWidth:"760px", margin:"0 auto", padding:"40px 20px 80px" }}>
         <div style={{ background:"#fff", border:"1px solid #E2E8F0", borderRadius:"16px",
@@ -76,7 +75,10 @@ export default function Privacidad({ nav }) {
           <h2 style={H2}>6. Derechos ARCO</h2>
           <p style={P}>
             Puedes ejercer tus derechos de Acceso, Rectificación, Cancelación y Oposición, así como
-            revocar tu consentimiento, escribiendo a <strong>habilisempresa@gmail.com</strong> con el
+            revocar tu consentimiento. <strong>Puedes eliminar tu cuenta y tus datos tú mismo,
+            en cualquier momento, desde Mi panel → Editar perfil → Eliminar mi cuenta</strong>, sin
+            pedírselo a nadie. Para el resto de los derechos, escríbenos a
+            <strong> habilisempresa@gmail.com</strong> con el
             asunto "Derechos ARCO". Responderemos en un máximo de 20 días hábiles. También puedes
             editar o eliminar tu perfil directamente desde tu panel.
           </p>

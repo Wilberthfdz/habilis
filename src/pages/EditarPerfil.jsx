@@ -3,6 +3,7 @@ import Nav from "../components/Nav.jsx";
 import Avatar from "../components/Avatar.jsx";
 import SelectorOficio from "../components/SelectorOficio.jsx";
 import { obtenerTecnico, actualizarTecnico, subirFotoPerfil, cerrarSesion } from "../lib/firebase.js";
+import { eliminarMiCuenta } from "../lib/gemini.js";
 
 // El botón "Editar perfil" del panel mostraba un alert de "próximamente":
 // el técnico no tenía forma de corregir su ciudad, su oficio ni su bio
@@ -35,6 +36,9 @@ export default function EditarPerfil({ nav, user }) {
   const [subiendoFoto, setSubiendoFoto] = useState(false);
   const [error, setError] = useState("");
   const [ok, setOk] = useState(false);
+  const [pidiendoBaja, setPidiendoBaja] = useState(false);
+  const [textoBaja,    setTextoBaja]    = useState("");
+  const [borrando,     setBorrando]     = useState(false);
   const fileRef = useRef(null);
 
   const [form, setForm] = useState({
@@ -240,6 +244,68 @@ export default function EditarPerfil({ nav, user }) {
                          cursor:"pointer", opacity: guardando ? 0.7 : 1 }}>
                 {guardando ? "Guardando…" : "Guardar cambios"}
               </button>
+            </div>
+
+            {/* Eliminar la cuenta. Es obligatorio poder hacerlo desde dentro
+                de la app —Apple y Google rechazan lo contrario— y es el
+                derecho de cancelación del aviso de privacidad. Antes solo se
+                atendía escribiendo un correo. */}
+            <div style={{ borderTop:"1px solid #FEE2E2", marginTop:"6px", paddingTop:"18px" }}>
+              {!pidiendoBaja ? (
+                <button onClick={() => { setPidiendoBaja(true); setError(""); }}
+                  style={{ background:"none", border:"none", color:"#DC2626", fontSize:"13px",
+                           fontWeight:600, cursor:"pointer", padding:0, textDecoration:"underline" }}>
+                  Eliminar mi cuenta
+                </button>
+              ) : (
+                <div style={{ background:"#FEF2F2", border:"1px solid #FECACA",
+                              borderRadius:"12px", padding:"16px 18px" }}>
+                  <p style={{ fontWeight:800, fontSize:"14px", color:"#B91C1C", marginBottom:"8px" }}>
+                    Esto no se puede deshacer
+                  </p>
+                  <p style={{ fontSize:"13px", color:"#7F1D1D", lineHeight:1.65, marginBottom:"6px" }}>
+                    Se borran tu perfil, tus trabajos documentados, tus cotizaciones, tus
+                    equipos de Habilis Care y tus clientes guardados. Si tienes una
+                    suscripción activa, la cancelamos antes de borrar.
+                  </p>
+                  <p style={{ fontSize:"12px", color:"#991B1B", lineHeight:1.6, marginBottom:"14px" }}>
+                    Tus cobros y facturas se conservan cinco años sin tus datos personales,
+                    porque la ley fiscal nos obliga. Tus conversaciones siguen existiendo
+                    para la otra persona, ya sin tu nombre.
+                  </p>
+                  <label style={{ ...lbl, color:"#991B1B" }}>
+                    Escribe ELIMINAR para confirmar
+                  </label>
+                  <input style={{ ...inp, borderColor:"#FECACA" }} value={textoBaja}
+                    onChange={e => setTextoBaja(e.target.value)} placeholder="ELIMINAR" />
+                  <div style={{ display:"flex", gap:"10px", marginTop:"12px" }}>
+                    <button onClick={() => { setPidiendoBaja(false); setTextoBaja(""); }}
+                      style={{ flex:1, background:"#fff", color:"#0F172A", border:"1px solid #E2E8F0",
+                               borderRadius:"10px", padding:"11px", fontWeight:600, cursor:"pointer" }}>
+                      Mejor no
+                    </button>
+                    <button
+                      disabled={textoBaja.trim().toUpperCase() !== "ELIMINAR" || borrando}
+                      onClick={async () => {
+                        setBorrando(true); setError("");
+                        try {
+                          await eliminarMiCuenta();
+                          await cerrarSesion().catch(() => {});
+                          nav("landing");
+                        } catch (e) {
+                          console.error(e);
+                          setError(e?.message || "No se pudo eliminar la cuenta. Intenta de nuevo o escríbenos.");
+                          setBorrando(false);
+                        }
+                      }}
+                      style={{ flex:1, background:"#DC2626", color:"#fff", border:"none",
+                               borderRadius:"10px", padding:"11px", fontWeight:700, cursor:"pointer",
+                               opacity: (textoBaja.trim().toUpperCase() !== "ELIMINAR" || borrando) ? 0.5 : 1 }}>
+                      {borrando ? "Eliminando…" : "Eliminar definitivamente"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -1,32 +1,13 @@
 import Logo from "../components/Logo.jsx";
 import Nav from "../components/Nav.jsx";
+import { PLAN_GRATIS as FREE, PLAN_PRO, PRECIO_PRO } from "../lib/planes.js";
 
-// Cada línea de esta lista es una promesa que la plataforma tiene que poder
-// cumplir hoy. "Habilis Care" figuraba como beneficio Pro cuando es gratuito
-// para cualquiera, y "soporte prioritario" no tenía ningún mecanismo detrás.
-const FREE = [
-  [true,  "Perfil profesional básico"],
-  [true,  "Aparece en resultados de búsqueda"],
-  [true,  "Hasta 5 trabajos documentados"],
-  [true,  "Feed público"],
-  [true,  "Cotizaciones y Habilis Care"],
-  [false, "Sin prioridad en búsquedas"],
-  [false, "Sin herramientas de IA"],
-];
-
-const PRO = [
-  [true, "Prioridad en los resultados de búsqueda"],
-  [true, "Insignia Pro visible en tu perfil y en los resultados"],
-  [true, "Trabajos ilimitados documentados"],
-  [true, "Cotizaciones redactadas con IA a partir del problema del cliente"],
-  [true, "Respuestas y resúmenes automáticos en el chat"],
-  [true, "Consejos de mantenimiento con IA en Habilis Care"],
-  [true, "Análisis de tu mercado y sugerencias de colaboradores"],
-];
+// La lista del Pro se dibuja con el mismo formato que la del gratuito.
+const PRO = PLAN_PRO.map(t => [true, t]);
 
 const FAQ = [
   ["¿Puedo cancelar en cualquier momento?","Sí. Sin contratos de permanencia. Cancelas desde tu página de suscripción cuando quieras, y conservas los beneficios hasta el fin del mes pagado."],
-  ["¿Cómo se realiza el cobro?","Cobro mensual de $100 MXN por suscripción a través de Mercado Pago, con tarjeta de débito o crédito. Puedes solicitar factura CFDI con tus datos fiscales."],
+  ["¿Cómo se realiza el cobro?",`Cobro mensual de $${PRECIO_PRO} MXN por suscripción a través de Mercado Pago, con tarjeta de débito o crédito. Puedes solicitar factura CFDI con tus datos fiscales.`],
   ["¿El plan Gratis es realmente gratis?","Sí, siempre. Los clientes también pueden buscar y contactar técnicos sin costo alguno."],
   ["¿Qué cambia exactamente con Pro?","Documentas trabajos sin tope, apareces antes en los resultados, llevas la insignia Pro y se te abren las herramientas de inteligencia artificial. Crear cotizaciones y usar Habilis Care no cuesta: lo que agrega Pro es que la IA te ayude a redactarlas y a interpretar tus equipos."],
 ];
@@ -100,7 +81,7 @@ export default function Precios({ nav, user }) {
             <p style={{ fontSize:"11px", fontWeight:700, color:"rgba(249,115,22,0.8)", textTransform:"uppercase",
                         letterSpacing:"0.1em", marginBottom:"10px" }}>Plan Pro</p>
             <div style={{ display:"flex", alignItems:"flex-end", gap:"4px", marginBottom:"6px" }}>
-              <span style={{ fontSize:"44px", fontWeight:900, color:"#fff" }}>$100</span>
+              <span style={{ fontSize:"44px", fontWeight:900, color:"#fff" }}>${PRECIO_PRO}</span>
               <span style={{ fontSize:"15px", color:"rgba(255,255,255,0.4)", marginBottom:"8px" }}>MXN/mes</span>
             </div>
             <p style={{ color:"rgba(255,255,255,0.45)", fontSize:"13px", marginBottom:"28px" }}>

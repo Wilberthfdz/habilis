@@ -4,6 +4,7 @@
 
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { app } from "./firebase.js";
+import { RESUMEN_PRO, PLAN_PRO } from "./planes.js";
 
 const fns   = getFunctions(app, "us-central1");
 const proxy = httpsCallable(fns, "geminiProxy");
@@ -125,7 +126,12 @@ export async function sugerirTecnicos(solicitud, tecnicos) {
   try {
     const raw = await callGemini(prompt, 0.2, "matching");
     return JSON.parse(raw.replace(/```json|```/g, "").trim());
-  } catch {
+  } catch (e) {
+    // Reservado al Plan Pro: el backend responde permission-denied. El catch
+    // genérico devolvía un resultado de relleno que la interfaz presentaba
+    // como "✨ Gemini sugiere…", así que el usuario gratuito ni sabía que
+    // existía la herramienta ni que lo que veía no era de la IA.
+    if (e?.code === "functions/permission-denied") throw e;
     return { recomendados: tecnicos.slice(0, 3).map(t => t.id), razon: "Top calificados" };
   }
 }
@@ -162,7 +168,12 @@ Solicitud original: "${descripcionOriginal}"
 Conversación:\n${chatText}
 Responde SOLO con el resumen en español.`;
   try { return await callGemini(prompt, 0.4, "resumen"); }
-  catch { return "Trabajo completado satisfactoriamente."; }
+  catch (e) {
+    // El resumen es del Plan Pro; para el resto se cierra el trabajo sin él,
+    // que es lo que ya hace la pantalla del chat.
+    if (e?.code === "functions/permission-denied") throw e;
+    return "Trabajo completado satisfactoriamente.";
+  }
 }
 
 // ── 8. SUGERIR COLABORADORES ─────────────────────────────────────────────
@@ -175,7 +186,12 @@ Responde SOLO JSON: {"sugeridos":["nombre1","nombre2","nombre3"],"razon":"explic
   try {
     const raw = await callGemini(prompt, 0.3, "colaboradores");
     return JSON.parse(raw.replace(/```json|```/g,"").trim());
-  } catch {
+  } catch (e) {
+    // Reservado al Plan Pro: el backend responde permission-denied. El catch
+    // genérico devolvía un resultado de relleno que la interfaz presentaba
+    // como "✨ Gemini sugiere…", así que el usuario gratuito ni sabía que
+    // existía la herramienta ni que lo que veía no era de la IA.
+    if (e?.code === "functions/permission-denied") throw e;
     return { sugeridos: tecnicos.slice(0,3).map(t => t.nombre), razon:"Técnicos complementarios" };
   }
 }
@@ -202,6 +218,15 @@ export async function solicitarFactura(datosFiscales) {
   return result.data;
 }
 
+// ── ELIMINAR LA CUENTA ─────────────────────────────────────────────────────
+// Requisito de App Store (5.1.1 v) y de Google Play, y derecho de
+// cancelación de la LFPDPPP. Antes solo se atendía por correo.
+const eliminarCuentaProxy = httpsCallable(fns, "eliminarMiCuenta");
+export async function eliminarMiCuenta() {
+  const result = await eliminarCuentaProxy({ confirmacion: "ELIMINAR" });
+  return result.data;
+}
+
 // ── 12. SOPORTE POR IA ─────────────────────────────────────────────────────
 // El contexto de producto vive en el prompt para que el asistente conteste
 // solo sobre Habilis; el historial se limita a los últimos turnos para no
@@ -216,7 +241,8 @@ DATOS DEL PRODUCTO (tu única fuente de verdad):
 - Habilis es una bolsa de trabajo especializada: el técnico crea su perfil, documenta trabajos con fotos, y los clientes lo encuentran y lo contactan directo. Habilis NO cobra comisión por trabajo ni intermedia pagos entre técnico y cliente.
 - Habilis es solo plataforma de intermediación tecnológica: no presta los servicios, no emplea a los técnicos y NO se hace responsable del trabajo realizado — cada técnico independiente responde por su servicio (los detalles están en /terminos).
 - Plan Gratis: perfil, aparecer en búsquedas, hasta 5 trabajos documentados.
-- Plan Pro: $100 MXN/mes (IVA incluido), suscripción por Mercado Pago. Incluye prioridad en los resultados de búsqueda, insignia Pro, trabajos ilimitados, herramientas de IA, cotizaciones, Habilis Care y soporte prioritario. Se contrata en la página /pro (acepta códigos de descuento). Se cancela desde esa misma página /pro cuando el técnico quiera, conservando los beneficios hasta el fin del mes pagado; la factura CFDI también se solicita en /pro, y ahí queda el historial de las emitidas.
+- Plan Pro: ${RESUMEN_PRO} Incluye: ${PLAN_PRO.join("; ")}. Se contrata en la página /pro (acepta códigos de descuento) y ahí mismo se cancela, se pide la factura CFDI y queda el historial de las emitidas.
+- NO existe "soporte prioritario": el soporte por correo es igual para todos y responde en un máximo de 2 días hábiles.
 - Funciones: búsqueda de técnicos por oficio y ciudad, feed de trabajos, chat, cotizaciones profesionales, Habilis Care (mantenimiento preventivo de equipos), registro de trabajos por voz, red de colaboradores.
 - Registro: con correo, Google o Apple. Recuperación de contraseña desde la pantalla de inicio de sesión.
 - Contacto humano: habilisempresa@gmail.com

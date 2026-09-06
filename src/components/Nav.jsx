@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Logo from "./Logo.jsx";
 import NotifBell from "./NotifBell.jsx";
+import { cerrarSesion } from "../lib/firebase.js";
 
 const aboutLinks = [
   { label:"Quiénes somos",          route:"quienesSomos" },
@@ -12,6 +13,10 @@ const aboutLinks = [
 ];
 
 export default function Nav({ nav, user, onLogout }) {
+  // "Salir" solo aparecía si la página pasaba onLogout, y solo dos lo hacían:
+  // en Feed, Buscar, Care, Cotizaciones, Mi red, Perfil, Chat y Soporte el
+  // usuario no tenía forma de cerrar sesión. Ahora Nav sabe hacerlo solo.
+  const salir = onLogout || (async () => { await cerrarSesion(); nav("landing"); });
   const [open, setOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
 
@@ -20,7 +25,7 @@ export default function Nav({ nav, user, onLogout }) {
     { label:"Feed",        route:"feed" },
     { label:"Precios",     route:"precios" },
     ...(user ? [
-      { label:"Care",      route:"habilisCare" },
+      { label:"Habilis Care",      route:"habilisCare" },
       { label:"Cotizaciones", route:"cotizaciones" },
     ] : []),
     ...(user?.email === "wilberthfdz@gmail.com" ? [
@@ -145,11 +150,9 @@ export default function Nav({ nav, user, onLogout }) {
           <>
             <NotifBell nav={nav} user={user} />
             <button className="nav-btn-panel" onClick={() => nav("panel")}>Mi Panel</button>
-            {onLogout && (
-              <button className="nav-btn-logout" onClick={onLogout} style={{ marginLeft:"6px" }}>
-                Salir
-              </button>
-            )}
+            <button className="nav-btn-logout" onClick={salir} style={{ marginLeft:"6px" }}>
+              Salir
+            </button>
           </>
         ) : (
           <>

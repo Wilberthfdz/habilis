@@ -94,7 +94,14 @@ export default function PanelTecnico({ nav, user }) {
     if (!tecnico) return;
     setAiLoading(true);
     try { setAiResp(await sugerirRespuesta(solicitudDemo, tecnico)); }
-    catch { setAiResp("Error al conectar con Gemini. Verifica tu API key en config.js."); }
+    catch (e) {
+      // Para el plan gratuito el backend responde permission-denied: esta
+      // herramienta es del Pro. Antes se le mostraba "Verifica tu API key en
+      // config.js", un mensaje de desarrollador que además no era el motivo.
+      setAiResp(e?.code === "functions/permission-denied"
+        ? "Esta herramienta es del Plan Pro. Actívalo desde tu página de suscripción para que la IA redacte tus respuestas."
+        : "No pudimos generar la respuesta en este momento. Intenta de nuevo en unos minutos.");
+    }
     finally { setAiLoading(false); }
   };
 
@@ -103,7 +110,10 @@ export default function PanelTecnico({ nav, user }) {
     trabajos:    trabajos.length,
     completados: trabajos.filter(t => ["terminado","validado"].includes(t.estado)).length,
     pendientes:  trabajos.filter(t => ["pendiente","aceptado","proceso"].includes(t.estado)).length,
-    ingresos:    trabajos.filter(t => t.estado === "validado").reduce((s,t) => s + (t.costoTotal||0), 0),
+    // Sumaba solo los "validado", un estado que el técnico no controla: el
+    // panel mostraba $0 aunque tuviera decenas de trabajos terminados.
+    ingresos:    trabajos.filter(t => ["terminado","validado"].includes(t.estado))
+                         .reduce((s,t) => s + (Number(t.costoTotal)||0), 0),
   };
 
   const TAB = id => ({
@@ -134,7 +144,7 @@ export default function PanelTecnico({ nav, user }) {
         </p>
         {/* Mandaba a `registro`, que intenta crear otra cuenta con un correo
             que ya existe: el usuario quedaba atrapado sin salida. */}
-        <button style={{ ...BTN, width:"100%", marginBottom:"10px" }} onClick={() => nav("completarPerfil")}>
+        <button style={{ ...BTN, width:"100%", marginBottom:"10px" }} onClick={() => nav("editarPerfil")}>
           Completar mi perfil
         </button>
         <button style={{ background:"none", border:"none", color:"#94A3B8", fontSize:"13px", cursor:"pointer" }} onClick={logout}>
@@ -243,7 +253,7 @@ export default function PanelTecnico({ nav, user }) {
                           borderRadius:"10px", padding:"10px 16px", display:"flex",
                           justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:"10px" }}>
               <p style={{ fontSize:"13px", color:"rgba(255,255,255,0.7)" }}>
-                Actualiza a <b>Plan Pro por $100 MXN/mes</b> → apareces primero + IA completa + sin anuncios
+                Actualiza a <b>Plan Pro por $100 MXN/mes</b> → apareces primero + IA completa + sin tope de trabajos
               </p>
               <button onClick={() => nav("suscripcionPro")}
                 style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"8px",
@@ -263,7 +273,7 @@ export default function PanelTecnico({ nav, user }) {
           {[["inicio","Inicio"],["trabajos","Mis trabajos"],["ia","✨ IA"],["config","Configurar"]].map(([id,label]) => (
             <button key={id} style={TAB(id)} onClick={() => setTab(id)}>{label}</button>
           ))}
-          <button style={{ ...TAB(tab==="solicitudes"), position:"relative" }} onClick={() => setTab("solicitudes")}>
+          <button style={{ ...TAB("solicitudes"), position:"relative" }} onClick={() => setTab("solicitudes")}>
             Solicitudes
             {solicitudesPend.length > 0 && (
               <span style={{ position:"absolute", top:"3px", right:"3px", background:"#EF4444", color:"#fff",
@@ -273,7 +283,7 @@ export default function PanelTecnico({ nav, user }) {
               </span>
             )}
           </button>
-          <button style={TAB(tab==="miRed")} onClick={() => setTab("miRed")}>
+          <button style={TAB("miRed")} onClick={() => setTab("miRed")}>
             🤝 Mi red {redCount > 0 && `(${redCount})`}
           </button>
         </div>
@@ -486,7 +496,7 @@ export default function PanelTecnico({ nav, user }) {
                 "Análisis de mercado": se anunciaba, con etiqueta PRO, y no
                 había ninguna funcionalidad detrás. */}
             {[
-              { icon:"👤", title:"Mejorar mi perfil",  desc:"La IA reescribe la descripción de tu perfil a partir de lo que ya tienes.", destino:"completarPerfil", accion:"Editar mi perfil" },
+              { icon:"👤", title:"Mejorar mi perfil",  desc:"La IA reescribe la descripción de tu perfil a partir de lo que ya tienes.", destino:"editarPerfil", accion:"Editar mi perfil" },
               { icon:"📄", title:"Generar cotización", desc:"Arma una cotización con desglose, IVA y tu catálogo, lista para enviar al cliente.", destino:"cotizaciones", accion:"Ir a cotizaciones" },
             ].map(h => (
               <div key={h.title} style={{ ...CARD, display:"flex", gap:"14px", alignItems:"flex-start" }}>
