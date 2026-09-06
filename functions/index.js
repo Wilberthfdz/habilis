@@ -1108,6 +1108,32 @@ exports.webhookMP = onRequest({ secrets: [MP_TOKEN, MP_WEBHOOK_SECRET] }, async 
   }
 });
 
+// El cliente aceptaba una cotización, la pantalla le decía "El técnico se
+// pondrá en contacto contigo" y el técnico no se enteraba de nada: no había
+// ningún disparador sobre `cotizaciones`. La cotización aceptada se quedaba
+// esperando a que él entrara a mirar por casualidad.
+exports.avisarCotizacionDecidida = onDocumentUpdated("cotizaciones/{id}", async (event) => {
+  const antes   = event.data.before.data();
+  const despues = event.data.after.data();
+  if (!despues?.tecnicoId || antes?.estado === despues?.estado) return;
+  if (!["aceptada", "rechazada"].includes(despues.estado)) return;
+
+  const cliente = despues.cliente?.nombre?.trim();
+  const folio   = despues.folio ? `#${despues.folio}` : "";
+  const aceptada = despues.estado === "aceptada";
+
+  await db.collection("notificaciones").add({
+    userId: despues.tecnicoId,
+    tipo: "cotizacion",
+    mensaje: aceptada
+      ? `✅ ${cliente || "Un cliente"} aceptó tu cotización ${folio}. Ponte en contacto para acordar fecha.`.trim()
+      : `❌ ${cliente || "Un cliente"} rechazó tu cotización ${folio}.`.trim(),
+    leida: false,
+    link: "cotizaciones",
+    fecha: admin.firestore.FieldValue.serverTimestamp(),
+  });
+});
+
 // ═══════════════════════════════════════════════════════════════
 // 🎙️ DICTAR UN TRABAJO — el técnico cuenta lo que hizo y la IA lo ordena.
 // "Dicta tu trabajo terminado y la IA lo transcribe, clasifica y publica"

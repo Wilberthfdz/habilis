@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Nav from "../components/Nav.jsx";
 import Avatar from "../components/Avatar.jsx";
 import { crearSolicitudChat, actualizarSolicitudChat } from "../lib/firebase.js";
@@ -22,6 +22,11 @@ export default function SolicitarServicio({ nav, user, params }) {
   const [presupuesto,  setPresupuesto]  = useState("");
   const [enviando,     setEnviando]     = useState(false);
   const [error,        setError]        = useState("");
+
+  // Sin técnico no hay a quién mandarle la solicitud: addDoc reventaba con
+  // "Unsupported field value: undefined" y el cliente solo veía "Error al
+  // enviar" después de escribir todo. Ahora se corta antes.
+  useEffect(() => { if (!tecnicoId) nav("buscar"); }, [tecnicoId]);
 
   const enviar = async () => {
     if (!descripcion.trim()) { setError("Describe qué necesitas."); return; }

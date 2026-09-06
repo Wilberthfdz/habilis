@@ -5,6 +5,19 @@ import Footer from "../components/Footer.jsx";
 import { db, validarTrabajo, obtenerValidaciones } from "../lib/firebase.js";
 import { collection, query, orderBy, limit, getDocs } from "firebase/firestore";
 
+// "Publicado recientemente" estaba escrito a mano en todas las solicitudes,
+// tuvieran la edad que tuvieran.
+function hace(fecha) {
+  const ms = fecha?.toMillis?.();
+  if (!ms) return "Solicitud abierta";
+  const min = Math.floor((Date.now() - ms) / 60000);
+  if (min < 60) return min < 1 ? "Hace un momento" : `Hace ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `Hace ${h} h`;
+  const d = Math.floor(h / 24);
+  return d === 1 ? "Ayer" : `Hace ${d} días`;
+}
+
 export default function Feed({ nav, user }) {
   const [filter,      setFilter]      = useState("todos");
   const [posts,       setPosts]       = useState([]);
@@ -232,16 +245,30 @@ export default function Feed({ nav, user }) {
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
                             paddingTop:"12px" }}>
                 <span style={{ fontSize:"12px", color:"#94A3B8" }}>
-                  {esTrabajo ? (post.clienteNombre ? `Cliente: ${post.clienteNombre}` : "Trabajo documentado") : "Publicado recientemente"}
+                  {esTrabajo
+                    ? (post.clienteNombre ? `Cliente: ${post.clienteNombre}` : "Trabajo documentado")
+                    : hace(post.createdAt)}
                 </span>
-                <button onClick={() => {
-                  if (esTrabajo && post.tecnicoId) nav("perfil", { tecnicoId:post.tecnicoId });
-                  else nav(user ? "registrarTrabajo" : "registro");
-                }}
-                  style={{ background:"#0F172A", color:"#fff", border:"none", borderRadius:"8px",
-                           padding:"8px 16px", fontSize:"12px", fontWeight:600, cursor:"pointer" }}>
-                  {esTrabajo ? "Ver técnico" : "Responder solicitud"}
-                </button>
+                {/* "Responder solicitud" abría el formulario de DOCUMENTAR UN
+                    TRABAJO, que no responde nada — y es adonde el agente de
+                    matching manda al técnico por notificación. Responder
+                    directo no existe: solo el cliente puede abrir una
+                    conversación, así que la solicitud dice lo que de verdad
+                    pasa en lugar de ofrecer un botón que no lleva a nada. */}
+                {esTrabajo ? (
+                  <button onClick={() => post.tecnicoId
+                    ? nav("perfil", { tecnicoId: post.tecnicoId })
+                    : nav(user ? "buscar" : "registro")}
+                    style={{ background:"#0F172A", color:"#fff", border:"none", borderRadius:"8px",
+                             padding:"8px 16px", fontSize:"12px", fontWeight:600, cursor:"pointer" }}>
+                    Ver técnico
+                  </button>
+                ) : (
+                  <span style={{ fontSize:"11.5px", color:"#94A3B8", textAlign:"right",
+                                 maxWidth:"200px", lineHeight:1.5 }}>
+                    Avisamos a los técnicos del oficio y la ciudad que encajan
+                  </span>
+                )}
               </div>
             </div>
           );
