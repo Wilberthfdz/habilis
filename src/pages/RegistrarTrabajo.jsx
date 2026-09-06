@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import Logo from "../components/Logo.jsx";
 import Nav from "../components/Nav.jsx";
-import { db } from "../lib/firebase.js";
+import RegistroPorVoz from "../components/RegistroPorVoz.jsx";
+import { transcribirTrabajo } from "../lib/gemini.js";
+import { db, obtenerTecnico } from "../lib/firebase.js";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 const TIPOS   = ["Instalación","Reparación","Mantenimiento","Diagnóstico","Otro"];
@@ -30,9 +32,13 @@ export default function RegistrarTrabajo({ nav, user }) {
   const [fotos,   setFotos]   = useState({ antes:null, despues:null });
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState("");
+  const [tecnico, setTecnico] = useState(null);
   const [touched, setTouched] = useState({});
 
-  useEffect(() => { if (!user) nav("login"); }, [user]);
+  useEffect(() => {
+    if (!user) { nav("login"); return; }
+    obtenerTecnico(user.uid).then(setTecnico).catch(() => {});
+  }, [user]);
   if (!user) return null;
 
   const set = k => e => setForm(f => ({ ...f, [k]:e.target.value }));
@@ -117,8 +123,13 @@ export default function RegistrarTrabajo({ nav, user }) {
     } catch (e) {
       console.error("Error guardando trabajo:", e);
       const msg = e.message || e.code || String(e);
+      // El tope de 5 trabajos del plan gratuito lo aplican las reglas, y al
+      // técnico le llegaba como "Sin permiso para guardar. ¿Estás con la
+      // sesión iniciada?": un mensaje que no explica nada y culpa al usuario.
       if (msg.includes("permission-denied") || msg.includes("Missing or insufficient") || msg.includes("PERMISSION_DENIED"))
-        setError("Sin permiso para guardar. ¿Estás con la sesión iniciada? (" + (e.code || "permission-denied") + ")");
+        setError(tope
+          ? "Llegaste al tope de 5 trabajos del plan gratuito. Con el Plan Pro documentas sin límite."
+          : "No se pudo guardar el trabajo. Vuelve a iniciar sesión e intenta de nuevo.");
       else if (msg.includes("too large") || msg.includes("payload") || msg.includes("1 MiB") || msg.includes("exceeds"))
         setError("El documento es muy grande. Intenta con fotos de menor resolución o sin fotos.");
       else if (msg.includes("unauthenticated") || msg.includes("auth"))
@@ -127,6 +138,10 @@ export default function RegistrarTrabajo({ nav, user }) {
         setError("Error al guardar: " + msg.slice(0, 120));
     } finally { setLoading(false); }
   };
+
+  // El tope se avisa por adelantado: llenar ocho campos y descubrir al
+  // guardar que no cabía es la peor manera de enterarse.
+  const tope = tecnico && tecnico.plan !== "pro" && (tecnico.trabajosCreados || 0) >= 5;
 
   const CARD = { background:"#fff", border:"1px solid #E2E8F0", borderRadius:"16px",
                  padding:"22px", marginBottom:"14px", boxShadow:"0 1px 3px rgba(0,0,0,0.06)" };
@@ -162,6 +177,60 @@ export default function RegistrarTrabajo({ nav, user }) {
             {error}
           </div>
         )}
+
+        {tope && (
+          <div style={{ background:"#FFF7ED", border:"1px solid rgba(249,115,22,0.3)",
+                        borderRadius:"14px", padding:"16px 18px", marginBottom:"16px" }}>
+            <p style={{ fontWeight:800, fontSize:"14px", color:"#EA580C", marginBottom:"6px" }}>
+              Llegaste al tope del plan gratuito
+            </p>
+            <p style={{ fontSize:"13px", color:"#7C2D12", lineHeight:1.6, marginBottom:"12px" }}>
+              Ya tienes 5 trabajos documentados, que es el máximo del plan gratuito.
+              Con el Plan Pro documentas sin límite y apareces antes en las búsquedas.
+            </p>
+            <button onClick={() => nav("suscripcionPro")}
+              style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"9px",
+                       padding:"10px 20px", fontWeight:700, fontSize:"13px", cursor:"pointer" }}>
+              Ver Plan Pro →
+            </button>
+          </div>
+        )}
+
+        {/* Dictado. "Dicta tu trabajo terminado y la IA lo transcribe,
+            clasifica y publica" se anunciaba en Cómo funciona y solo existía
+            para el perfil: quien termina un trabajo con las manos sucias
+            tenía que escribir ocho campos a mano. */}
+        <div style={{ ...CARD, background:"#0F172A", marginBottom:"16px" }}>
+          <p style={{ fontWeight:800, fontSize:"14px", color:"#fff", marginBottom:"4px" }}>
+            Cuéntalo en voz alta
+          </p>
+          <p style={{ fontSize:"13px", color:"rgba(255,255,255,0.5)", lineHeight:1.6, marginBottom:"14px" }}>
+            Di qué era el problema, qué hiciste, qué material usaste y cuánto cobraste.
+            La IA llena el formulario y tú solo revisas.
+          </p>
+          <RegistroPorVoz
+            transcribir={transcribirTrabajo}
+            etiqueta="🎙️ Dictar este trabajo"
+            onError={setError}
+            onDatos={out => {
+              // Solo se pisa lo que la IA sí entendió: si el técnico ya había
+              // escrito algo, no se le borra.
+              setForm(f => ({
+                ...f,
+                titulo:        out.titulo        || f.titulo,
+                tipo:          out.tipo          || f.tipo,
+                descripcion:   out.descripcion   || f.descripcion,
+                problema:      out.problema      || f.problema,
+                solucion:      out.solucion      || f.solucion,
+                materiales:    out.materiales    || f.materiales,
+                ciudad:        out.ciudad        || f.ciudad,
+                clienteNombre: out.clienteNombre || f.clienteNombre,
+                tiempoHoras:   out.tiempoHoras ? String(out.tiempoHoras) : f.tiempoHoras,
+                costoTotal:    out.costoTotal  ? String(out.costoTotal)  : f.costoTotal,
+              }));
+            }}
+          />
+        </div>
 
         {/* Datos básicos */}
         <div style={CARD}>

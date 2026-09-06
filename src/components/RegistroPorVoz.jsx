@@ -9,7 +9,14 @@ import { transcribirRegistro } from "../lib/gemini.js";
 // el backend; quien la use decide qué campos aplicar.
 const MAX_SEGUNDOS = 60;
 
-export default function RegistroPorVoz({ onDatos, onError }) {
+export default function RegistroPorVoz({
+  onDatos,
+  onError,
+  // Por defecto dicta el PERFIL; el registro de trabajos pasa su propia
+  // función y su propia etiqueta.
+  transcribir = transcribirRegistro,
+  etiqueta = "🎙️ Llenar con mi voz — di tu oficio, ciudad y experiencia",
+}) {
   const [grabando,       setGrabando]       = useState(false);
   const [transcribiendo, setTranscribiendo] = useState(false);
   const [listo,          setListo]          = useState(false);
@@ -37,7 +44,7 @@ export default function RegistroPorVoz({ onDatos, onError }) {
             r.onerror = () => rej(new Error("No se pudo leer el audio."));
             r.readAsDataURL(blob);
           });
-          onDatos(await transcribirRegistro(base64, rec.mimeType || "audio/webm"));
+          onDatos(await transcribir(base64, rec.mimeType || "audio/webm"));
           setListo(true);
         } catch (e) {
           console.error(e);
@@ -72,7 +79,7 @@ export default function RegistroPorVoz({ onDatos, onError }) {
             Escuchando lo que dijiste...
           </>
         ) : grabando ? <>⏹ Detener grabación</>
-          : <>🎙️ Llenar con mi voz — di tu oficio, ciudad y experiencia</>}
+          : <>{etiqueta}</>}
       </button>
       {listo && !transcribiendo && (
         <p style={{ fontSize:"12px", color:"#86EFAC", marginTop:"8px" }}>

@@ -12,14 +12,18 @@
     "test:reglas": "firebase emulators:exec --only firestore --project demo-habilis \"node tests/reglas.mjs\""
   },
   "dependencies": {
+    "firebase": "^11.0.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "firebase": "^11.0.0"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.5.1",
+    "@capacitor/cli": "^8.5.1",
+    "@capacitor/core": "^8.5.1",
+    "@capacitor/ios": "^8.5.1",
+    "@firebase/rules-unit-testing": "^4.0.0",
     "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^6.0.0",
     "firebase-tools": "^13.0.0",
-    "@firebase/rules-unit-testing": "^4.0.0"
+    "vite": "^6.0.0"
   }
 }

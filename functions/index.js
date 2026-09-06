@@ -1109,6 +1109,81 @@ exports.webhookMP = onRequest({ secrets: [MP_TOKEN, MP_WEBHOOK_SECRET] }, async 
 });
 
 // ═══════════════════════════════════════════════════════════════
+// 🎙️ DICTAR UN TRABAJO — el técnico cuenta lo que hizo y la IA lo ordena.
+// "Dicta tu trabajo terminado y la IA lo transcribe, clasifica y publica"
+// se anunciaba en Cómo funciona y en Quiénes somos, y solo existía el
+// dictado del PERFIL. Es justo la función que más falta le hace a quien
+// termina un trabajo con las manos sucias.
+// ═══════════════════════════════════════════════════════════════
+exports.transcribirTrabajo = onCall({ secrets: [GEMINI_KEY] }, async (request) => {
+  const uid = requireAuth(request);
+  await checkRateLimit(uid, "transcribirTrabajo", 20);
+  const { audioBase64, mimeType } = request.data ?? {};
+  if (!audioBase64 || typeof audioBase64 !== "string") {
+    throw new HttpsError("invalid-argument", "Audio requerido.");
+  }
+  if (audioBase64.length > 15 * 1024 * 1024) {
+    throw new HttpsError("invalid-argument", "El audio es demasiado largo.");
+  }
+  const base = String(mimeType || "audio/webm").split(";")[0].trim().toLowerCase();
+  const FORMATOS = new Set([
+    "audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg",
+    "audio/mp3", "audio/wav", "audio/aac", "audio/flac",
+  ]);
+  const tipo = FORMATOS.has(base) ? base : "audio/webm";
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY.value()}`;
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      generationConfig: { responseMimeType: "application/json", temperature: 0.2, maxOutputTokens: 700 },
+      contents: [{
+        parts: [
+          { inline_data: { mime_type: tipo, data: audioBase64 } },
+          { text: `Un trabajador técnico mexicano acaba de terminar un trabajo y lo está contando en voz alta. Transcribe y ordena lo que dijo.
+
+Reglas:
+- Escribe en español neutro de México, en tercera persona y en pasado.
+- NO inventes datos: si no dijo el costo, las horas o la ciudad, deja el campo vacío o en 0.
+- "tipo" tiene que ser exactamente uno de: Instalación, Reparación, Mantenimiento, Diagnóstico, Otro.
+- "titulo" es una línea corta y concreta, máximo 60 caracteres.
+
+Responde SOLO JSON:
+{"titulo":"","tipo":"Reparación","descripcion":"","problema":"lo que estaba mal","solucion":"lo que hizo","materiales":"lo que usó, separado por comas","tiempoHoras":0,"costoTotal":0,"ciudad":"","clienteNombre":""}` },
+        ],
+      }],
+    }),
+  });
+  if (!r.ok) {
+    const cuerpo = await r.text().catch(() => "");
+    console.error(`Dictado de trabajo: Gemini ${r.status} — ${cuerpo.slice(0, 400)}`);
+    throw new HttpsError("internal", "No pudimos entender el audio. Intenta de nuevo o escribe los datos.");
+  }
+  const d = await r.json().catch(() => null);
+  const out = parseJsonLoose(d?.candidates?.[0]?.content?.parts?.[0]?.text || "", null);
+  if (!out || typeof out !== "object") {
+    throw new HttpsError("internal", "No pudimos entender el audio. Intenta de nuevo o escribe los datos.");
+  }
+
+  const TIPOS = new Set(["Instalación", "Reparación", "Mantenimiento", "Diagnóstico", "Otro"]);
+  const texto = (v, max) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+  await logDecision("dictadoTrabajo", "transcribió y estructuró un trabajo", uid, "");
+  return {
+    titulo:        texto(out.titulo, 80),
+    tipo:          TIPOS.has(out.tipo) ? out.tipo : "Otro",
+    descripcion:   texto(out.descripcion, 1500),
+    problema:      texto(out.problema, 800),
+    solucion:      texto(out.solucion, 800),
+    materiales:    texto(out.materiales, 500),
+    tiempoHoras:   Number(out.tiempoHoras) || 0,
+    costoTotal:    Number(out.costoTotal) || 0,
+    ciudad:        texto(out.ciudad, 80),
+    clienteNombre: texto(out.clienteNombre, 80),
+  };
+});
+
+// ═══════════════════════════════════════════════════════════════
 // 🗑️ BORRAR MI CUENTA
 // Apple rechaza (guía 5.1.1 v) cualquier app con registro que no permita
 // borrar la cuenta DESDE DENTRO, y Google Play exige lo mismo desde 2024.

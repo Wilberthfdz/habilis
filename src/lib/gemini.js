@@ -218,6 +218,14 @@ export async function solicitarFactura(datosFiscales) {
   return result.data;
 }
 
+// ── DICTAR UN TRABAJO ──────────────────────────────────────────────────────
+// Se anunciaba en Cómo funciona y solo existía el dictado del perfil.
+const transcribirTrabajoProxy = httpsCallable(fns, "transcribirTrabajo");
+export async function transcribirTrabajo(audioBase64, mimeType) {
+  const result = await transcribirTrabajoProxy({ audioBase64, mimeType });
+  return result.data;
+}
+
 // ── ELIMINAR LA CUENTA ─────────────────────────────────────────────────────
 // Requisito de App Store (5.1.1 v) y de Google Play, y derecho de
 // cancelación de la LFPDPPP. Antes solo se atendía por correo.
