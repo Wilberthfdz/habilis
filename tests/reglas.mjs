@@ -114,6 +114,8 @@ probar("alta: NO se puede nacer con rating inflado",
   assertFails(setDoc(doc(env.authenticatedContext("nuevo3").firestore(), "tecnicos/nuevo3"), { nombre: "X", plan: "gratis", rating: 5 })));
 probar("alta: un registro legítimo sí funciona",
   assertSucceeds(setDoc(doc(env.authenticatedContext("nuevo4").firestore(), "tecnicos/nuevo4"), { nombre: "X", oficio: "Electricista", ciudad: "Cancún", plan: "gratis", aceptoTerminos: true })));
+probar("alta: ni el admin puede fabricar un perfil de otra persona",
+  assertFails(setDoc(doc(admin, "tecnicos/fabricado"), { nombre: "Fantasma", plan: "gratis", aceptoTerminos: true })));
 probar("alta: NO se puede crear perfil sin aceptar los términos",
   assertFails(setDoc(doc(env.authenticatedContext("nuevo5").firestore(), "tecnicos/nuevo5"), { nombre: "X", oficio: "Electricista", ciudad: "Cancún", plan: "gratis" })));
 probar("alta: NO basta con mandar aceptoTerminos en falso",

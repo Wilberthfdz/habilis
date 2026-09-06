@@ -24,7 +24,11 @@ export default function PanelTecnico({ nav, user }) {
   const [noProfile,     setNoProfile]     = useState(false);
   const [aiResp,        setAiResp]        = useState("");
   const [aiLoading,     setAiLoading]     = useState(false);
-  const [solicitudDemo, setSolicitudDemo] = useState("Necesito instalar un foco nuevo en la cocina, ¿puede venir mañana?");
+  // Venía con un mensaje de cliente escrito a mano ("Necesito instalar un
+  // foco nuevo en la cocina") como si fuera una solicitud de verdad. La
+  // herramienta sí sirve; lo falso era el contenido. Ahora arranca vacía y
+  // se puede cargar cualquiera de las solicitudes reales del técnico.
+  const [textoSolicitud, setTextoSolicitud] = useState("");
   const [uploadingPhoto,    setUploadingPhoto]    = useState(false);
   const [photoError,        setPhotoError]        = useState("");
   const [solicitudesPend,   setSolicitudesPend]   = useState([]);
@@ -91,9 +95,9 @@ export default function PanelTecnico({ nav, user }) {
   };
 
   const genAI = async () => {
-    if (!tecnico) return;
+    if (!tecnico || !textoSolicitud.trim()) return;
     setAiLoading(true);
-    try { setAiResp(await sugerirRespuesta(solicitudDemo, tecnico)); }
+    try { setAiResp(await sugerirRespuesta(textoSolicitud, tecnico)); }
     catch (e) {
       // Para el plan gratuito el backend responde permission-denied: esta
       // herramienta es del Pro. Antes se le mostraba "Verifica tu API key en
@@ -473,11 +477,26 @@ export default function PanelTecnico({ nav, user }) {
               <h3 style={{ fontWeight:800, fontSize:"15px", color:"#0F172A", marginBottom:"4px" }}>💬 Responder solicitudes</h3>
               <p style={{ color:"#64748B", fontSize:"13px", marginBottom:"14px" }}>Gemini te ayuda a responder clientes de forma profesional</p>
               <label style={{ fontSize:"11px", fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:"5px" }}>Solicitud del cliente</label>
-              <textarea value={solicitudDemo} onChange={e => setSolicitudDemo(e.target.value)}
+              {solicitudesPend.length > 0 && (
+                <div style={{ display:"flex", gap:"6px", flexWrap:"wrap", marginBottom:"8px" }}>
+                  {solicitudesPend.slice(0, 3).map(sol => (
+                    <button key={sol.id} onClick={() => setTextoSolicitud(sol.descripcion || "")}
+                      style={{ background:"#F1F5F9", border:"1px solid #E2E8F0", borderRadius:"20px",
+                               padding:"5px 12px", fontSize:"11.5px", fontWeight:600, color:"#475569",
+                               cursor:"pointer", maxWidth:"100%", overflow:"hidden",
+                               textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                      {(sol.descripcion || "Solicitud").slice(0, 34)}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <textarea value={textoSolicitud} onChange={e => setTextoSolicitud(e.target.value)}
+                placeholder="Pega aquí lo que te escribió el cliente y la IA te redacta la respuesta."
                 style={{ width:"100%", border:"1px solid #E2E8F0", borderRadius:"10px", padding:"10px 14px",
                          fontSize:"13px", outline:"none", resize:"vertical", minHeight:"70px",
                          background:"#F8FAFC", boxSizing:"border-box", marginBottom:"12px" }} />
-              <button style={BTN} onClick={genAI} disabled={aiLoading}>
+              <button style={{ ...BTN, opacity: (!textoSolicitud.trim() || aiLoading) ? 0.5 : 1 }}
+                onClick={genAI} disabled={aiLoading || !textoSolicitud.trim()}>
                 {aiLoading ? "Gemini escribiendo..." : "✨ Generar respuesta con Gemini"}
               </button>
               {aiResp && (

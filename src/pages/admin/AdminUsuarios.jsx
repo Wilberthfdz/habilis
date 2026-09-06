@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { db, auth } from "../../lib/firebase.js";
-import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc, serverTimestamp, query, where, limit } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, deleteDoc, serverTimestamp, query, where, limit } from "firebase/firestore";
 import { mxn, fechaCorta, exportarCSV, logAdmin } from "../../lib/erp.js";
 import { TAXONOMIA } from "../../lib/taxonomia.js";
 
@@ -20,7 +20,6 @@ export default function AdminUsuarios() {
   const [filtroVerif, setFiltroVerif] = useState("todos");
   const [filtroEstado, setFiltroEstado] = useState("todos");
   const [sort, setSort] = useState("fecha");
-  const [showNuevo, setShowNuevo] = useState(false);
   const [ficha, setFicha] = useState(null); // técnico abierto en detalle
 
   const cargar = async () => {
@@ -133,10 +132,13 @@ export default function AdminUsuarios() {
         </select>
         <button style={btnSm} onClick={exportar}>⬇ CSV</button>
         <button style={btnSm} onClick={cargar}>↻</button>
-        <button style={{ ...btnSm, background: "#F97316", color: "#fff", border: "none" }} onClick={() => setShowNuevo(true)}>➕ Crear usuario</button>
+        {/* "Crear usuario" fabricaba un perfil de técnico SIN cuenta detrás:
+            aparecía en el directorio, en las búsquedas y en los contadores,
+            nadie podía entrar a él, nunca aceptó los términos y el cliente
+            que lo contactara no recibiría respuesta jamás. En Habilis solo
+            hay perfiles de gente que se dio de alta ella misma. */}
       </div>
 
-      {showNuevo && <NuevoUsuario onClose={() => setShowNuevo(false)} onCreated={() => { setShowNuevo(false); cargar(); }} />}
       {ficha && (
         <FichaTecnico tecnico={ficha} busy={busy === ficha.id}
           onClose={() => setFicha(null)}
@@ -293,51 +295,3 @@ function FichaTecnico({ tecnico, busy, onClose, onGuardar, onTogglePlan, onToggl
   );
 }
 
-function NuevoUsuario({ onClose, onCreated }) {
-  const [form, setForm] = useState({ nombre: "", email: "", oficio: "Electricidad", ciudad: "", experiencia: "", bio: "" });
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState("");
-  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
-
-  const guardar = async () => {
-    if (!form.nombre.trim()) { setErr("Falta el nombre."); return; }
-    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { setErr("El email no es válido."); return; }
-    setSaving(true); setErr("");
-    try {
-      await addDoc(collection(db, "tecnicos"), {
-        ...form, experiencia: parseInt(form.experiencia) || 0,
-        tipo: "tecnico", plan: "gratis", verificado: false, rating: 0, totalTrabajos: 0, totalReviews: 0,
-        disponible: true, creadoManualmente: true,
-        createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
-      });
-      logAdmin(auth.currentUser?.email, "creó técnico manualmente", "tecnicos", form.nombre);
-      onCreated();
-    } catch (e) { setErr(e.message); }
-    finally { setSaving(false); }
-  };
-
-  return (
-    <div style={{ ...CARD, display: "flex", flexDirection: "column", gap: 10 }}>
-      <strong style={{ fontSize: 14 }}>➕ Crear técnico manualmente (onboarding en persona)</strong>
-      {err && <div style={{ color: "#991B1B", fontSize: 13 }}>{err}</div>}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 8 }}>
-        <input placeholder="Nombre" value={form.nombre} onChange={set("nombre")} style={inp} />
-        <input placeholder="Email" value={form.email} onChange={set("email")} style={inp} />
-        <input placeholder="Oficio" value={form.oficio} onChange={set("oficio")} list="oficios-tax-nuevo" style={inp} />
-        <input placeholder="Ciudad" value={form.ciudad} onChange={set("ciudad")} style={inp} />
-        <input placeholder="Años de experiencia" type="number" value={form.experiencia} onChange={set("experiencia")} style={inp} />
-      </div>
-      <datalist id="oficios-tax-nuevo">
-        {TAXONOMIA.flatMap((c) => [c.nombre, ...(c.subcategorias || []).map((s) => s.nombre)]).map((n) => <option key={n} value={n} />)}
-      </datalist>
-      <textarea placeholder="Bio corta" value={form.bio} onChange={set("bio")} style={{ ...inp, minHeight: 60 }} />
-      <div style={{ display: "flex", gap: 8 }}>
-        <button disabled={saving} onClick={guardar} style={{ ...btnSm, background: "#F97316", color: "#fff", border: "none" }}>{saving ? "Guardando…" : "Crear"}</button>
-        <button onClick={onClose} style={btnSm}>Cancelar</button>
-      </div>
-      <p style={{ fontSize: 11.5, color: "#94A3B8" }}>
-        Nota: este técnico no tendrá cuenta de login (no se crea usuario en Firebase Auth), solo perfil visible en Buscar/Feed. Para que pueda iniciar sesión, tiene que registrarse él mismo normalmente.
-      </p>
-    </div>
-  );
-}

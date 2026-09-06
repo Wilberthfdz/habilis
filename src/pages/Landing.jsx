@@ -670,7 +670,14 @@ export default function Landing({ nav, user }) {
               </button>
             </div>
 
-            {/* Equipment grid */}
+            {/* Rejilla de equipos. Son cifras dibujadas —"Panel solar 45%,
+                vencido hace 12d"— para enseñar cómo se ve Care, no datos de
+                nadie. La etiqueta lo dice, como en la tarjeta del hero. */}
+            <div>
+            <p style={{ fontSize:"10.5px", fontWeight:800, color:"#B5AFA8", letterSpacing:"0.08em",
+                        textTransform:"uppercase", marginBottom:"8px" }}>
+              Así se ve · ejemplo
+            </p>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"12px" }}>
               {[
                 { Icon:IcoSnowflake, name:"Aire acondicionado", salud:82, dias:28 },
@@ -705,6 +712,7 @@ export default function Landing({ nav, user }) {
                   </div>
                 );
               })}
+            </div>
             </div>
           </div>
         </div>

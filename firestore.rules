@@ -27,7 +27,11 @@ service cloud.firestore {
       // Sin esto, el propio documento de alta podía nacer con plan:"pro",
       // verificado:true o rating:5 — el usuario se regalaba la suscripción y
       // la insignia en su primera escritura.
-      allow create: if isAdmin() || (
+      // Un perfil solo nace cuando su dueño se da de alta. El atajo de admin
+      // permitía fabricar técnicos sin cuenta detrás —visibles en el
+      // directorio, sin términos aceptados y sin nadie que respondiera—, y
+      // el panel de administración ya no lo ofrece.
+      allow create: if (
         request.auth != null && request.auth.uid == uid
         && request.resource.data.plan == "gratis"
         && request.resource.data.get("verificado", false) == false
