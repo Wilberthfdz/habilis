@@ -110,6 +110,11 @@ probar("perfil: el técnico NO puede ascenderse después",
   assertFails(updateDoc(doc(tec, "tecnicos/tecnico1"), { plan: "pro" })));
 probar("perfil: el técnico sí puede editar su bio",
   assertSucceeds(updateDoc(doc(tec, "tecnicos/tecnico1"), { bio: "20 años de experiencia" })));
+probar("perfil: el técnico sí puede cambiar su oficio y su categoría",
+  assertSucceeds(updateDoc(doc(tec, "tecnicos/tecnico1"),
+    { oficio: "Jardinero", categoriaId: "otro", subcategoriaId: null, oficioLibre: "Jardinero" })));
+probar("perfil: cambiar el oficio NO abre la puerta a tocar el rango",
+  assertFails(updateDoc(doc(tec, "tecnicos/tecnico1"), { oficio: "Jardinero", rankScore: 999 })));
 
 // ── B4 · Moderación y reputación falsificables ──────────────────────────
 probar("trabajo: el dueño NO puede aprobarse la moderación",

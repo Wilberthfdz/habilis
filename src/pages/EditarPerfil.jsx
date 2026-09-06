@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import Nav from "../components/Nav.jsx";
 import Avatar from "../components/Avatar.jsx";
+import SelectorOficio from "../components/SelectorOficio.jsx";
 import { obtenerTecnico, actualizarTecnico, subirFotoPerfil, cerrarSesion } from "../lib/firebase.js";
-import { TAXONOMIA } from "../lib/taxonomia.js";
 
 // El botón "Editar perfil" del panel mostraba un alert de "próximamente":
 // el técnico no tenía forma de corregir su ciudad, su oficio ni su bio
@@ -38,7 +38,12 @@ export default function EditarPerfil({ nav, user }) {
   const fileRef = useRef(null);
 
   const [form, setForm] = useState({
-    nombre:"", oficio:"", ciudad:"", experiencia:"", bio:"", alcance:"", disponible:true,
+    nombre:"", ciudad:"", experiencia:"", bio:"", alcance:"", disponible:true,
+  });
+  // El oficio se maneja aparte porque es un objeto (categoría, especialidad
+  // y, para quien no está en el catálogo, el texto libre).
+  const [oficio, setOficio] = useState({
+    categoriaId:"", subcategoriaId:null, oficio:"", oficioLibre:"",
   });
   const set = k => e => { setOk(false); setForm(f => ({ ...f, [k]: e.target.value })); };
 
@@ -48,9 +53,14 @@ export default function EditarPerfil({ nav, user }) {
       .then(t => {
         if (!t) { setCargando(false); return; }
         setTecnico(t);
+        setOficio({
+          categoriaId:    t.categoriaId    || "",
+          subcategoriaId: t.subcategoriaId || null,
+          oficio:         t.oficio         || "",
+          oficioLibre:    t.oficioLibre    || (t.categoriaId ? "" : t.oficio || ""),
+        });
         setForm({
           nombre:      t.nombre      || "",
-          oficio:      t.oficio      || "",
           ciudad:      t.ciudad      || "",
           experiencia: t.experiencia != null ? String(t.experiencia) : "",
           bio:         t.bio         || "",
@@ -81,13 +91,17 @@ export default function EditarPerfil({ nav, user }) {
 
   const guardar = async () => {
     if (!form.nombre.trim()) { setError("Tu nombre no puede quedar vacío."); return; }
+    if (!oficio.oficio?.trim()) { setError("Dinos a qué te dedicas."); return; }
     if (!form.ciudad.trim()) { setError("Ingresa tu ciudad: es lo que usan los clientes para encontrarte."); return; }
     setError(""); setOk(false); setGuardando(true);
     try {
       const experiencia = Math.max(0, Math.min(60, parseInt(form.experiencia) || 0));
       await actualizarTecnico(user.uid, {
         nombre:      form.nombre.trim(),
-        oficio:      form.oficio,
+        oficio:      (oficio.oficio || "").trim(),
+        categoriaId: oficio.categoriaId || null,
+        subcategoriaId: oficio.subcategoriaId || null,
+        oficioLibre: oficio.oficioLibre?.trim() || null,
         ciudad:      form.ciudad.trim(),
         experiencia,
         bio:         form.bio.trim(),
@@ -100,13 +114,6 @@ export default function EditarPerfil({ nav, user }) {
       setError("No se pudo guardar. Intenta de nuevo en un momento.");
     } finally { setGuardando(false); }
   };
-
-  const oficios = TAXONOMIA.flatMap(c =>
-    (c.subcategorias?.length ? c.subcategorias.map(s => s.nombre) : [c.nombre]));
-  // Un perfil viejo puede tener un oficio que ya no está en la taxonomía;
-  // sin esto el <select> lo perdería silenciosamente al guardar.
-  const opciones = form.oficio && !oficios.includes(form.oficio)
-    ? [form.oficio, ...oficios] : oficios;
 
   return (
     <div style={{ minHeight:"100vh", background:"#F8FAFC" }}>
@@ -176,18 +183,14 @@ export default function EditarPerfil({ nav, user }) {
               </div>
             </div>
 
-            <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr", gap:"14px" }}>
-              <div>
-                <label style={lbl}>Oficio principal</label>
-                <select style={inp} value={form.oficio} onChange={set("oficio")}>
-                  {opciones.map(o => <option key={o} value={o}>{o}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={lbl}>Años de experiencia</label>
-                <input style={inp} type="number" min="0" max="60"
-                  value={form.experiencia} onChange={set("experiencia")} />
-              </div>
+            <div style={{ background:"#0F172A", borderRadius:"14px", padding:"18px" }}>
+              <SelectorOficio valor={oficio} onChange={o => { setOk(false); setOficio(o); }} />
+            </div>
+
+            <div>
+              <label style={lbl}>Años de experiencia</label>
+              <input style={inp} type="number" min="0" max="60"
+                value={form.experiencia} onChange={set("experiencia")} />
             </div>
 
             <div>

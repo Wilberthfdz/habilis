@@ -1,10 +1,12 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import Logo from "../components/Logo.jsx";
 import Avatar from "../components/Avatar.jsx";
 import AceptarTerminos from "../components/AceptarTerminos.jsx";
+import RegistroPorVoz from "../components/RegistroPorVoz.jsx";
+import SelectorOficio from "../components/SelectorOficio.jsx";
+import { resolverOficioLibre } from "../lib/oficios.js";
 import { crearPerfilTecnico, cerrarSesion } from "../lib/firebase.js";
-import { transcribirRegistro } from "../lib/gemini.js";
-import { TAXONOMIA, buscarPorTexto } from "../lib/taxonomia.js";
+import { TAXONOMIA } from "../lib/taxonomia.js";
 
 const inp = { width:"100%", border:"1px solid #E2E8F0", borderRadius:"10px",
               padding:"11px 14px", fontSize:"14px", outline:"none",
@@ -14,97 +16,62 @@ const lbl = { fontSize:"11px", fontWeight:700, color:"rgba(255,255,255,0.45)",
               textTransform:"uppercase", letterSpacing:"0.06em",
               display:"block", marginBottom:"5px" };
 
-export default function CompletarPerfil({ nav, user }) {
-  const googleName  = user?.displayName || "";
-  const googleEmail = user?.email       || "";
-  const googlePhoto = user?.photoURL    || null;
+// Este es el ÚNICO formulario de perfil del producto: llegan aquí tanto
+// quien se registró con correo como quien entró con Google o Apple, así que
+// todos reciben la taxonomía completa, el dictado por voz y la salida para
+// oficios que no están en el catálogo.
+export default function CompletarPerfil({ nav, user, params = {} }) {
+  const nombreCuenta = user?.displayName || params.nombre || "";
+  const correoCuenta = user?.email       || "";
+  const fotoCuenta   = user?.photoURL    || null;
+  // Quien viene del alta por correo ya aceptó en la pantalla anterior; no se
+  // le vuelve a preguntar, pero la constancia sí se guarda aquí, que es
+  // donde nace el documento del perfil.
+  const yaAcepto     = params.aceptoTerminos === true;
 
-  const [categoriaId,   setCategoriaId]   = useState("electricidad");
-  const [subcategoriaId,setSubcategoriaId]= useState("");
+  const [oficio,       setOficio]       = useState({
+    categoriaId: TAXONOMIA[0].id, subcategoriaId: null,
+    oficio: TAXONOMIA[0].nombre, oficioLibre: "",
+  });
   const [ciudad,       setCiudad]       = useState("");
   const [experiencia,  setExperiencia]  = useState("");
   const [descripcion,  setDescripcion]  = useState("");
   const [herramientas, setHerramientas] = useState(false);
   const [loading,      setLoading]      = useState(false);
   const [error,        setError]        = useState("");
-  const [acepto,       setAcepto]       = useState(false);
+  const [acepto,       setAcepto]       = useState(yaAcepto);
 
-  // ── Registro por voz ──────────────────────────────────────────
-  const [grabando,       setGrabando]       = useState(false);
-  const [transcribiendo, setTranscribiendo] = useState(false);
-  const [vozOk,          setVozOk]          = useState(false);
-  const recorderRef = useRef(null);
-  const chunksRef   = useRef([]);
-
-  const categoria = TAXONOMIA.find(c => c.id === categoriaId) || TAXONOMIA[0];
-  const subcategorias = categoria.subcategorias || [];
-  const subcategoria = subcategorias.find(s => s.id === subcategoriaId) || null;
-
-  // El campo `oficio` se mantiene como texto (compatible con perfiles
-  // existentes y con el agente de matching); la taxonomía agrega los ids.
-  const oficioTexto = subcategoria ? subcategoria.nombre : categoria.nombre;
-
-  const toggleGrabacion = async () => {
-    if (grabando) { recorderRef.current?.stop(); return; }
-    setError("");
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const rec = new MediaRecorder(stream);
-      recorderRef.current = rec;
-      chunksRef.current = [];
-      rec.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      rec.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop());
-        setGrabando(false);
-        setTranscribiendo(true);
-        try {
-          const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
-          const base64 = await new Promise((res, rej) => {
-            const r = new FileReader();
-            r.onload  = e => res(e.target.result.split(",")[1]); // sin el prefijo data:
-            r.onerror = () => rej(new Error("No se pudo leer el audio."));
-            r.readAsDataURL(blob);
-          });
-          const out = await transcribirRegistro(base64, rec.mimeType || "audio/webm");
-          if (out.ciudad) setCiudad(out.ciudad);
-          if (out.experiencia) setExperiencia(String(out.experiencia));
-          if (out.bio) setDescripcion(out.bio);
-          if (out.oficio) {
-            const hit = buscarPorTexto(out.oficio, 1)[0];
-            if (hit?.categoriaId) {
-              setCategoriaId(hit.categoriaId);
-              setSubcategoriaId(hit.subcategoriaId || "");
-            }
-          }
-          setVozOk(true);
-        } catch (e) {
-          console.error(e);
-          setError("No se pudo transcribir el audio. Puedes llenar el formulario a mano.");
-        } finally { setTranscribiendo(false); }
-      };
-      rec.start();
-      setGrabando(true);
-      // Corte de seguridad a los 60s — el backend rechaza audios muy grandes
-      setTimeout(() => { if (rec.state === "recording") rec.stop(); }, 60000);
-    } catch {
-      setError("No pudimos acceder al micrófono. Revisa los permisos del navegador.");
+  // Lo que dicta el técnico llena los campos; el oficio se resuelve contra
+  // la taxonomía y, si no cae en ninguna categoría, se conserva tal cual.
+  const aplicarVoz = out => {
+    if (out.ciudad)      setCiudad(out.ciudad);
+    if (out.experiencia) setExperiencia(String(out.experiencia));
+    if (out.bio)         setDescripcion(out.bio);
+    if (out.oficio) {
+      const resuelto = resolverOficioLibre(out.oficio);
+      if (resuelto) setOficio(resuelto);
     }
   };
 
   const submit = async () => {
+    if (!oficio.oficio?.trim()) { setError("Dinos a qué te dedicas para continuar."); return; }
     if (!ciudad.trim()) { setError("Ingresa tu ciudad para continuar."); return; }
     if (!acepto) { setError("Debes aceptar los Términos y el Aviso de Privacidad para continuar."); return; }
     setError(""); setLoading(true);
     try {
       await crearPerfilTecnico(user.uid, {
-        nombre:        googleName  || "Sin nombre",
-        email:         googleEmail,
-        fotoUrl:       googlePhoto || null,
-        oficio:        oficioTexto,
-        categoriaId:   categoria.id,
-        subcategoriaId: subcategoria ? subcategoria.id : null,
+        nombre:        nombreCuenta || "Sin nombre",
+        email:         correoCuenta,
+        fotoUrl:       fotoCuenta || null,
+        // `oficio` se guarda como texto por compatibilidad con los perfiles
+        // que ya existen y con el agente de matching; los ids de taxonomía
+        // van aparte y quedan en null cuando el oficio es de fuera.
+        oficio:        oficio.oficio.trim(),
+        categoriaId:   oficio.categoriaId,
+        subcategoriaId: oficio.subcategoriaId || null,
+        oficioLibre:   oficio.oficioLibre?.trim() || null,
         ciudad:        ciudad.trim(),
-        experiencia:   parseInt(experiencia) || 0,
+        experiencia:   Math.max(0, Math.min(60, parseInt(experiencia) || 0)),
         bio:           descripcion.trim(),
         herramientas,
         disponibilidad:"",
@@ -115,7 +82,9 @@ export default function CompletarPerfil({ nav, user }) {
         disponible:    true,
         aceptoTerminos: true,
       });
-      nav("bienvenida");
+      // Quien venía por el Plan Pro sigue al checkout; el resto, a la
+      // bienvenida. Antes la intención se perdía aquí.
+      nav(params.plan === "pro" ? "suscripcionPro" : "bienvenida");
     } catch (e) {
       console.error(e);
       setError("Error al guardar tu perfil. Intenta de nuevo.");
@@ -155,18 +124,18 @@ export default function CompletarPerfil({ nav, user }) {
             <div style={{ display:"flex", alignItems:"center", gap:"14px", marginBottom:"28px",
                           background:"rgba(255,255,255,0.05)", borderRadius:"14px", padding:"14px 16px",
                           border:"1px solid rgba(255,255,255,0.08)" }}>
-              {googlePhoto ? (
-                <img src={googlePhoto} alt={googleName}
+              {fotoCuenta ? (
+                <img src={fotoCuenta} alt={nombreCuenta}
                   style={{ width:"44px", height:"44px", borderRadius:"12px", objectFit:"cover",
                            border:"2px solid rgba(249,115,22,0.4)", flexShrink:0 }} />
               ) : (
-                <Avatar size={44} nombre={googleName} plan="gratis" />
+                <Avatar size={44} nombre={nombreCuenta} plan="gratis" />
               )}
               <div>
                 <p style={{ fontWeight:700, fontSize:"14px", color:"#fff", marginBottom:"2px" }}>
-                  {googleName || "Usuario de Google"}
+                  {nombreCuenta || "Tu cuenta"}
                 </p>
-                <p style={{ fontSize:"12px", color:"rgba(255,255,255,0.4)" }}>{googleEmail}</p>
+                <p style={{ fontSize:"12px", color:"rgba(255,255,255,0.4)" }}>{correoCuenta}</p>
               </div>
             </div>
 
@@ -175,53 +144,18 @@ export default function CompletarPerfil({ nav, user }) {
             </h2>
             <p style={{ color:"rgba(255,255,255,0.45)", fontSize:"14px", marginBottom:"20px", lineHeight:1.5 }}>
               Cuéntanos a qué te dedicas para que los clientes te encuentren.
+              Cualquier oficio cabe aquí.
             </p>
 
             {/* ── Registro por voz ── */}
-            <button onClick={toggleGrabacion} disabled={transcribiendo}
-              style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"center",
-                       gap:"10px", background: grabando ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.06)",
-                       border: grabando ? "1.5px solid rgba(239,68,68,0.5)" : "1.5px solid rgba(255,255,255,0.14)",
-                       borderRadius:"12px", padding:"13px 16px", fontSize:"14px", fontWeight:700,
-                       color: grabando ? "#FCA5A5" : "rgba(255,255,255,0.8)", cursor:"pointer",
-                       marginBottom:"20px", opacity: transcribiendo ? 0.7 : 1 }}>
-              {transcribiendo ? (
-                <>
-                  <div style={{ width:"16px", height:"16px", border:"2px solid rgba(255,255,255,0.3)",
-                                borderTopColor:"#fff", borderRadius:"50%", animation:"spin 0.75s linear infinite" }} />
-                  Escuchando lo que dijiste...
-                </>
-              ) : grabando ? (
-                <>⏹ Detener grabación</>
-              ) : (
-                <>🎙️ Llenar con mi voz — di tu oficio, ciudad y experiencia</>
-              )}
-            </button>
-            {vozOk && !transcribiendo && (
-              <p style={{ fontSize:"12px", color:"#86EFAC", marginTop:"-12px", marginBottom:"16px" }}>
-                ✓ Listo — revisa que los datos estén bien y ajusta lo que haga falta.
-              </p>
-            )}
+            <div style={{ marginBottom:"20px" }}>
+              <RegistroPorVoz onDatos={aplicarVoz} onError={setError} />
+            </div>
 
             {/* Fields */}
             <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
 
-              <div>
-                <label style={lbl}>Oficio principal *</label>
-                <select style={inp} value={categoriaId}
-                  onChange={e => { setCategoriaId(e.target.value); setSubcategoriaId(""); }}>
-                  {TAXONOMIA.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label style={lbl}>Especialidad (opcional)</label>
-                <select style={inp} value={subcategoriaId}
-                  onChange={e => setSubcategoriaId(e.target.value)}>
-                  <option value="">— General —</option>
-                  {subcategorias.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-                </select>
-              </div>
+              <SelectorOficio valor={oficio} onChange={setOficio} />
 
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"12px" }}>
                 <div>
@@ -263,7 +197,7 @@ export default function CompletarPerfil({ nav, user }) {
                 </div>
               )}
 
-              <AceptarTerminos nav={nav} valor={acepto} onChange={setAcepto} />
+              {!yaAcepto && <AceptarTerminos nav={nav} valor={acepto} onChange={setAcepto} />}
 
               <button onClick={submit} disabled={loading || !acepto}
                 style={{ width:"100%", background:"#F97316", color:"#fff", border:"none",

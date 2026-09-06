@@ -36,7 +36,22 @@ export default function Login({ nav, user, params = {} }) {
   const [error,         setError]         = useState("");
   const [resetEnviado,  setResetEnviado]  = useState(false);
 
-  useEffect(() => { if (user) nav(quierePro ? "suscripcionPro" : "panel"); }, [user]);
+  // Este efecto y routeAfterLogin competían: en cuanto iniciarSesion resolvía,
+  // `user` cambiaba y el efecto mandaba al panel antes de que terminara la
+  // consulta del perfil, así que quien tenía cuenta pero no perfil nunca
+  // llegaba a completarlo. Ahora el ruteo vive en un solo lugar.
+  useEffect(() => {
+    if (!user) return;
+    let vivo = true;
+    obtenerTecnico(user.uid)
+      .then(perfil => {
+        if (!vivo) return;
+        if (!perfil) nav("completarPerfil", quierePro ? { plan:"pro" } : {});
+        else nav(quierePro ? "suscripcionPro" : "panel");
+      })
+      .catch(() => { if (vivo) nav("panel"); });
+    return () => { vivo = false; };
+  }, [user]);
 
   const mapError = code => {
     if (code.includes("user-not-found") || code.includes("wrong-password") || code.includes("invalid-credential"))
@@ -46,19 +61,13 @@ export default function Login({ nav, user, params = {} }) {
     return "Error al iniciar sesión. Intenta de nuevo.";
   };
 
-  // After any login method, check whether the user already has a profile
-  const routeAfterLogin = async uid => {
-    const perfil = await obtenerTecnico(uid);
-    nav(perfil ? "panel" : "completarPerfil");
-  };
-
   const submit = async e => {
     e.preventDefault();
     if (!email || !password) { setError("Ingresa tu correo y contraseña."); return; }
     setLoading(true); setError("");
     try {
-      const cred = await iniciarSesion(email, password);
-      await routeAfterLogin(cred.user.uid);
+      await iniciarSesion(email, password);
+      // El ruteo lo hace el efecto de arriba en cuanto `user` llega.
     } catch (err) {
       setError(mapError(err.code || ""));
     } finally { setLoading(false); }
@@ -86,8 +95,7 @@ export default function Login({ nav, user, params = {} }) {
   const handleGoogle = async () => {
     setLoadingGoogle(true); setError("");
     try {
-      const cred = await loginConGoogle();
-      await routeAfterLogin(cred.user.uid);
+      await loginConGoogle();
     } catch (err) {
       setError(mapOAuthError(err.code || "", "Google"));
     } finally { setLoadingGoogle(false); }
@@ -96,8 +104,7 @@ export default function Login({ nav, user, params = {} }) {
   const handleApple = async () => {
     setLoadingApple(true); setError("");
     try {
-      const cred = await loginConApple();
-      await routeAfterLogin(cred.user.uid);
+      await loginConApple();
     } catch (err) {
       setError(mapOAuthError(err.code || "", "Apple"));
     } finally { setLoadingApple(false); }

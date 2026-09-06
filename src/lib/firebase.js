@@ -1,6 +1,6 @@
 // ─── FIREBASE SERVICE — Base de datos, auth y storage ────────────────────
 import { initializeApp }                   from "firebase/app";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, OAuthProvider, signInWithPopup, sendPasswordResetEmail } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, OAuthProvider, signInWithPopup, sendPasswordResetEmail, updateProfile } from "firebase/auth";
 import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, where, orderBy, limit, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 // Storage SDK removed — profile photos use base64-in-Firestore (no Blaze plan needed)
 import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
@@ -55,6 +55,12 @@ appleProvider.addScope("name");
 export const loginConApple = () => signInWithPopup(auth, appleProvider);
 
 // ── TÉCNICOS ────────────────────────────────────────────────────────────
+// El alta con correo no traía displayName, así que el formulario de perfil
+// —el mismo que usa Google— no tenía de dónde leer el nombre.
+export async function ponerNombreDeCuenta(usuario, nombre) {
+  await updateProfile(usuario, { displayName: nombre });
+}
+
 export async function crearPerfilTecnico(uid, datos) {
   await setDoc(doc(db, "tecnicos", uid), {
     ...datos,

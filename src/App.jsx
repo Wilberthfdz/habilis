@@ -213,7 +213,7 @@ export default function App() {
       case "panel": return <PanelTecnico {...screenProps} />;
       case "registrarTrabajo": return <RegistrarTrabajo {...screenProps} params={params} />;
       case "bienvenida":      return <Bienvenida {...screenProps} />;
-      case "completarPerfil": return <CompletarPerfil {...screenProps} />;
+      case "completarPerfil": return <CompletarPerfil {...screenProps} params={params} />;
       case "editarPerfil":    return <EditarPerfil     {...screenProps} />;
       case "habilisCare":      return <HabilisCare      {...screenProps} />;
       case "detalleActivo":   return <DetalleActivo   {...screenProps} params={params} />;

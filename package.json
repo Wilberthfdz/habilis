@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "npm --prefix functions test",
+    "test": "node --test tests/*.test.mjs && npm --prefix functions test",
     "deploy": "npm test && npm run build && npx --yes firebase-tools deploy --only functions,firestore,hosting",
     "verificar": "node scripts/verificarDespliegue.mjs",
     "test:reglas": "firebase emulators:exec --only firestore --project demo-habilis \"node tests/reglas.mjs\""
