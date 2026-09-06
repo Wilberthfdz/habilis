@@ -83,7 +83,26 @@ export default function Privacidad({ nav, user }) {
             editar o eliminar tu perfil directamente desde tu panel.
           </p>
 
-          <h2 style={H2}>7. Cookies y tecnologías de rastreo</h2>
+          <h2 style={H2}>7. Ubicación</h2>
+          <p style={P}>
+            Si eres técnico y decides configurar tu zona de trabajo, guardamos un
+            <strong> punto aproximado, redondeado a un área de aproximadamente un kilómetro</strong>,
+            junto con la distancia hasta la que aceptas desplazarte. No conservamos tu ubicación
+            exacta ni tu domicilio, y a los clientes <strong>nunca les mostramos dónde estás</strong>:
+            solo una distancia aproximada respecto a ellos. Puedes retirar tu zona en cualquier
+            momento desde Editar perfil.
+          </p>
+          <p style={P}>
+            La única dirección que se publica es la de un <strong>taller o local comercial</strong>,
+            y solo si tú lo activas expresamente en tu perfil.
+          </p>
+          <p style={P}>
+            Si eres cliente y usas "Cerca de mí", tu navegador nos comparte tu ubicación
+            <strong> únicamente para ordenar esa búsqueda</strong>. No la guardamos, no la
+            asociamos a tu cuenta y no la compartimos con los técnicos.
+          </p>
+
+          <h2 style={H2}>8. Cookies y tecnologías de rastreo</h2>
           <p style={P}>
             La plataforma usa almacenamiento local del navegador y cookies estrictamente necesarias
             para mantener tu sesión iniciada y recordar preferencias de la interfaz. También
@@ -94,7 +113,7 @@ export default function Privacidad({ nav, user }) {
             puedas iniciar sesión ni usar algunas funciones.
           </p>
 
-          <h2 style={H2}>8. Datos personales sensibles</h2>
+          <h2 style={H2}>9. Datos personales sensibles</h2>
           <p style={P}>
             <strong>No recabamos datos personales sensibles</strong> —origen racial o étnico, estado
             de salud, creencias religiosas, opiniones políticas, afiliación sindical o preferencia
@@ -103,14 +122,14 @@ export default function Privacidad({ nav, user }) {
             publicados sin su consentimiento, retiramos el contenido.
           </p>
 
-          <h2 style={H2}>9. Conservación y seguridad</h2>
+          <h2 style={H2}>10. Conservación y seguridad</h2>
           <p style={P}>
             Conservamos tus datos mientras tu cuenta esté activa. La información se almacena en
             infraestructura de Google Cloud con acceso restringido por reglas de seguridad. Las
             contraseñas nunca se almacenan en texto plano.
           </p>
 
-          <h2 style={H2}>10. Cambios a este aviso</h2>
+          <h2 style={H2}>11. Cambios a este aviso</h2>
           <p style={P}>
             Cualquier cambio a este aviso se publicará en esta página con su fecha de actualización.
             El uso continuado de la plataforma después de un cambio implica tu conformidad.

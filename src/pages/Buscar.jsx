@@ -3,8 +3,9 @@ import Logo from "../components/Logo.jsx";
 import Nav from "../components/Nav.jsx";
 import Footer from "../components/Footer.jsx";
 import Avatar from "../components/Avatar.jsx";
-import { buscarTecnicos } from "../lib/firebase.js";
-import { TAXONOMIA, buscarPorTexto } from "../lib/taxonomia.js";
+import { buscarTecnicos, buscarTecnicosCerca } from "../lib/firebase.js";
+import { ubicacionDelNavegador, textoDistancia } from "../lib/geo.js";
+import { TAXONOMIA } from "../lib/taxonomia.js";
 
 // Chips desde la taxonomía real de oficios (src/lib/taxonomia.js)
 const CATS = TAXONOMIA.map(c => ({ id: c.id, nombre: c.nombre }));
@@ -12,81 +13,81 @@ const CATS = TAXONOMIA.map(c => ({ id: c.id, nombre: c.nombre }));
 const initials = n => ((n||"").trim().charAt(0).toUpperCase()) || "T";
 
 export default function Buscar({ nav, user, params }) {
-  const [todos,    setTodos]    = useState([]);
+  // La búsqueda la resuelve el servidor y llega por páginas. Antes se
+  // descargaban 100 técnicos cualesquiera y se filtraba aquí: con cien
+  // perfiles se notaba poco, con cien mil un plomero de Cancún no aparecía
+  // nunca porque Firestore devolvía los 100 primeros que le daba la gana.
   const [tecnicos, setTecnicos] = useState([]);
   const [loading,  setLoading]  = useState(true);
+  const [masLoading, setMasLoading] = useState(false);
+  const [cursor,   setCursor]   = useState(null);
   const [q,        setQ]        = useState(params?.oficio || "");
-  // El landing manda oficio Y ciudad, pero aquí solo se leía el oficio: quien
-  // escribía "Cancún" en la portada llegaba a un directorio nacional.
   const [ciudad,   setCiudad]   = useState(params?.ciudad || "");
+  const [categoriaId, setCategoriaId] = useState("");
+  const [error,    setError]    = useState("");
+  const [cerca,    setCerca]    = useState(false);   // búsqueda por cercanía activa
+  const [ubicando, setUbicando] = useState(false);
 
-  useEffect(() => {
-    buscarTecnicos({}).then(r => {
-      setTodos(r);
-      const oficioInicial = params?.oficio || "";
-      const ciudadInicial = params?.ciudad || "";
-      setTecnicos(oficioInicial || ciudadInicial
-        ? filtrar(r, oficioInicial, ciudadInicial)
-        : r);
-    }).catch(() => { setTodos([]); setTecnicos([]); })
-      .finally(() => setLoading(false));
-  }, []);
-
-  // El agente de ranking calcula esto a diario con la misma lógica y lo deja
-  // en `rankScore`. Antes había DOS fórmulas distintas —esta y la del
-  // agente— y el orden dependía de por dónde entrara el usuario. La local
-  // queda solo de respaldo para perfiles que el agente aún no ha visto.
-  const score = t => t.rankScore ?? (
-    (t.totalTrabajos || 0) * 3 +
-    (t.totalValidaciones || 0) * 2 +
-    Math.min(t.experiencia || 0, 30) * 0.5 +
-    (t.verificado    ? 5 : 0) +
-    (t.plan === "pro"? 8 : 0));
-
-  const filtrar = (lista, f, ciudadF = "") => {
-    const l = f.trim().toLowerCase();
-    const c = ciudadF.trim().toLowerCase();
-    // La búsqueda entiende la taxonomía: "clima" también encuentra técnicos
-    // registrados con categoriaId "clima" aunque su oficio diga "Minisplits".
-    const hits = l ? buscarPorTexto(l, 10) : [];
-    const catIds = new Set(hits.map(h => h.categoriaId || h.id.split(".")[0]));
-    const subIds = new Set(hits.filter(h => h.nivel >= 2).map(h => h.subcategoriaId || h.id));
-    const matched = l
-      ? lista.filter(t =>
-          (t.oficio||"").toLowerCase().includes(l) ||
-          (t.nombre||"").toLowerCase().includes(l) ||
-          (t.ciudad||"").toLowerCase().includes(l) ||
-          (t.categoriaId && catIds.has(t.categoriaId)) ||
-          (t.subcategoriaId && subIds.has(t.subcategoriaId))
-        )
-      : [...lista];
-    // La ciudad se filtra aparte del oficio: son dos preguntas distintas y
-    // combinarlas en un solo texto hacía que "Electricista Cancún" no
-    // encontrara a nadie.
-    const enCiudad = c
-      ? matched.filter(t => (t.ciudad || "").toLowerCase().includes(c))
-      : matched;
-    // Alcance filter: hide "estado"-only technicians when searching outside their city
-    const conAlcance = enCiudad.filter(t => {
-      // "latam" ya no se ofrece, pero perfiles antiguos pueden tenerlo: se
-      // trata como nacional en vez de dejarlos fuera de las búsquedas.
-      if (!t.alcance || t.alcance === "nacional" || t.alcance === "latam") return true;
-      if (t.alcance === "estado") {
-        // Comparaba contra el texto del oficio, no contra la ciudad: buscar
-        // "Electricista" descartaba a todos los de alcance estatal.
-        if (!c) return true;
-        return (t.ciudad||"").toLowerCase().includes(c);
-      }
-      return true;
-    });
-    // Sort by score descending
-    return conAlcance.sort((a, b) => score(b) - score(a));
+  const consultar = async ({ texto, ciudadF, catId, cursorPrev = null, acumular = false }) => {
+    cursorPrev ? setMasLoading(true) : setLoading(true);
+    setError("");
+    try {
+      const r = await buscarTecnicos({
+        texto: texto ?? q, ciudad: ciudadF ?? ciudad,
+        categoriaId: catId ?? categoriaId, cursor: cursorPrev,
+      });
+      setTecnicos(prev => acumular ? [...prev, ...r.tecnicos] : r.tecnicos);
+      setCursor(r.cursor);
+    } catch (e) {
+      console.error(e);
+      // Un índice que aún no terminó de construirse en Firestore da
+      // failed-precondition; decirlo es más útil que una lista vacía.
+      setError(e?.code === "failed-precondition"
+        ? "La búsqueda se está preparando. Vuelve a intentarlo en unos minutos."
+        : "No pudimos completar la búsqueda. Revisa tu conexión.");
+      if (!acumular) setTecnicos([]);
+    } finally { setLoading(false); setMasLoading(false); }
   };
 
-  const buscar   = () => setTecnicos(filtrar(todos, q, ciudad));
-  const onKey    = e => { if (e.key === "Enter") buscar(); };
-  const setChip  = cat => { setQ(cat); setTecnicos(filtrar(todos, cat, ciudad)); };
-  const clearQ   = () => { setQ(""); setCiudad(""); setTecnicos(todos); };
+  useEffect(() => { consultar({}); }, []);
+
+  const buscar  = () => { setCerca(false); consultar({}); };
+  const onKey   = e => { if (e.key === "Enter") buscar(); };
+  const verMas  = () => consultar({ cursorPrev: cursor, acumular: true });
+  // Los chips filtran por categoría de la taxonomía, no por texto: es la
+  // misma pregunta que entiende el servidor.
+  const setChip = catId => {
+    setCategoriaId(catId);
+    consultar({ catId });
+  };
+  const hayFiltro = !!(q.trim() || ciudad.trim() || categoriaId || cerca);
+
+  // "Cerca de mí". La ubicación del cliente NO se guarda en ninguna parte:
+  // se usa para ordenar esta búsqueda y se olvida. Y lo que se ve de cada
+  // técnico es una distancia aproximada, nunca un punto ni una dirección.
+  const buscarCerca = async () => {
+    setUbicando(true); setError("");
+    try {
+      const centro = await ubicacionDelNavegador();
+      const r = await buscarTecnicosCerca({ centro, radioKm: 25, categoriaId });
+      setTecnicos(r);
+      setCursor(null);
+      setCerca(true);
+      if (r.length === 0) {
+        setError("No encontramos técnicos a menos de 25 km. Prueba buscando por ciudad.");
+      }
+    } catch (e) {
+      console.error(e);
+      setError(e?.code === "failed-precondition"
+        ? "La búsqueda por cercanía se está preparando. Vuelve a intentarlo en unos minutos."
+        : e.message || "No pudimos buscar por cercanía.");
+    } finally { setUbicando(false); setLoading(false); }
+  };
+
+  const clearQ  = () => {
+    setQ(""); setCiudad(""); setCategoriaId(""); setCerca(false);
+    consultar({ texto: "", ciudadF: "", catId: "" });
+  };
 
   return (
     <div style={{ background:"#F1F5F9", minHeight:"100vh" }}>
@@ -131,6 +132,13 @@ export default function Buscar({ nav, user, params }) {
                        padding:"12px 22px", fontWeight:700, fontSize:"14px", cursor:"pointer", flexShrink:0 }}>
               Buscar
             </button>
+            <button onClick={buscarCerca} disabled={ubicando}
+              style={{ background: cerca ? "#F97316" : "rgba(255,255,255,0.09)",
+                       color:"#fff", border:`1px solid ${cerca ? "#F97316" : "rgba(255,255,255,0.14)"}`,
+                       borderRadius:"10px", padding:"12px 18px", fontWeight:700, fontSize:"14px",
+                       cursor:"pointer", flexShrink:0, opacity: ubicando ? 0.6 : 1 }}>
+              {ubicando ? "Ubicando…" : "📍 Cerca de mí"}
+            </button>
           </div>
         </div>
       </div>
@@ -139,15 +147,15 @@ export default function Buscar({ nav, user, params }) {
       <div style={{ background:"#fff", borderBottom:"1px solid #E2E8F0", padding:"12px 20px", overflowX:"auto" }}>
         <div style={{ display:"flex", gap:"8px", maxWidth:"960px", margin:"0 auto", width:"max-content" }}>
           <button onClick={clearQ}
-            style={{ padding:"6px 16px", background: (!q && !ciudad) ? "#0F172A" : "#F1F5F9",
-                     color: (!q && !ciudad) ? "#fff" : "#374151", border:"none",
+            style={{ padding:"6px 16px", background: (!q && !ciudad && !categoriaId) ? "#0F172A" : "#F1F5F9",
+                     color: (!q && !ciudad && !categoriaId) ? "#fff" : "#374151", border:"none",
                      borderRadius:"20px", fontSize:"12px", fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
             Todos
           </button>
           {CATS.map(cat => (
-            <button key={cat.id} onClick={() => setChip(cat.nombre)}
-              style={{ padding:"6px 16px", background: q === cat.nombre ? "#F97316" : "#F1F5F9",
-                       color: q === cat.nombre ? "#fff" : "#374151", border:"none",
+            <button key={cat.id} onClick={() => setChip(cat.id)}
+              style={{ padding:"6px 16px", background: categoriaId === cat.id ? "#F97316" : "#F1F5F9",
+                       color: categoriaId === cat.id ? "#fff" : "#374151", border:"none",
                        borderRadius:"20px", fontSize:"12px", fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
               {cat.nombre}
             </button>
@@ -168,12 +176,14 @@ export default function Buscar({ nav, user, params }) {
                         borderRadius:"20px", border:"1px solid #E2E8F0" }}>
             <div style={{ fontSize:"52px", marginBottom:"14px" }}>🔍</div>
             <p style={{ fontWeight:800, fontSize:"18px", color:"#0F172A", marginBottom:"6px" }}>
-              {todos.length === 0 ? "Aún no hay técnicos registrados" : `Sin resultados para "${q}"`}
+              {hayFiltro ? "Sin resultados" : "Aún no hay técnicos registrados"}
             </p>
             <p style={{ color:"#64748B", fontSize:"14px", marginBottom:"24px" }}>
-              {todos.length === 0 ? "Sé el primero en registrarte gratis" : "Prueba con otro término o ve todos"}
+              {hayFiltro
+                ? "Prueba con otro oficio o quita el filtro de ciudad."
+                : "Sé el primero en registrarte gratis"}
             </p>
-            {todos.length === 0
+            {!hayFiltro
               ? <button onClick={() => nav("registro")}
                   style={{ background:"#F97316", color:"#fff", border:"none", borderRadius:"10px",
                            padding:"12px 24px", fontWeight:700, cursor:"pointer" }}>
@@ -189,7 +199,11 @@ export default function Buscar({ nav, user, params }) {
         ) : (
           <>
             <p style={{ color:"#64748B", fontSize:"13px", marginBottom:"16px" }}>
-              <b style={{ color:"#0F172A" }}>{tecnicos.length}</b> técnico{tecnicos.length !== 1 ? "s" : ""}{q ? ` para "${q}"` : ""}
+              {/* Sin "de N": el servidor devuelve páginas y contar la
+                  colección entera costaría una lectura por técnico. */}
+              <b style={{ color:"#0F172A" }}>{tecnicos.length}</b> técnico{tecnicos.length !== 1 ? "s" : ""}
+              {cursor ? " y más" : ""}{q ? ` para "${q}"` : ""}
+              {cerca ? " cerca de ti, ordenados por distancia y reputación" : (ciudad ? ` en ${ciudad}` : "")}
             </p>
             <div style={{ display:"flex", flexDirection:"column", gap:"12px" }}>
               {tecnicos.map(t => (
@@ -214,6 +228,13 @@ export default function Buscar({ nav, user, params }) {
                         {t.experiencia ? ` · ${t.experiencia} años exp.` : ""}
                         {t.rating > 0 ? ` · ⭐ ${t.rating}` : ""}
                       </p>
+                      {/* Distancia aproximada, nunca un punto ni una
+                          dirección: el técnico no publicó dónde vive. */}
+                      {t.distanciaKm != null && (
+                        <p style={{ color:"#059669", fontSize:"12px", fontWeight:700, marginTop:"3px" }}>
+                          {textoDistancia(t.distanciaKm)}
+                        </p>
+                      )}
                       {t.bio && <p style={{ color:"#64748B", fontSize:"12px", marginTop:"6px", lineHeight:1.5 }}>{t.bio.slice(0,100)}{t.bio.length > 100 ? "..." : ""}</p>}
                     </div>
                     {/* CTA */}
@@ -226,7 +247,27 @@ export default function Buscar({ nav, user, params }) {
                 </div>
               ))}
             </div>
+
+            {/* Paginación. Antes no existía: la pantalla mostraba lo que
+                cupiera en una sola descarga y el resto del directorio era
+                inalcanzable. */}
+            {cursor && (
+              <button onClick={verMas} disabled={masLoading}
+                style={{ width:"100%", marginTop:"16px", background:"#fff", color:"#0F172A",
+                         border:"1px solid #E2E8F0", borderRadius:"12px", padding:"14px",
+                         fontWeight:700, fontSize:"14px", cursor:"pointer",
+                         opacity: masLoading ? 0.6 : 1 }}>
+                {masLoading ? "Cargando…" : "Ver más técnicos"}
+              </button>
+            )}
           </>
+        )}
+
+        {error && (
+          <div style={{ background:"#FEF2F2", border:"1px solid #FECACA", borderRadius:"12px",
+                        padding:"12px 16px", fontSize:"13px", color:"#DC2626", marginTop:"16px" }}>
+            {error}
+          </div>
         )}
       </div>
       <Footer nav={nav} />

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import Nav from "../components/Nav.jsx";
 import Avatar from "../components/Avatar.jsx";
 import SelectorOficio from "../components/SelectorOficio.jsx";
+import ZonaDeTrabajo from "../components/ZonaDeTrabajo.jsx";
 import { obtenerTecnico, actualizarTecnico, subirFotoPerfil, cerrarSesion } from "../lib/firebase.js";
 import { eliminarMiCuenta } from "../lib/gemini.js";
 
@@ -49,6 +50,8 @@ export default function EditarPerfil({ nav, user }) {
   const [oficio, setOficio] = useState({
     categoriaId:"", subcategoriaId:null, oficio:"", oficioLibre:"",
   });
+  // Zona aproximada (privada) y taller (público y opcional). Ver geo.js.
+  const [zona, setZona] = useState({ geohash:null, geoPunto:null, radioKm:25, taller:null });
   const set = k => e => { setOk(false); setForm(f => ({ ...f, [k]: e.target.value })); };
 
   useEffect(() => {
@@ -57,6 +60,12 @@ export default function EditarPerfil({ nav, user }) {
       .then(t => {
         if (!t) { setCargando(false); return; }
         setTecnico(t);
+        setZona({
+          geohash:  t.geohash  || null,
+          geoPunto: t.geoPunto || null,
+          radioKm:  t.radioKm  || 25,
+          taller:   t.taller   || null,
+        });
         setOficio({
           categoriaId:    t.categoriaId    || "",
           subcategoriaId: t.subcategoriaId || null,
@@ -113,6 +122,16 @@ export default function EditarPerfil({ nav, user }) {
         // configura en el panel. Escribirla como texto libre desde esta
         // pantalla borraba esa configuración en cada guardado.
         zona:        form.zona.trim(),
+        // El punto ya viene redondeado a ~1 km desde el componente: aquí no
+        // pasa nunca la ubicación exacta que dio el navegador.
+        geohash:     zona.geohash  || null,
+        geoPunto:    zona.geoPunto || null,
+        radioKm:     zona.radioKm  || 25,
+        taller:      zona.taller?.publico ? {
+          publico:   true,
+          direccion: (zona.taller.direccion || "").trim().slice(0, 160),
+          horario:   (zona.taller.horario   || "").trim().slice(0, 100),
+        } : null,
         disponible:  form.disponible,
       });
       setOk(true);
@@ -200,8 +219,13 @@ export default function EditarPerfil({ nav, user }) {
                 value={form.experiencia} onChange={set("experiencia")} />
             </div>
 
+            <div style={{ background:"#F8FAFC", border:"1px solid #E2E8F0",
+                          borderRadius:"14px", padding:"18px" }}>
+              <ZonaDeTrabajo valor={zona} onChange={o => { setOk(false); setZona(o); }} />
+            </div>
+
             <div>
-              <label style={lbl}>Zona de trabajo</label>
+              <label style={lbl}>Descripción de tu zona (opcional)</label>
               <input style={inp} value={form.zona} onChange={set("zona")}
                 placeholder="Norte de la ciudad, hasta 20 km, zona metropolitana…" />
             </div>

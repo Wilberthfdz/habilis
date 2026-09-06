@@ -280,7 +280,7 @@ export default function Landing({ nav, user }) {
   const [featured, setFeatured] = useState([]);
 
   useEffect(() => {
-    buscarTecnicos({}).then(r => setFeatured(r.slice(0, 4))).catch(() => {});
+    buscarTecnicos({ limite: 4 }).then(r => setFeatured(r.tecnicos)).catch(() => {});
   }, []);
 
   const go  = () => nav("buscar", { oficio, ciudad });

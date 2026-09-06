@@ -1,10 +1,12 @@
 // ─── FIREBASE SERVICE — Base de datos, auth y storage ────────────────────
 import { initializeApp }                   from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, OAuthProvider, signInWithPopup, sendPasswordResetEmail, updateProfile } from "firebase/auth";
-import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, where, orderBy, limit, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
+import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, where, orderBy, limit, startAfter, startAt, endAt, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 // Storage SDK removed — profile photos use base64-in-Firestore (no Blaze plan needed)
 import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 import { firebaseConfig, APPCHECK_SITE_KEY, VERSION_TERMINOS } from "./config.js";
+import { camposDeIndice, palabrasBusqueda, normalizarCiudad } from "./indice.js";
+import { rangosCercanos, distanciaKm, puntoDeBusqueda } from "./geo.js";
 
 // Inicializar Firebase (Google Cloud — satisface requisito de competencia)
 const app     = initializeApp(firebaseConfig);
@@ -64,6 +66,9 @@ export async function ponerNombreDeCuenta(usuario, nombre) {
 export async function crearPerfilTecnico(uid, datos) {
   await setDoc(doc(db, "tecnicos", uid), {
     ...datos,
+    // Sin estos campos el perfil no es encontrable en el servidor y la
+    // búsqueda tiene que descargar la colección entera.
+    ...camposDeIndice(datos),
     uid,
     plan: "gratis",         // gratis | pro
     verificado: false,
@@ -96,32 +101,103 @@ export async function obtenerTecnico(uid) {
 }
 
 export async function actualizarTecnico(uid, datos) {
+  // El índice se recalcula en cada guardado: si el técnico cambia de ciudad
+  // o de oficio y no se actualiza, deja de aparecer donde debería.
+  const reindexa = ["nombre", "oficio", "ciudad", "categoriaId", "subcategoriaId"]
+    .some(campo => campo in datos);
+  const actual = reindexa ? (await getDoc(doc(db, "tecnicos", uid))).data() || {} : null;
   await updateDoc(doc(db, "tecnicos", uid), {
     ...datos,
+    ...(reindexa ? camposDeIndice({ ...actual, ...datos }) : {}),
     updatedAt: serverTimestamp(),
   });
 }
 
-export async function buscarTecnicos({ limite = 100 } = {}) {
-  // No oficio/ciudad filters here — they require composite indexes that may
-  // not exist. Buscar.jsx applies case-insensitive client-side filtering.
-  const q = query(collection(db, "tecnicos"), where("disponible", "==", true), limit(limite));
-  const snap = await getDocs(q);
-  // Un técnico suspendido por el admin seguía apareciendo en los resultados:
-  // el campo se escribía pero nadie lo miraba. Se filtra aquí porque
-  // Firestore no admite un `!=` combinado con el `where` de arriba sin un
-  // índice adicional, y el conjunto ya está acotado por `limite`.
+export async function buscarTecnicos({
+  texto = "", ciudad = "", categoriaId = "", limite = 24, cursor = null,
+} = {}) {
+  // Antes esto descargaba 100 técnicos CUALESQUIERA y filtraba en el
+  // navegador. Con cien perfiles se notaba poco; con cien mil, un plomero
+  // de Cancún no aparecía nunca: Firestore devolvía los 100 primeros que le
+  // daba la gana y el filtro se aplicaba solo sobre esos.
+  //
+  // Ahora filtra el servidor y devuelve páginas. `cursor` es el último
+  // documento de la página anterior.
+  const conds = [where("disponible", "==", true)];
+  if (categoriaId) conds.push(where("categoriaId", "==", categoriaId));
+  if (ciudad)      conds.push(where("ciudadNorm", "==", normalizarCiudad(ciudad)));
+
+  const palabras = palabrasBusqueda({ oficio: texto, nombre: texto });
+  // Una sola palabra basta para acotar; con más, Firestore no permite
+  // combinar varios array-contains, así que se usa la más larga (la más
+  // discriminante) y el resto se afina en el cliente sobre la página.
+  const clave = palabras.sort((a, b) => b.length - a.length)[0];
+  if (clave) conds.push(where("busqueda", "array-contains", clave));
+
+  const partes = [collection(db, "tecnicos"), ...conds, orderBy("rankScore", "desc"), limit(limite)];
+  if (cursor) partes.splice(partes.length - 1, 0, startAfter(cursor));
+
+  const snap = await getDocs(query(...partes));
   const docs = snap.docs
-    .map(d => ({ id: d.id, ...d.data() }))
+    .map(d => ({ id: d.id, ...d.data(), _doc: d }))
     .filter(t => t.suspendido !== true);
-  // El orden lo decide el agente de ranking, que corre a diario y pesa
-  // trabajos documentados, validaciones, experiencia, verificación y plan.
-  // Antes se ordenaba por `rating`, un campo que en ese momento no escribía
-  // nadie: en la práctica el orden era el que devolviera Firestore.
-  return docs.sort((a, b) =>
-    (b.rankScore || 0) - (a.rankScore || 0) ||
-    (b.totalTrabajos || 0) - (a.totalTrabajos || 0) ||
-    (b.rating || 0) - (a.rating || 0));
+
+  return {
+    tecnicos: docs,
+    // Con lo devuelto se pide la página siguiente; `null` significa que ya
+    // no hay más.
+    cursor: snap.docs.length === limite ? snap.docs[snap.docs.length - 1] : null,
+  };
+}
+
+// Búsqueda por cercanía. Firestore no sabe buscar "cerca de", pero un
+// geohash convierte la cercanía geográfica en cercanía alfabética, y eso sí
+// lo sabe consultar: se piden los rangos de texto que cubren el círculo y
+// se afina la distancia real al recibirlos.
+//
+// El punto de cada técnico ya viene redondeado a ~1 km desde que se guardó
+// (ver geo.js): ni la consulta ni el resultado manejan nunca su domicilio.
+export async function buscarTecnicosCerca({
+  centro, radioKm = 25, categoriaId = "", limite = 24,
+}) {
+  const rangos = rangosCercanos(centro, radioKm);
+
+  // Un círculo se cubre con varios rangos de geohash; hay que preguntar por
+  // todos. Son consultas pequeñas y van en paralelo.
+  const consultas = rangos.map(([desde, hasta]) => {
+    const conds = [where("disponible", "==", true)];
+    if (categoriaId) conds.push(where("categoriaId", "==", categoriaId));
+    return getDocs(query(
+      collection(db, "tecnicos"), ...conds,
+      orderBy("geohash"), startAt(desde), endAt(hasta), limit(limite * 2),
+    ));
+  });
+
+  const snaps = await Promise.all(consultas);
+  const vistos = new Map();
+  for (const snap of snaps) {
+    for (const d of snap.docs) {
+      const t = { id: d.id, ...d.data() };
+      if (t.suspendido === true || !t.geoPunto) continue;
+      // Los rangos de geohash son rectángulos: sobran esquinas. Aquí se
+      // descarta lo que quedó fuera del círculo de verdad.
+      const km = distanciaKm(centro, t.geoPunto);
+      if (km > radioKm) continue;
+      // Y se respeta hasta dónde dijo el técnico que se desplaza.
+      if (t.radioKm && km > t.radioKm) continue;
+      if (!vistos.has(d.id)) vistos.set(d.id, { ...t, distanciaKm: km });
+    }
+  }
+
+  // Cerca y bueno, en ese orden: la distancia manda dentro de cada tramo de
+  // 5 km y dentro del tramo ordena la reputación. Así un técnico excelente
+  // a 8 km no queda por detrás de uno nuevo a 6 km.
+  return [...vistos.values()]
+    .sort((a, b) =>
+      Math.floor(a.distanciaKm / 5) - Math.floor(b.distanciaKm / 5) ||
+      (b.rankScore || 0) - (a.rankScore || 0) ||
+      a.distanciaKm - b.distanciaKm)
+    .slice(0, limite);
 }
 
 // ── TRABAJOS (Expedientes) ───────────────────────────────────────────────

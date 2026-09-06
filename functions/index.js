@@ -42,6 +42,13 @@ const db = admin.firestore();
 db.settings({ ignoreUndefinedProperties: true });
 const GEMINI_MODEL = "gemini-2.0-flash";
 
+// Misma normalización que src/lib/indice.js: si las dos no coinciden, un
+// perfil indexado como "cancun" nunca casa con la búsqueda de "Cancún".
+function normalizarTexto(texto) {
+  return (texto || "").toLowerCase().normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "").trim().replace(/\s+/g, " ");
+}
+
 // ═══════════════════════════ HELPERS ═══════════════════════════
 async function callGemini(prompt, key, { maxTokens = 800, temperature = 0.4, json = false } = {}) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
@@ -121,7 +128,30 @@ exports.agenteMatching = onDocumentCreated(
     const solId = event.params.id;
     if (sol.asignadoPorIA) return; // evita reprocesar
 
-    const snap = await db.collection("tecnicos").where("disponible", "==", true).limit(60).get();
+    // Leía 60 técnicos CUALESQUIERA de todo el país y se los daba a Gemini.
+    // Con cien mil perfiles, el plomero de la esquina no entra nunca en esos
+    // 60 — y el prompt le pedía al modelo que priorizara la cercanía sobre
+    // una lista que no la tenía en cuenta. Se acota antes de preguntar.
+    const ciudadNorm = normalizarTexto(sol.ciudad || "");
+    let consulta = db.collection("tecnicos").where("disponible", "==", true);
+    if (sol.categoria) {
+      const cat = String(sol.categoria).split(".")[0];
+      consulta = consulta.where("categoriaId", "==", cat);
+    }
+    if (ciudadNorm) consulta = consulta.where("ciudadNorm", "==", ciudadNorm);
+
+    let snap = await consulta.orderBy("rankScore", "desc").limit(40).get();
+    // Si en esa ciudad y oficio no hay nadie, se abre a la ciudad entera y,
+    // en último caso, al país: es mejor proponer lejos que no proponer.
+    if (snap.empty && ciudadNorm) {
+      snap = await db.collection("tecnicos")
+        .where("disponible", "==", true).where("ciudadNorm", "==", ciudadNorm)
+        .orderBy("rankScore", "desc").limit(40).get();
+    }
+    if (snap.empty) {
+      snap = await db.collection("tecnicos").where("disponible", "==", true)
+        .orderBy("rankScore", "desc").limit(40).get();
+    }
     // Suspender a un técnico no lo sacaba del reparto de solicitudes: el
     // agente lo seguía proponiendo y notificando.
     const tecnicos = snap.docs
@@ -439,7 +469,19 @@ DECIDE y responde SOLO JSON:
 exports.agenteRanking = onSchedule(
   { schedule: "every day 08:30", timeZone: "America/Cancun", timeoutSeconds: 540, memory: "512MiB" },
   async () => {
-  const snap = await db.collection("tecnicos").get();
+  // Leía la colección ENTERA cada mañana: con cien mil perfiles son cien
+  // mil lecturas diarias para recalcular un número que, en la mayoría, no
+  // cambió. Ahora solo se recalcula lo que se movió desde el último día,
+  // más los Pro cancelados que puedan haber vencido.
+  const ayer = admin.firestore.Timestamp.fromMillis(Date.now() - 26 * 3600 * 1000);
+  const [cambiados, caducables] = await Promise.all([
+    db.collection("tecnicos").where("updatedAt", ">=", ayer).limit(5000).get(),
+    db.collection("tecnicos").where("suscripcionEstado", "==", "cancelled").limit(1000).get(),
+  ]);
+  // Un mismo técnico puede salir en las dos consultas.
+  const porId = new Map();
+  for (const d of [...cambiados.docs, ...caducables.docs]) porId.set(d.id, d);
+  const snap = { docs: [...porId.values()] };
   let n = 0;
   const ahora = Date.now();
   // Una escritura suelta por técnico, esperando cada una: con unos cientos
@@ -477,7 +519,8 @@ exports.agenteRanking = onSchedule(
     if (++enLote >= 500) await vaciar();
   }
   await vaciar();
-  await logDecision("ranking", `recalculó ${n} técnico(s)`, "batch", "fórmula diaria transparente");
+  await logDecision("ranking", `recalculó ${n} técnico(s)`, "batch",
+    "solo perfiles con cambios en las últimas 26 h y suscripciones por vencer");
 });
 
 // ═══════════════════════════════════════════════════════════════

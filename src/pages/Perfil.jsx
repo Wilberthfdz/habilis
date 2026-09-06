@@ -113,6 +113,34 @@ export default function Perfil({ nav, params, user }) {
               {tecnico.bio}
             </p>
           )}
+          {/* El taller solo aparece si el técnico marcó que tiene local y
+              quiere publicarlo. Su zona de trabajo NO se muestra jamás: es
+              un punto aproximado que solo sirve para ordenar búsquedas, y
+              la mayoría de los técnicos trabajan desde su casa. */}
+          {tecnico.taller?.publico && tecnico.taller.direccion && (
+            <div style={{ background:"#F0FDF4", border:"1px solid #A7F3D0", borderRadius:"12px",
+                          padding:"14px 16px", marginBottom:"14px" }}>
+              <p style={{ fontSize:"11px", fontWeight:800, color:"#059669",
+                          textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:"5px" }}>
+                Taller
+              </p>
+              <p style={{ fontSize:"13.5px", color:"#0F172A", lineHeight:1.6 }}>
+                {tecnico.taller.direccion}
+              </p>
+              {tecnico.taller.horario && (
+                <p style={{ fontSize:"12.5px", color:"#64748B", marginTop:"4px" }}>
+                  {tecnico.taller.horario}
+                </p>
+              )}
+            </div>
+          )}
+
+          {tecnico.radioKm && (
+            <p style={{ color:"#64748B", fontSize:"13px", marginBottom:"14px" }}>
+              🚗 Se desplaza hasta <b>{tecnico.radioKm} km</b> desde {tecnico.ciudad || "su zona"}
+            </p>
+          )}
+
           <div style={{ display:"flex", gap:"12px", flexWrap:"wrap" }}>
             {tecnico.disponibilidad && (
               <p style={{ color:"#64748B", fontSize:"13px", marginBottom:"14px", width:"100%" }}>

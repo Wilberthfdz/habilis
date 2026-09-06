@@ -27,14 +27,19 @@ export default function MiRed({ nav, user }) {
   const cargar = async () => {
     setLoading(true);
     try {
-      const [colaboradores, todos, t] = await Promise.all([
+      const [colaboradores, resultado, t] = await Promise.all([
         obtenerColaboradores(user.uid),
-        buscarTecnicos({}),
+        // Solo la primera página: la red se arma sugiriendo, no listando
+        // el directorio entero.
+        buscarTecnicos({ limite: 60 }),
         obtenerTecnico(user.uid),
       ]);
       setRed(colaboradores);
-      setTodosLos(todos);
+      setTodosLos(resultado.tecnicos);
       setTecnico(t);
+    } catch (e) {
+      console.error(e);
+      setError("No pudimos cargar tu red. Revisa tu conexión.");
     } finally { setLoading(false); }
   };
 
