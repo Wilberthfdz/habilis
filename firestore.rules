@@ -124,6 +124,10 @@ service cloud.firestore {
         || (
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado','updatedAt'])
           && request.resource.data.estado in ['aceptada','rechazada']
+          // Solo una cotización ENVIADA se puede aceptar. Antes cualquiera
+          // con el enlace podía aceptar un borrador que el técnico todavía
+          // estaba redactando.
+          && resource.data.estado == 'enviada'
         );
       allow delete: if isAdmin();
     }
@@ -163,9 +167,24 @@ service cloud.firestore {
 
       allow read:   if esParte() || isAdmin();
       allow create: if creaComoDuenio('clienteId');
+      // La lista se quedó corta y el flujo real chocaba contra ella: el chat
+      // escribe `expedienteId` al aceptar, `review` cuando el cliente
+      // califica y `clasificacionGemini` al crear la solicitud. Los tres se
+      // rechazaban, así que aceptar dejaba el trabajo a medias, la
+      // calificación NUNCA se guardaba y la clasificación de la IA se perdía.
+      // `review` solo la escribe el cliente y solo una vez.
       allow update: if isAdmin() || (
         esParte()
-        && cambia().hasOnly(['estado','resumenIA','trabajoId','updatedAt'])
+        && cambia().hasOnly(['estado','resumenIA','trabajoId','expedienteId',
+                             'clasificacionGemini','updatedAt'])
+      ) || (
+        request.auth != null
+        && resource.data.clienteId == request.auth.uid
+        && cambia().hasOnly(['review','updatedAt'])
+        && !('review' in resource.data)
+        && request.resource.data.review.rating is number
+        && request.resource.data.review.rating >= 1
+        && request.resource.data.review.rating <= 5
       );
       allow delete: if false;
 

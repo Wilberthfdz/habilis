@@ -159,7 +159,7 @@ export default function Soporte({ nav, user }) {
               ¿Prefieres hablar con una persona?
             </h3>
             <p style={{ fontSize:"13px", color:"#64748B", lineHeight:1.7, marginBottom:"12px" }}>
-              Escríbenos y te respondemos por correo. Los suscriptores Pro tienen soporte prioritario.
+              Escríbenos y te respondemos por correo en un máximo de 2 días hábiles.
             </p>
             <a href="mailto:habilisempresa@gmail.com"
               style={{ display:"inline-block", fontSize:"13.5px", fontWeight:800, color:"#F07020" }}>

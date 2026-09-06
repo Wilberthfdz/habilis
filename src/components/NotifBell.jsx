@@ -11,6 +11,7 @@ const ICONO_TIPO = {
   care:       "🏥",
   marketing:  "📣",
   chat:       "💬",
+  calificacion: "⭐",
 };
 
 function tiempoRelativo(fecha) {

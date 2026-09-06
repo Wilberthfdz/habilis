@@ -31,12 +31,16 @@ export default function Buscar({ nav, user, params }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const score = t =>
-    (t.totalTrabajos || 0) * 2 +
-    (t.totalValidaciones || 0) * 1.5 +
-    (t.experiencia   || 0) * 1 +
-    (t.verificado    ? 3 : 0) +
-    (t.plan === "pro"? 5 : 0);
+  // El agente de ranking calcula esto a diario con la misma lógica y lo deja
+  // en `rankScore`. Antes había DOS fórmulas distintas —esta y la del
+  // agente— y el orden dependía de por dónde entrara el usuario. La local
+  // queda solo de respaldo para perfiles que el agente aún no ha visto.
+  const score = t => t.rankScore ?? (
+    (t.totalTrabajos || 0) * 3 +
+    (t.totalValidaciones || 0) * 2 +
+    Math.min(t.experiencia || 0, 30) * 0.5 +
+    (t.verificado    ? 5 : 0) +
+    (t.plan === "pro"? 8 : 0));
 
   const filtrar = (lista, f, ciudadF = "") => {
     const l = f.trim().toLowerCase();

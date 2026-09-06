@@ -17,10 +17,10 @@ const PASOS_CLIENTE = [
 
 const HERRAMIENTAS = [
   ["🤖", "5 agentes de IA", "Matching de solicitudes, moderación de contenido, redacción del perfil al darte de alta, recordatorios de mantenimiento y ranking — trabajando 24/7."],
-  ["📋", "Cotizaciones Pro", "Genera cotizaciones formales con desglose de conceptos, IVA y tu catálogo de productos."],
+  ["📋", "Cotizaciones", "Genera cotizaciones formales con desglose de conceptos, IVA y tu catálogo de productos. Con Pro, la IA las redacta por ti."],
   ["🛡️", "Habilis Care", "Registra tus equipos (aires, calentadores, bombas…) y recibe recordatorios de mantenimiento preventivo."],
   ["🎙️", "Registro por voz", "Dicta tu trabajo terminado y la IA lo transcribe, clasifica y publica con tus fotos."],
-  ["💬", "Chat integrado", "Conversa con clientes o técnicos dentro de la app, con resúmenes automáticos de cada solicitud."],
+  ["💬", "Chat integrado", "Conversa con clientes o técnicos dentro de la app. Al cerrar un trabajo, la IA deja un resumen de lo acordado."],
   ["🔔", "Notificaciones", "Entérate de mensajes nuevos en tus conversaciones, solicitudes que la IA te asigna, decisiones de moderación y avisos de mantenimiento."],
 ];
 

@@ -3,7 +3,7 @@ import Nav from "../components/Nav.jsx";
 import Avatar from "../components/Avatar.jsx";
 import { db } from "../lib/firebase.js";
 import {
-  actualizarSolicitudChat, enviarMensajeChat, crearTrabajo,
+  actualizarSolicitudChat, enviarMensajeChat, crearTrabajo, actualizarTrabajo,
 } from "../lib/firebase.js";
 import { generarResumenChat } from "../lib/gemini.js";
 import {
@@ -25,6 +25,7 @@ export default function Chat({ nav, user, params }) {
   const [showReview,   setShowReview]   = useState(false);
   const [rating,       setRating]       = useState(0);
   const [reviewText,   setReviewText]   = useState("");
+  const [error,        setError]        = useState("");
   const bottomRef = useRef(null);
 
   const esTecnico = solicitud && user?.uid === solicitud.tecnicoId;
@@ -35,13 +36,16 @@ export default function Chat({ nav, user, params }) {
     if (!solicitudId || !user) { nav(user ? "panel" : "login"); return; }
 
     // Real-time listener on solicitud document
+    // Sin el manejador de error, un rechazo de las reglas —por ejemplo, si
+    // no eres parte de esta conversación— dejaba la pantalla en "Cargando
+    // conversación..." para siempre, sin decir nada.
     const unsubSol = onSnapshot(doc(db, "solicitudes_chat", solicitudId), snap => {
-      if (snap.exists()) {
-        setSolicitud({ id: snap.id, ...snap.data() });
-        setLoading(false);
-      } else {
-        setLoading(false);
-      }
+      if (snap.exists()) setSolicitud({ id: snap.id, ...snap.data() });
+      setLoading(false);
+    }, err => {
+      console.error(err);
+      setError("No pudimos abrir esta conversación. Puede que ya no tengas acceso a ella.");
+      setLoading(false);
     });
 
     // Real-time listener on messages subcollection
@@ -51,6 +55,9 @@ export default function Chat({ nav, user, params }) {
     );
     const unsubMsg = onSnapshot(qMsg, snap => {
       setMensajes(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, err => {
+      console.error(err);
+      setError("No pudimos cargar los mensajes de esta conversación.");
     });
 
     return () => { unsubSol(); unsubMsg(); };
@@ -69,32 +76,47 @@ export default function Chat({ nav, user, params }) {
   };
 
   const aceptarSolicitud = async () => {
-    await actualizarSolicitudChat(solicitudId, { estado:"aceptado" });
-    // Create expediente in trabajos
-    const expedienteId = await crearTrabajo({
-      titulo:          `Solicitud: ${(solicitud.descripcion||"").slice(0,50)}`,
-      descripcion:     solicitud.descripcion,
-      tipo:            solicitud.clasificacionGemini?.tipoTrabajo || "Servicio",
-      estado:          "en_proceso",
-      tecnicoId:       solicitud.tecnicoId,
-      clienteId:       solicitud.clienteId,
-      clienteNombre:   solicitud.clienteNombre,
-      origen:          "chat",
-      solicitudId,
-    });
-    await actualizarSolicitudChat(solicitudId, { expedienteId });
-    await agregarMsgSistema(`✅ ${solicitud.tecnicoNombre} aceptó la solicitud. ¡Puede comenzar el chat!`);
+    setError("");
+    try {
+      // El expediente se crea PRIMERO: si algo falla, la solicitud sigue
+      // pendiente y el técnico puede reintentar. Al revés quedaba aceptada
+      // sin trabajo asociado y sin manera de recuperarla.
+      const expedienteId = await crearTrabajo({
+        titulo:          `Solicitud: ${(solicitud.descripcion||"").slice(0,50)}`,
+        descripcion:     solicitud.descripcion,
+        tipo:            solicitud.clasificacionGemini?.tipoTrabajo || "Servicio",
+        estado:          "proceso",
+        tecnicoId:       solicitud.tecnicoId,
+        clienteId:       solicitud.clienteId,
+        clienteNombre:   solicitud.clienteNombre,
+        origen:          "chat",
+        solicitudId,
+      });
+      await actualizarSolicitudChat(solicitudId, { estado:"aceptado", expedienteId, trabajoId: expedienteId });
+      await agregarMsgSistema(`✅ ${solicitud.tecnicoNombre} aceptó la solicitud. ¡Puede comenzar el chat!`);
+    } catch (e) {
+      console.error(e);
+      setError("No se pudo aceptar la solicitud. Revisa tu conexión e intenta de nuevo.");
+    }
   };
 
   const rechazarSolicitud = async () => {
-    await actualizarSolicitudChat(solicitudId, { estado:"rechazado" });
-    await agregarMsgSistema("❌ El técnico no puede atender esta solicitud. Habilis buscará otro técnico.");
+    setError("");
+    try {
+      await actualizarSolicitudChat(solicitudId, { estado:"rechazado" });
+      // Antes decía "Habilis buscará otro técnico", y no existe nada que lo
+      // haga: el cliente se quedaba esperando una asignación que no llegaba.
+      await agregarMsgSistema("❌ El técnico no puede atender esta solicitud. Puedes buscar otro técnico desde el directorio.");
+    } catch (e) {
+      console.error(e);
+      setError("No se pudo rechazar la solicitud. Intenta de nuevo.");
+    }
   };
 
   const enviarMensaje = async () => {
     if (!texto.trim() || !enConversacion || enviando) return;
     const msg = texto.trim();
-    setTexto(""); setEnviando(true);
+    setTexto(""); setEnviando(true); setError("");
     try {
       await addDoc(collection(db, "solicitudes_chat", solicitudId, "mensajes"), {
         autorId:    user.uid,
@@ -103,6 +125,12 @@ export default function Chat({ nav, user, params }) {
         tipo:       "mensaje",
         timestamp:  serverTimestamp(),
       });
+    } catch (e) {
+      console.error(e);
+      // Se devuelve el texto al cuadro: antes se borraba antes de escribir y
+      // el mensaje se perdía sin que nadie lo notara.
+      setTexto(msg);
+      setError("No se pudo enviar el mensaje. Revisa tu conexión.");
     } finally { setEnviando(false); }
   };
 
@@ -110,6 +138,12 @@ export default function Chat({ nav, user, params }) {
     setCompletando(true);
     try {
       await actualizarSolicitudChat(solicitudId, { estado:"completado" });
+      // El expediente se quedaba en "proceso" para siempre: el panel del
+      // técnico nunca contaba el trabajo como terminado.
+      const idTrabajo = solicitud.trabajoId || solicitud.expedienteId;
+      if (idTrabajo) {
+        await actualizarTrabajo(idTrabajo, { estado: "terminado" }).catch(e => console.error(e));
+      }
       // Gemini summary
       try {
         const resumen = await generarResumenChat(mensajes, solicitud.descripcion || "");
@@ -123,11 +157,19 @@ export default function Chat({ nav, user, params }) {
 
   const enviarReview = async () => {
     if (rating === 0) return;
-    await actualizarSolicitudChat(solicitudId, {
-      review: { rating, texto: reviewText, fecha: new Date().toISOString() }
-    });
-    await agregarMsgSistema(`⭐ El cliente dejó una calificación de ${rating}/5.`);
-    setShowReview(false);
+    setError("");
+    try {
+      await actualizarSolicitudChat(solicitudId, {
+        review: { rating, texto: reviewText, fecha: new Date().toISOString() }
+      });
+      await agregarMsgSistema(`⭐ El cliente dejó una calificación de ${rating}/5.`);
+      setShowReview(false);
+    } catch (e) {
+      console.error(e);
+      // Antes el modal se quedaba abierto sin explicación y la calificación
+      // se perdía: las reglas la rechazaban y nadie se enteraba.
+      setError("No se pudo guardar tu calificación. Intenta de nuevo.");
+    }
   };
 
   const onKey = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviarMensaje(); } };
@@ -146,9 +188,11 @@ export default function Chat({ nav, user, params }) {
   if (!solicitud) return (
     <div style={{ background:"#F1F5F9", minHeight:"100vh" }}>
       <div style={{ background:"#0F172A" }}><Nav nav={nav} user={user} /></div>
-      <div style={{ textAlign:"center", padding:"80px" }}>
+      <div style={{ textAlign:"center", padding:"80px 20px" }}>
         <p style={{ fontSize:"52px" }}>💬</p>
-        <p style={{ fontWeight:800, color:"#0F172A", marginTop:"12px" }}>Solicitud no encontrada</p>
+        <p style={{ fontWeight:800, color:"#0F172A", marginTop:"12px" }}>
+          {error || "Solicitud no encontrada"}
+        </p>
         <button onClick={() => nav("panel")}
           style={{ marginTop:"20px", background:"#F97316", color:"#fff", border:"none",
                    borderRadius:"10px", padding:"11px 22px", fontWeight:700, cursor:"pointer" }}>
@@ -168,6 +212,13 @@ export default function Chat({ nav, user, params }) {
   return (
     <div style={{ background:"#F1F5F9", minHeight:"100vh", display:"flex", flexDirection:"column" }}>
       <div style={{ background:"#0F172A" }}><Nav nav={nav} user={user} /></div>
+
+      {error && solicitud && (
+        <div style={{ background:"#FEF2F2", borderBottom:"1px solid #FECACA", padding:"10px 20px",
+                      fontSize:"13px", color:"#DC2626", textAlign:"center" }}>
+          {error}
+        </div>
+      )}
 
       {/* HEADER */}
       <div style={{ background:"#0F172A", padding:"16px 20px", position:"sticky", top:"60px",

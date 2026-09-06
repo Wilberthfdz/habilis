@@ -251,7 +251,7 @@ export default function VistaCotizacion({ nav, params }) {
         )}
 
         {/* Accept/Reject — only when sent and not yet decided */}
-        {(estado === "enviada" || estado === "borrador") && !done && (
+        {estado === "enviada" && !done && (
           <div className="no-print"
             style={{ borderTop:"2px solid #F1F5F9", paddingTop:"24px",
                      display:"flex", gap:"12px", justifyContent:"center" }}>

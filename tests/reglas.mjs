@@ -32,6 +32,7 @@ await env.withSecurityRulesDisabled(async (ctx) => {
   await setDoc(doc(d, "trabajos/t1"), { tecnicoId: "tecnico1", titulo: "Instalación", aprobadoIA: true, calidadIA: 8 });
   await setDoc(doc(d, "cotizaciones/c1"), { tecnicoId: "tecnico1", clienteRfc: "XAXX010101000", total: 5000, estado: "enviada" });
   await setDoc(doc(d, "cotizaciones/c2"), { tecnicoId: "tecnico1", total: 900, estado: "enviada" });
+  await setDoc(doc(d, "cotizaciones/borrador1"), { tecnicoId: "tecnico1", total: 100, estado: "borrador" });
   await setDoc(doc(d, "servicios/s1"), { userId: "cliente1", activoId: "a1", costo: 1200 });
   await setDoc(doc(d, "solicitudes_chat/ch1"), { clienteId: "cliente1", tecnicoId: "tecnico1", estado: "pendiente" });
   await setDoc(doc(d, "solicitudes_chat/ch1/mensajes/m1"), { autorId: "cliente1", texto: "hola", tipo: "mensaje" });
@@ -54,6 +55,8 @@ probar("cotización: el técnico lista las suyas filtrando por dueño (como hace
   assertSucceeds(getDocs(query(collection(tec, "cotizaciones"), where("tecnicoId", "==", "tecnico1")))));
 probar("cotización: un técnico NO puede listar las de otro",
   assertFails(getDocs(query(collection(otro, "cotizaciones"), where("tecnicoId", "==", "tecnico1")))));
+probar("cotización: un borrador NO se puede aceptar desde fuera",
+  assertFails(updateDoc(doc(anon, "cotizaciones/borrador1"), { estado: "aceptada" })));
 probar("cotización: el cliente sin sesión puede aceptarla",
   assertSucceeds(updateDoc(doc(anon, "cotizaciones/c2"), { estado: "aceptada" })));
 probar("cotización: nadie puede reescribir el precio",
@@ -80,6 +83,15 @@ probar("chat: un tercero NO puede escribir en la conversación",
   assertFails(addDoc(collection(otro, "solicitudes_chat/ch1/mensajes"), { autorId: "intruso", texto: "spam", tipo: "mensaje" })));
 probar("chat: la parte sí puede escribir con su propio autor",
   assertSucceeds(addDoc(collection(cli, "solicitudes_chat/ch1/mensajes"), { autorId: "cliente1", texto: "buenas", tipo: "mensaje" })));
+probar("chat: el técnico sí puede enlazar el expediente al aceptar",
+  assertSucceeds(updateDoc(doc(tec, "solicitudes_chat/ch1"), { estado: "aceptado", expedienteId: "t1" })));
+probar("chat: el cliente sí puede dejar su calificación",
+  assertSucceeds(updateDoc(doc(cli, "solicitudes_chat/ch1"), { review: { rating: 5, texto: "excelente" } })));
+probar("chat: el TÉCNICO no puede calificarse a sí mismo",
+  assertFails(updateDoc(doc(tec, "solicitudes_chat/ch1"), { review: { rating: 5, texto: "yo mismo" } })));
+probar("chat: una calificación fuera de rango se rechaza",
+  assertFails(updateDoc(doc(cli, "solicitudes_chat/ch1"), { review: { rating: 99 } })));
+
 probar("chat: el aviso de sistema sigue funcionando para las partes",
   assertSucceeds(addDoc(collection(tec, "solicitudes_chat/ch1/mensajes"), { autorId: "sistema", texto: "aceptada", tipo: "sistema" })));
 

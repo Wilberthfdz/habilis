@@ -120,7 +120,7 @@ function HeroCard({ tecnico, nav }) {
         [tecnico.rating > 0 ? String(tecnico.rating) : "—", "★ rating"],
         [`${tecnico.experiencia || 0} años`, "exp."],
       ]
-    : [["—", "trabajos"], ["—", "★ rating"], ["—", "exp."]];
+    : [[null, "trabajos"], [null, "★ rating"], [null, "exp."]];
   return (
     <div style={{ position:"relative", width:"100%", maxWidth:"380px", margin:"0 auto" }}>
       {/* Glow */}
@@ -192,7 +192,11 @@ function HeroCard({ tecnico, nav }) {
               textAlign:"center",
               borderRight: i < 2 ? "1px solid rgba(255,255,255,0.06)" : "none"
             }}>
-              <div style={{ fontSize:"17px", fontWeight:900, color:"#F07020", lineHeight:1 }}>{v}</div>
+              {v == null
+                ? <div style={{ height:"14px", width:"34px", margin:"1px auto 2px", borderRadius:"7px",
+                                background:"linear-gradient(90deg,rgba(255,255,255,0.08),rgba(255,255,255,0.18),rgba(255,255,255,0.08))",
+                                backgroundSize:"200% 100%", animation:"shimmer 1.6s linear infinite" }} />
+                : <div style={{ fontSize:"17px", fontWeight:900, color:"#F07020", lineHeight:1 }}>{v}</div>}
               <div style={{ fontSize:"9px", color:"rgba(255,255,255,0.38)", marginTop:"4px", fontWeight:600, letterSpacing:"0.04em" }}>{l}</div>
             </div>
           ))}
@@ -287,6 +291,7 @@ export default function Landing({ nav, user }) {
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
         @keyframes fadeUp   { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes shimmer  { from{background-position:200% 0} to{background-position:-200% 0} }
         @keyframes pulse    { 0%,100%{opacity:1} 50%{opacity:0.5} }
         @keyframes floatUp  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
         @keyframes blobA    { 0%,100%{transform:scale(1) translate(0,0)} 50%{transform:scale(1.08) translate(20px,-20px)} }
@@ -474,7 +479,7 @@ export default function Landing({ nav, user }) {
         <div style={{ borderTop:"1px solid rgba(255,255,255,0.06)", padding:"22px clamp(20px,5vw,64px)" }}>
           <div style={{ display:"flex", justifyContent:"center", gap:"clamp(24px,6vw,80px)",
                         flexWrap:"wrap", maxWidth:"900px", margin:"0 auto" }}>
-            {[["30M+","Técnicos en México"],["100%","Gratis para clientes"],["Real","Trabajos con evidencia"],["0%","Comisión por trabajo"]].map(([v,l]) => (
+            {[["17","Ramos técnicos"],["354","Especialidades"],["$0","Para clientes"],["0%","Comisión por trabajo"]].map(([v,l]) => (
               <div key={v} style={{ textAlign:"center" }}>
                 <div style={{ fontWeight:900, fontSize:"clamp(16px,2.8vw,24px)", color:"#F07020" }}>{v}</div>
                 <div style={{ color:"rgba(255,255,255,0.35)", fontSize:"11px", marginTop:"3px", maxWidth:"110px" }}>{l}</div>
@@ -552,7 +557,7 @@ export default function Landing({ nav, user }) {
               <p style={{ fontSize:"11px", fontWeight:700, color:"#F07020", textTransform:"uppercase",
                           letterSpacing:"0.12em", marginBottom:"8px" }}>Técnicos destacados</p>
               <h2 style={{ fontSize:"clamp(20px,3.5vw,36px)", fontWeight:900, color:"#0A1120", letterSpacing:"-0.03em" }}>
-                Profesionales verificados
+                Técnicos con trabajos documentados
               </h2>
             </div>
             <button className="hab-btn-ghost" onClick={() => nav("buscar")}>
@@ -829,7 +834,7 @@ export default function Landing({ nav, user }) {
           <div style={{ borderTop:"1px solid #EDE8E1", paddingTop:"20px",
                         display:"flex", justifyContent:"space-between",
                         alignItems:"center", flexWrap:"wrap", gap:"12px" }}>
-            <p style={{ color:"#B5AFA8", fontSize:"12px" }}>© 2026 Habilis · Todos los derechos reservados</p>
+            <p style={{ color:"#B5AFA8", fontSize:"12px" }}>© 2026 Habilis Tecnology, S.A.P.I. de C.V. · Todos los derechos reservados</p>
             <p style={{ color:"#B5AFA8", fontSize:"12px" }}>Hecho en México</p>
           </div>
         </div>

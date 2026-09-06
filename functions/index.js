@@ -18,7 +18,7 @@
 //   firebase functions:secrets:set FACTURAPI_KEY
 
 const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
-const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
@@ -32,17 +32,27 @@ const MP_WEBHOOK_SECRET = defineSecret("MP_WEBHOOK_SECRET");
 const FACTURAPI_KEY = defineSecret("FACTURAPI_KEY");
 
 const db = admin.firestore();
+// Gemini puede omitir una clave del JSON que le pedimos. firebase-admin
+// RECHAZA los `undefined`, así que una respuesta incompleta hacía fallar el
+// update entero: el trabajo se quedaba sin veredicto de moderación y —como
+// el feed solo oculta lo rechazado— acababa publicado. Ignorarlos convierte
+// una clave ausente en un campo ausente, que sí es recuperable.
+db.settings({ ignoreUndefinedProperties: true });
 const GEMINI_MODEL = "gemini-2.0-flash";
 
 // ═══════════════════════════ HELPERS ═══════════════════════════
-async function callGemini(prompt, key, { maxTokens = 800, temperature = 0.4 } = {}) {
+async function callGemini(prompt, key, { maxTokens = 800, temperature = 0.4, json = false } = {}) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
+  const generationConfig = { maxOutputTokens: maxTokens, temperature };
+  // Cuando esperamos JSON se lo exigimos al modelo en vez de confiar en que
+  // obedezca el prompt: quita de raíz los ```json y el texto de cortesía.
+  if (json) generationConfig.responseMimeType = "application/json";
   const r = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { maxOutputTokens: maxTokens, temperature },
+      generationConfig,
     }),
   });
   if (!r.ok) {
@@ -178,7 +188,17 @@ DECIDE y responde SOLO JSON:
     // y a revisión manual. Antes el respaldo era `aprobadoIA: true`: una
     // caída del proveedor publicaba automáticamente todo lo que llegara,
     // que es justo lo contrario de lo que debe hacer un moderador.
-    const out = parseJsonLoose(await callGemini(prompt, GEMINI_KEY.value(), { maxTokens: 500, temperature: 0.1 }), null);
+    // callGemini LANZA cuando el proveedor responde con error o se cae la red.
+    // Sin este try la excepción escapaba antes del update de abajo, el trabajo
+    // se quedaba sin marcar y quedaba publicado: exactamente el fallo abierto
+    // que este agente existe para evitar.
+    let out = null;
+    try {
+      out = parseJsonLoose(
+        await callGemini(prompt, GEMINI_KEY.value(), { maxTokens: 500, temperature: 0.1, json: true }), null);
+    } catch (e) {
+      console.error(`Moderación: Gemini no respondió para el trabajo ${tId}`, e);
+    }
     const moderado = out !== null && typeof out.aprobadoIA === "boolean";
 
     await db.collection("trabajos").doc(tId).update({
@@ -267,7 +287,7 @@ Responde SOLO JSON: {"bioMejorada":"...","perfilCompleto":true|false,"scoreInici
     await db.collection("tecnicos").doc(uid).update({
       bio: out.bioMejorada || t.bio || "",
       bioOriginal: t.bio || "",
-      rankScore: out.scoreInicial,
+      scoreInicialIA: out.scoreInicial ?? null,
       perfilCompletoIA: out.perfilCompleto,
       procesadoPorIA: true,
     });
@@ -302,8 +322,19 @@ const INTERVALOS_CARE = {
   Generador: 180,
 };
 
+// La ciudad no vive en la solicitud sino en el perfil de quien la crea.
+async function ciudadDelUsuario(uid) {
+  if (!uid) return "";
+  const snap = await db.collection("tecnicos").doc(uid).get().catch(() => null);
+  return snap?.data()?.ciudad || "";
+}
+
 exports.agenteCare = onSchedule(
-  { schedule: "every day 08:00", timeZone: "America/Cancun", secrets: [GEMINI_KEY] },
+  // Recorre todos los equipos con una llamada a Gemini cada uno: con el
+  // tiempo de espera de 60 s por defecto moría a media lista y dejaba
+  // actualizaciones a medias.
+  { schedule: "every day 08:00", timeZone: "America/Cancun", secrets: [GEMINI_KEY],
+    timeoutSeconds: 540, memory: "512MiB" },
   async () => {
     const snap = await db.collection("activos").where("eliminado", "==", false).get();
     const hoy = new Date().toISOString().slice(0, 10);
@@ -342,12 +373,23 @@ DECIDE y responde SOLO JSON:
       });
 
       await db.collection("activos").doc(doc.id).update({
-        saludScoreIA: out.saludScoreIA,
-        estadoIA: out.estadoIA,
+        saludScoreIA: out.saludScoreIA ?? null,
+        estadoIA: out.estadoIA ?? "amarillo",
         ultimoAnalisisIA: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      if (out.accionIA === "notificar" || out.accionIA === "crear_solicitud") {
+      // Un equipo vencido cumplía la condición de aviso TODOS los días, para
+      // siempre: el dueño recibía la misma notificación cada mañana hasta
+      // darle servicio. Ahora solo se avisa cuando el estado empeora, o si
+      // ya pasó una semana desde el último aviso.
+      const avisoPrevio = a.ultimoAvisoIA?.toDate?.();
+      const diasSinAvisar = avisoPrevio
+        ? (Date.now() - avisoPrevio.getTime()) / 86400000
+        : Infinity;
+      const cambioDeEstado = a.estadoIA !== out.estadoIA;
+      const tocaAvisar = cambioDeEstado || diasSinAvisar >= 7;
+
+      if (tocaAvisar && (out.accionIA === "notificar" || out.accionIA === "crear_solicitud")) {
         await db.collection("notificaciones").add({
           userId: a.userId,
           tipo: "care",
@@ -356,6 +398,9 @@ DECIDE y responde SOLO JSON:
           link: "habilisCare",
           fecha: admin.firestore.FieldValue.serverTimestamp(),
         });
+        await db.collection("activos").doc(doc.id).update({
+          ultimoAvisoIA: admin.firestore.FieldValue.serverTimestamp(),
+        });
       }
 
       if (out.accionIA === "crear_solicitud" && !a.solicitudAutoCreada) {
@@ -363,7 +408,9 @@ DECIDE y responde SOLO JSON:
           titulo: `Mantenimiento: ${a.nombre}`,
           categoria: a.tipo,
           descripcion: `Solicitud creada automáticamente por el agente Habilis Care. ${out.mensajeIA}`,
-          ciudad: "",
+          // Sin ciudad, el agente de matching leía "ciudad no especificada" y
+          // asignaba técnicos de cualquier estado del país.
+          ciudad: await ciudadDelUsuario(a.userId),
           urgencia: "Alta",
           userId: a.userId,
           activoId: doc.id,
@@ -387,11 +434,33 @@ DECIDE y responde SOLO JSON:
 // Fórmula transparente y auditable (sin caja negra) usando solo campos
 // que ya existen en el esquema real de `tecnicos`.
 // ═══════════════════════════════════════════════════════════════
-exports.agenteRanking = onSchedule({ schedule: "every day 08:30", timeZone: "America/Cancun" }, async () => {
+exports.agenteRanking = onSchedule(
+  { schedule: "every day 08:30", timeZone: "America/Cancun", timeoutSeconds: 540, memory: "512MiB" },
+  async () => {
   const snap = await db.collection("tecnicos").get();
   let n = 0;
+  const ahora = Date.now();
+  // Una escritura suelta por técnico, esperando cada una: con unos cientos
+  // de perfiles el programado moría antes de terminar. En lotes de 500 —el
+  // máximo de Firestore— la colección entera cabe en unas pocas entregas.
+  let lote = db.batch();
+  let enLote = 0;
+  const vaciar = async () => {
+    if (enLote === 0) return;
+    await lote.commit();
+    lote = db.batch();
+    enLote = 0;
+  };
   for (const doc of snap.docs) {
     const t = doc.data();
+    // Una suscripción cancelada conserva el Pro hasta el fin del mes pagado;
+    // este recorrido diario es el que finalmente lo baja a gratis.
+    if (t.plan === "pro" && t.suscripcionEstado === "cancelled"
+        && t.proHasta?.toDate && t.proHasta.toDate().getTime() < ahora) {
+      lote.set(doc.ref, { plan: "gratis", proHasta: null }, { merge: true });
+      if (++enLote >= 500) await vaciar();
+      continue;
+    }
     // Fórmula sobre señales reales. Antes pesaba `rating` y `totalReviews`,
     // que no los escribía nadie: el puntaje era, en la práctica, "años
     // declarados + ser Pro". Ahora manda el trabajo documentado y validado.
@@ -401,9 +470,11 @@ exports.agenteRanking = onSchedule({ schedule: "every day 08:30", timeZone: "Ame
       Math.min(t.experiencia || 0, 30) * 0.5 +
       (t.verificado ? 5 : 0) +
       (t.plan === "pro" ? 8 : 0);
-    await db.collection("tecnicos").doc(doc.id).set({ rankScore: score }, { merge: true });
+    lote.set(db.collection("tecnicos").doc(doc.id), { rankScore: score }, { merge: true });
     n++;
+    if (++enLote >= 500) await vaciar();
   }
+  await vaciar();
   await logDecision("ranking", `recalculó ${n} técnico(s)`, "batch", "fórmula diaria transparente");
 });
 
@@ -449,13 +520,53 @@ exports.notificarMensajeChat = onDocumentCreated(
     await db.collection("notificaciones").add({
       userId: destinatario,
       tipo: "chat",
-      mensaje: `💬 Mensaje nuevo${chat.titulo ? ` en "${String(chat.titulo).slice(0, 40)}"` : ""}: "${texto.slice(0, 70)}${texto.length > 70 ? "…" : ""}"`,
+      mensaje: `💬 Mensaje nuevo${chat.descripcion ? ` sobre "${String(chat.descripcion).slice(0, 40)}"` : ""}: "${texto.slice(0, 70)}${texto.length > 70 ? "…" : ""}"`,
       leida: false,
       link: "chat",
       solicitudId: solId,
       fecha: admin.firestore.FieldValue.serverTimestamp(),
     });
   });
+
+// La estrella del perfil. El cliente calificaba al terminar el trabajo, la
+// calificación se guardaba dentro de la conversación… y ahí se quedaba:
+// `rating` y `totalReviews` no los escribía NADIE, así que todos los perfiles
+// mostraban "Sin calificaciones" para siempre y el buscador ordenaba por un
+// campo que no existía. Este disparador es el que cierra ese circuito.
+exports.agregarCalificacion = onDocumentUpdated("solicitudes_chat/{id}", async (event) => {
+  const antes   = event.data.before.data();
+  const despues = event.data.after.data();
+  // Solo cuando la calificación aparece por primera vez: si el cliente la
+  // editara, no se vuelve a sumar.
+  if (antes?.review || !despues?.review) return;
+
+  const estrellas = Number(despues.review.rating);
+  const tecnicoId = despues.tecnicoId;
+  if (!tecnicoId || !Number.isFinite(estrellas) || estrellas < 1 || estrellas > 5) return;
+
+  const ref = db.collection("tecnicos").doc(tecnicoId);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) return;
+    const d = snap.data();
+    const total = (d.totalReviews || 0) + 1;
+    // Media acumulada, redondeada a un decimal: es como se muestra.
+    const suma = (d.rating || 0) * (d.totalReviews || 0) + estrellas;
+    tx.update(ref, {
+      totalReviews: total,
+      rating: Math.round((suma / total) * 10) / 10,
+    });
+  });
+
+  await db.collection("notificaciones").add({
+    userId: tecnicoId,
+    tipo: "calificacion",
+    mensaje: `⭐ Recibiste una calificación de ${estrellas}/5${despues.review.texto ? `: "${String(despues.review.texto).slice(0, 60)}"` : ""}`,
+    leida: false,
+    link: "panel",
+    fecha: admin.firestore.FieldValue.serverTimestamp(),
+  });
+});
 
 exports.contarValidacion = onDocumentCreated("validaciones/{id}", async (event) => {
   const v = event.data.data();
@@ -492,12 +603,30 @@ const IA_SOLO_PRO = new Set([
   "cotizacion", "respuesta", "resumen", "colaboradores", "care", "mercado",
 ]);
 
+// El candado anterior solo miraba el `agentName` que mandaba el cliente:
+// cualquiera podía pedir la misma herramienta con agentName:"generic" y
+// usarla gratis. Ahora el nombre tiene que estar en esta lista —así el
+// registro de decisiones tampoco admite basura— y lo que no esté se rechaza.
+const AGENTES_VALIDOS = new Set([
+  ...IA_SOLO_PRO,
+  "generic", "soporte", "perfil", "clasificacion", "matching",
+]);
+
 exports.geminiProxy = onCall({ secrets: [GEMINI_KEY] }, async (request) => {
   const uid = requireAuth(request);
   await checkRateLimit(uid, "geminiProxy", 60);
-  const { prompt, temperature = 0.7, agentName = "generic" } = request.data;
+  const { prompt, temperature = 0.7, agentName = "generic" } = request.data ?? {};
   if (!prompt || typeof prompt !== "string" || !prompt.trim() || prompt.length > 4000) {
     throw new HttpsError("invalid-argument", "El campo 'prompt' es requerido y debe ser válido.");
+  }
+  if (typeof agentName !== "string" || !AGENTES_VALIDOS.has(agentName)) {
+    throw new HttpsError("invalid-argument", "Herramienta de IA desconocida.");
+  }
+  // Sin esto, un número fuera de rango o una cadena provocaban un 400 de
+  // Gemini que al usuario le llegaba como "error interno".
+  const temp = Number(temperature);
+  if (!Number.isFinite(temp) || temp < 0 || temp > 2) {
+    throw new HttpsError("invalid-argument", "Parámetro de temperatura inválido.");
   }
 
   if (IA_SOLO_PRO.has(agentName)) {
@@ -507,7 +636,7 @@ exports.geminiProxy = onCall({ secrets: [GEMINI_KEY] }, async (request) => {
         "Esta herramienta es del Plan Pro. Puedes activarlo desde tu página de suscripción.");
     }
   }
-  const text = await callGemini(prompt, GEMINI_KEY.value(), { temperature, maxTokens: 1024 });
+  const text = await callGemini(prompt, GEMINI_KEY.value(), { temperature: temp, maxTokens: 1024 });
   await logDecision(agentName, "respuesta generada", uid, "");
   return { text };
 });
@@ -528,15 +657,26 @@ exports.transcribirRegistro = onCall({ secrets: [GEMINI_KEY] }, async (request) 
     throw new HttpsError("invalid-argument", "El audio es demasiado largo.");
   }
 
+  // El navegador manda "audio/webm;codecs=opus"; el parámetro de códec sobra
+  // y solo estorba. Además se restringe a formatos que Gemini admite: antes
+  // cualquier cadena viajaba tal cual y el error volvía en silencio.
+  const base = String(mimeType || "audio/webm").split(";")[0].trim().toLowerCase();
+  const FORMATOS = new Set([
+    "audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg",
+    "audio/mp3", "audio/wav", "audio/aac", "audio/flac",
+  ]);
+  const tipo = FORMATOS.has(base) ? base : "audio/webm";
+
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY.value()}`;
   const r = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
+      generationConfig: { responseMimeType: "application/json" },
       contents: [
         {
           parts: [
-            { inline_data: { mime_type: mimeType || "audio/webm", data: audioBase64 } },
+            { inline_data: { mime_type: tipo, data: audioBase64 } },
             {
               text: `Transcribe este audio en español de un trabajador técnico mexicano registrándose en Habilis. Extrae y responde SOLO JSON: {"nombre":"","oficio":"","ciudad":"","experiencia":0,"bio":"lo que dijo, ordenado"}`,
             },
@@ -545,10 +685,29 @@ exports.transcribirRegistro = onCall({ secrets: [GEMINI_KEY] }, async (request) 
       ],
     }),
   });
-  const d = await r.json();
-  const text = d.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+  // Sin comprobar r.ok, un 400 (audio ilegible, demasiado largo) devolvía el
+  // perfil vacío y se registraba como éxito: el técnico dictaba, no se
+  // llenaba nada y nadie —ni él ni nosotros— sabía por qué.
+  if (!r.ok) {
+    const cuerpo = await r.text().catch(() => "");
+    console.error(`Transcripción: Gemini ${r.status} — ${cuerpo.slice(0, 400)}`);
+    throw new HttpsError("internal", "No pudimos entender el audio. Intenta de nuevo o escribe los datos.");
+  }
+  const d = await r.json().catch(() => null);
+  const text = d?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  const out = parseJsonLoose(text, null);
+  if (!out || typeof out !== "object") {
+    console.error("Transcripción: respuesta ilegible de Gemini", text.slice(0, 300));
+    throw new HttpsError("internal", "No pudimos entender el audio. Intenta de nuevo o escribe los datos.");
+  }
   await logDecision("registroVoz", "transcribió y estructuró perfil", uid, "");
-  return parseJsonLoose(text, { nombre: "", oficio: "", ciudad: "", experiencia: 0, bio: "" });
+  return {
+    nombre:      typeof out.nombre === "string" ? out.nombre : "",
+    oficio:      typeof out.oficio === "string" ? out.oficio : "",
+    ciudad:      typeof out.ciudad === "string" ? out.ciudad : "",
+    experiencia: Number(out.experiencia) || 0,
+    bio:         typeof out.bio === "string" ? out.bio : "",
+  };
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -685,11 +844,16 @@ exports.cancelarSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) =>
     throw new HttpsError("internal", "No se pudo cancelar la suscripción. Intenta de nuevo o escríbenos.");
   }
 
-  await db.collection("tecnicos").doc(uid).update({
-    plan: "gratis",
+  // Se conserva el plan hasta el fin del periodo ya cobrado, que es lo que
+  // dicen los Términos y lo que responde el asistente de soporte.
+  const ref = db.collection("tecnicos").doc(uid);
+  const hasta = finDePeriodoPagado((await ref.get()).data()?.fechaPago);
+  await ref.set({
+    plan: "pro",
     suscripcionEstado: "cancelled",
-  });
-  return { ok: true };
+    proHasta: hasta,
+  }, { merge: true });
+  return { ok: true, proHasta: hasta.toDate().toISOString() };
 });
 
 // ── Helpers de suscripción ───────────────────────────────────────────────
@@ -727,23 +891,33 @@ async function obtenerPagoRecurrente(id) {
   if (ap) {
     const p = ap.payment || {};
     return {
-      id: p.id ?? ap.id ?? id,
+      // El id manda el del cobro autorizado, no el del pago: un mismo cargo
+      // se notifica primero como "scheduled" (sin sub-objeto payment) y
+      // después como procesado, y usar p.id creaba DOS documentos del mismo
+      // cobro, uno de ellos fantasma en Finanzas.
+      id: ap.id ?? p.id ?? id,
+      pagoId: p.id ?? null,
       status: p.status ?? ap.status ?? "desconocido",
       transaction_amount: p.transaction_amount ?? ap.transaction_amount ?? 0,
       date_approved: p.date_approved ?? ap.date_created ?? null,
       preapproval_id: ap.preapproval_id ?? null,
       external_reference: ap.external_reference ?? null,
+      // Necesario para la forma de pago del CFDI: antes se descartaba y el
+      // comprobante salía siempre como débito.
+      payment_method_id: p.payment_type_id ?? p.payment_method_id ?? ap.payment_method_id ?? null,
     };
   }
   const pago = await mpGet(`/v1/payments/${id}`);
   if (!pago) return null;
   return {
     id: pago.id ?? id,
+    pagoId: pago.id ?? null,
     status: pago.status ?? "desconocido",
     transaction_amount: pago.transaction_amount ?? 0,
     date_approved: pago.date_approved ?? null,
     preapproval_id: pago.metadata?.preapproval_id ?? pago.preapproval_id ?? null,
     external_reference: pago.external_reference ?? null,
+    payment_method_id: pago.payment_type_id ?? pago.payment_method_id ?? null,
   };
 }
 
@@ -765,6 +939,18 @@ async function resolverUid(pago, preapprovalId) {
 // `authorized` da acceso Pro; `paused` (típicamente por un cobro que falló) y
 // `cancelled` lo retiran. Antes solo se contemplaban los dos extremos, así que
 // una suscripción pausada conservaba el plan Pro indefinidamente.
+// Los Términos y el asistente de soporte prometen lo mismo: al cancelar
+// "conservas los beneficios hasta el fin del periodo ya pagado". El código
+// hacía lo contrario —bajaba a gratis en el acto—, así que quien cancelaba
+// el día 2 perdía 28 días pagados. `proHasta` es la fecha hasta la que el
+// plan sigue valiendo.
+function finDePeriodoPagado(fechaPago) {
+  const base = fechaPago?.toDate?.() || new Date();
+  const fin = new Date(base);
+  fin.setMonth(fin.getMonth() + 1);
+  return admin.firestore.Timestamp.fromDate(fin);
+}
+
 async function aplicarEstadoSuscripcion(uid, sub) {
   // `set(..., { merge: true })` en vez de `update()`: si el documento del
   // técnico no existe todavía, `update()` lanza NOT_FOUND y el aviso de
@@ -778,8 +964,18 @@ async function aplicarEstadoSuscripcion(uid, sub) {
       fechaPago: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
     await consumirPromo(uid);
-  } else if (sub.status === "paused" || sub.status === "cancelled") {
-    await ref.set({ plan: "gratis", suscripcionEstado: sub.status }, { merge: true });
+  } else if (sub.status === "cancelled") {
+    // Cancelada: no habrá más cobros, pero el mes en curso ya está pagado.
+    const snap = await ref.get();
+    await ref.set({
+      plan: "pro",
+      suscripcionEstado: "cancelled",
+      proHasta: finDePeriodoPagado(snap.data()?.fechaPago),
+    }, { merge: true });
+  } else if (sub.status === "paused") {
+    // Pausada casi siempre significa un cobro que falló: aquí no hay periodo
+    // pagado que respetar.
+    await ref.set({ plan: "gratis", suscripcionEstado: "paused", proHasta: null }, { merge: true });
   } else {
     await ref.set({ suscripcionEstado: sub.status || "desconocido" }, { merge: true });
   }
@@ -817,7 +1013,8 @@ async function registrarPagoSuscripcion(uid, pago, preapprovalId) {
       metodo: "mercadopago",
       estado: aprobado ? "aprobado" : (pago.status || "desconocido"),
       concepto: "Habilis Pro mensual",
-      pagoMP: String(pago.id),
+      pagoMP: String(pago.pagoId ?? pago.id),
+      metodoPago: pago.payment_method_id || null,
       suscripcionId: preapprovalId || null,
       fecha: pago.date_approved
         ? admin.firestore.Timestamp.fromDate(new Date(pago.date_approved))
@@ -964,35 +1161,60 @@ exports.emitirFactura = onCall({ secrets: [FACTURAPI_KEY] }, async (request) => 
     return monto;
   });
 
-  const r = await fetch("https://www.facturapi.io/v2/invoices", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${FACTURAPI_KEY.value()}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      customer: { legal_name: razonSocial, tax_id: rfc, tax_system: regimenFiscal, address: { zip: codigoPostal } },
-      items: [
-        {
-          quantity: 1,
-          product: {
-            description: "Suscripción Habilis Pro - 1 mes",
-            product_key: "81112100",
-            price: montoFactura,
-            tax_included: true,
-            taxes: [{ type: "IVA", rate: 0.16 }],
-          },
-        },
-      ],
-      payment_form: "28",
-      use: usoCFDI,
-    }),
-  });
-  const inv = await r.json();
-  if (inv.error) {
-    // No se timbró nada: se devuelve el cobro a la cola para que el técnico
-    // pueda reintentar tras corregir sus datos fiscales.
+  // Si algo sale mal a partir de aquí hay que DEVOLVER el cobro a la cola:
+  // ya quedó marcado como facturado y, sin liberarlo, el técnico se queda
+  // con un pago que nunca podrá facturar.
+  const liberar = async (motivo, detalle) => {
     await pagoRef.update({ facturada: false }).catch((e) =>
       console.error("No se pudo liberar el cobro tras fallar Facturapi:", e.message));
-    console.error("Facturapi error:", JSON.stringify(inv.error).slice(0, 500));
-    throw new HttpsError("internal", "No se pudo generar la factura. Verifica tus datos fiscales e intenta de nuevo.");
+    console.error(`Facturapi — ${motivo}:`, String(detalle).slice(0, 500));
+  };
+
+  // La forma de pago del CFDI venía fija en "28" (tarjeta de débito) aunque
+  // la suscripción se cobrara con crédito, que es lo más común: un dato
+  // fiscal incorrecto en cada comprobante.
+  const FORMA_SAT = { credit_card: "04", debit_card: "28", prepaid_card: "04", account_money: "03" };
+  const pagoDatos = (await pagoRef.get()).data() || {};
+  const formaPago = FORMA_SAT[pagoDatos.metodoPago] || "03";  // 03 = transferencia electrónica
+
+  let r, inv;
+  try {
+    r = await fetch("https://www.facturapi.io/v2/invoices", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${FACTURAPI_KEY.value()}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customer: { legal_name: razonSocial, tax_id: rfc, tax_system: regimenFiscal, address: { zip: codigoPostal } },
+        items: [
+          {
+            quantity: 1,
+            product: {
+              description: "Suscripción Habilis Pro - 1 mes",
+              product_key: "81112100",
+              price: montoFactura,
+              tax_included: true,
+              taxes: [{ type: "IVA", rate: 0.16 }],
+            },
+          },
+        ],
+        payment_form: formaPago,
+        use: usoCFDI,
+      }),
+    });
+    inv = await r.json().catch(() => null);
+  } catch (e) {
+    await liberar("no se pudo contactar a Facturapi", e.message);
+    throw new HttpsError("unavailable", "No pudimos conectar con el servicio de facturación. Intenta de nuevo en unos minutos.");
+  }
+
+  // Facturapi NO devuelve una clave `error`: sus fallos vienen con `message`,
+  // `code` y un HTTP 4xx. Comprobar solo `inv.error` dejaba pasar todos los
+  // rechazos —RFC mal, régimen que no corresponde, CSD vencido— y el cobro
+  // se quedaba marcado como facturado sin CFDI, de forma permanente.
+  if (!r.ok || !inv?.id) {
+    await liberar(`respuesta ${r?.status}`, JSON.stringify(inv || {}));
+    const detalle = inv?.message ? ` (${String(inv.message).slice(0, 160)})` : "";
+    throw new HttpsError("failed-precondition",
+      `No se pudo generar la factura. Verifica tus datos fiscales e intenta de nuevo.${detalle}`);
   }
   // El cobro ya quedó apartado arriba; aquí solo se guarda el comprobante.
   await db.collection("facturas").add({

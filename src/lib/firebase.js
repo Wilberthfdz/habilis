@@ -114,20 +114,25 @@ export async function buscarTecnicos({ limite = 100 } = {}) {
   const docs = snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
     .filter(t => t.suspendido !== true);
-  // Sort Pro first, then by rating descending, client-side
-  return docs.sort((a, b) => {
-    if (a.plan === "pro" && b.plan !== "pro") return -1;
-    if (b.plan === "pro" && a.plan !== "pro") return  1;
-    return (b.rating || 0) - (a.rating || 0);
-  });
+  // El orden lo decide el agente de ranking, que corre a diario y pesa
+  // trabajos documentados, validaciones, experiencia, verificación y plan.
+  // Antes se ordenaba por `rating`, un campo que en ese momento no escribía
+  // nadie: en la práctica el orden era el que devolviera Firestore.
+  return docs.sort((a, b) =>
+    (b.rankScore || 0) - (a.rankScore || 0) ||
+    (b.totalTrabajos || 0) - (a.totalTrabajos || 0) ||
+    (b.rating || 0) - (a.rating || 0));
 }
 
 // ── TRABAJOS (Expedientes) ───────────────────────────────────────────────
 export async function crearTrabajo(datos) {
   const ref = await addDoc(collection(db, "trabajos"), {
-    ...datos,
+    // El estado por defecto iba DESPUÉS de los datos, así que pisaba el que
+    // mandaba quien llamaba: el chat pedía "proceso" al aceptar y el trabajo
+    // nacía "pendiente" igual, y ahí se quedaba para siempre.
     estado: "pendiente",    // pendiente|aceptado|proceso|terminado|validado|incidencia
     evidencias: [],
+    ...datos,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });

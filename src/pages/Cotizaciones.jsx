@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Nav from "../components/Nav.jsx";
-import { obtenerCotizaciones, eliminarCotizacion, crearCotizacion, obtenerSiguienteFolio } from "../lib/firebase.js";
+import { obtenerCotizaciones, eliminarCotizacion, crearCotizacion, obtenerSiguienteFolio, obtenerTecnico, actualizarCotizacion } from "../lib/firebase.js";
 
 const ESTADO_CFG = {
   borrador:  { bg:"#F1F5F9", color:"#64748B",  label:"Borrador"  },
@@ -20,10 +20,13 @@ export default function Cotizaciones({ nav, user }) {
   const [loading, setLoading] = useState(true);
   const [filter,  setFilter]  = useState("todas");
   const [creating,setCreating]= useState(false);
+  const [tecnico, setTecnico] = useState(null);
+  const [error,   setError]   = useState("");
 
   useEffect(() => {
     if (!user) { nav("login"); return; }
     cargar();
+    obtenerTecnico(user.uid).then(setTecnico).catch(() => {});
   }, [user]);
 
   const cargar = () => {
@@ -40,6 +43,12 @@ export default function Cotizaciones({ nav, user }) {
       const folio = await obtenerSiguienteFolio(user.uid);
       const id    = await crearCotizacion({
         tecnicoId: user.uid,
+        // Se copian al crear: la cotización es un documento que el cliente
+        // abre sin sesión, así que no puede consultar el perfil. Sin esto
+        // toda cotización compartida decía "Técnico Habilis".
+        tecnicoNombre: tecnico?.nombre || user.displayName || "",
+        tecnicoOficio: tecnico?.oficio || "",
+        tecnicoEmail:  user.email || "",
         folio,
         estado:    "borrador",
         cliente:   { nombre:"", empresa:"", rfc:"", email:"", telefono:"" },
@@ -50,7 +59,6 @@ export default function Cotizaciones({ nav, user }) {
         iva:       true,
         descuento: { tipo:"porcentaje", valor:0 },
         moneda:    "MXN",
-        tipoCambio:17.5,
         validez:   15,
         notas:     "",
         terminos:  "Cotización válida por 15 días. Precios sujetos a cambio sin previo aviso.",
@@ -58,28 +66,50 @@ export default function Cotizaciones({ nav, user }) {
         fecha:     new Date().toISOString(),
       });
       nav("editorCotizacion", { cotizacionId: id });
+    } catch (e) {
+      console.error(e);
+      setError("No se pudo crear la cotización. Revisa tu conexión e intenta de nuevo.");
     } finally { setCreating(false); }
   };
 
   const duplicar = async (cot) => {
-    const folio = await obtenerSiguienteFolio(user.uid);
-    const id = await crearCotizacion({
-      ...cot, id: undefined, folio, estado: "borrador",
-      fecha: new Date().toISOString(),
-      createdAt: undefined, updatedAt: undefined,
-    });
-    nav("editorCotizacion", { cotizacionId: id });
+    setError("");
+    try {
+      const folio = await obtenerSiguienteFolio(user.uid);
+      const id = await crearCotizacion({
+        ...cot, id: undefined, folio, estado: "borrador",
+        fecha: new Date().toISOString(),
+        createdAt: undefined, updatedAt: undefined,
+      });
+      nav("editorCotizacion", { cotizacionId: id });
+    } catch (e) {
+      console.error(e);
+      setError("No se pudo duplicar la cotización. Intenta de nuevo.");
+    }
   };
 
   const eliminar = async (cotId) => {
-    if (!confirm("¿Eliminar esta cotización?")) return;
-    await eliminarCotizacion(cotId);
-    cargar();
+    if (!confirm("¿Eliminar esta cotización? Esta acción no se puede deshacer.")) return;
+    setError("");
+    try {
+      await eliminarCotizacion(cotId);
+      cargar();
+    } catch (e) {
+      console.error(e);
+      setError("No se pudo eliminar la cotización. Intenta de nuevo.");
+    }
   };
 
-  const compartirWA = (cot) => {
+  const compartirWA = async (cot) => {
     const url = `${window.location.origin}?vista=${cot.id}`;
     const msg = `Hola, te comparto la cotización ${cot.folio} de Habilis: ${url}`;
+    // Compartir es enviarla. Antes el estado se quedaba en "borrador", el
+    // contador de enviadas nunca subía y el cliente abría un documento
+    // marcado como borrador.
+    if (cot.estado === "borrador") {
+      await actualizarCotizacion(cot.id, { estado: "enviada" }).catch(e => console.error(e));
+      setCots(prev => prev.map(c => c.id === cot.id ? { ...c, estado: "enviada" } : c));
+    }
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
   };
 

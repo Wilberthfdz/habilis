@@ -56,10 +56,13 @@ button, a, label[for], input[type=file] + * { min-height:44px; }
 input, select, textarea { font-size:16px !important; } /* prevent iOS zoom */
 @media (max-width:640px) {
   body { font-size:15px; }
-  /* Force single column grids */
-  [style*="gridTemplateColumns"] { grid-template-columns:1fr !important; }
-  /* Cards full-width padding */
-  [style*="borderRadius:\"16px\""], [style*='borderRadius:"16px"'] { padding:14px !important; }
+  /* Una sola columna. Los selectores anteriores buscaban "gridTemplateColumns"
+     y 'borderRadius:"16px"', que es como se escribe en JSX — pero el
+     navegador ve "grid-template-columns" y "border-radius". Ninguna regla
+     aplicaba: todas las rejillas de 2 y 3 columnas seguían igual en el
+     teléfono, apretadas contra el borde. */
+  [style*="grid-template-columns"] { grid-template-columns:1fr !important; }
+  [style*="border-radius: 16px"] { padding:14px !important; }
   /* Prevent overflow */
   * { max-width:100vw; }
   /* Table horizontal scroll */
@@ -149,10 +152,20 @@ const pantallaDe = path => {
   return PANTALLA_POR_RUTA[limpio] || "landing";
 };
 
+// Las cotizaciones se comparten por WhatsApp como `?vista=<id>`. El router
+// solo miraba la ruta, así que TODOS esos enlaces caían en la portada y el
+// cliente nunca veía la cotización que le mandaron.
+const arranqueDesdeURL = () => {
+  const vista = new URLSearchParams(window.location.search).get("vista");
+  if (vista) return { screen: "vistaCotizacion", params: { token: vista } };
+  return { screen: pantallaDe(window.location.pathname), params: {} };
+};
+
 export default function App() {
   const [user,    setUser]    = useState(undefined);
-  const [screen,  setScreen]  = useState(() => pantallaDe(window.location.pathname));
-  const [params,  setParams]  = useState({});
+  const arranque = arranqueDesdeURL();
+  const [screen,  setScreen]  = useState(arranque.screen);
+  const [params,  setParams]  = useState(arranque.params);
 
   useEffect(() => {
     const unsub = onAuth(u => setUser(u || null));
@@ -187,7 +200,7 @@ export default function App() {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ textAlign: "center" }}>
-          <div style={{ width: "40px", height: "40px", border: "3px solid #D97706", borderTopColor: "transparent", borderRadius: "50%", margin: "0 auto 12px", animation: "spin 0.8s linear infinite" }} />
+          <div style={{ width: "40px", height: "40px", border: "3px solid #F97316", borderTopColor: "transparent", borderRadius: "50%", margin: "0 auto 12px", animation: "spin 0.8s linear infinite" }} />
           <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
           <p style={{ color: "#6B7280", fontSize: "14px" }}>Cargando Habilis...</p>
         </div>
