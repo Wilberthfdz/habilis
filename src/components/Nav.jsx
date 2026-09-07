@@ -8,7 +8,7 @@ const aboutLinks = [
   { label:"Lo que ofrecemos",       route:"quienesSomos", params:{ seccion:"ofrecemos" } },
   { label:"Cómo funciona la app",   route:"comoFunciona" },
   { label:"Soporte",                route:"soporte" },
-  { label:"Términos y condiciones", route:"terminos" },
+  { label:"Centro legal",           route:"legal" },
   { label:"Aviso de privacidad",    route:"privacidad" },
 ];
 

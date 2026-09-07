@@ -136,7 +136,7 @@ export default function Privacidad({ nav, user }) {
           </p>
 
           <div style={{ marginTop:"32px", display:"flex", gap:"12px", flexWrap:"wrap" }}>
-            <button onClick={() => nav("terminos")} className="h-btn-orange"
+            <button onClick={() => nav("legal")} className="h-btn-orange"
               style={{ padding:"10px 18px", fontSize:"13px" }}>
               Ver Términos y Condiciones
             </button>

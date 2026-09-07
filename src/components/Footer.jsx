@@ -22,8 +22,10 @@ const COLUMNAS = [
     ["Soporte", "soporte"],
   ]],
   ["Legal", [
+    ["Centro legal", "legal"],
+    ["Términos para clientes", "documentoLegal", { slug: "terminos-clientes" }],
+    ["Términos para técnicos", "documentoLegal", { slug: "terminos-tecnicos" }],
     ["Aviso de privacidad", "privacidad"],
-    ["Términos y condiciones", "terminos"],
   ]],
 ];
 
@@ -59,8 +61,8 @@ export default function Footer({ nav }) {
               <div key={titulo}>
                 <p style={{ fontWeight:800, fontSize:"12px", color:"#0A1120", marginBottom:"14px",
                             letterSpacing:"0.06em", textTransform:"uppercase" }}>{titulo}</p>
-                {items.map(([l, r]) => (
-                  <button key={l} onClick={() => nav(r)} style={enlace}
+                {items.map(([l, r, p]) => (
+                  <button key={l} onClick={() => nav(r, p || {})} style={enlace}
                     onMouseEnter={e => e.currentTarget.style.color = "#F07020"}
                     onMouseLeave={e => e.currentTarget.style.color = "#6B6560"}>
                     {l}

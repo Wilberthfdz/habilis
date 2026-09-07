@@ -2,7 +2,15 @@
 // expreso para tratar datos personales y la LFPC pide que el consumidor
 // conozca las condiciones antes de contratar: sin este bloque el alta no
 // dejaba rastro de que el técnico los hubiera visto siquiera.
-export default function AceptarTerminos({ nav, valor, onChange }) {
+// `tipo` decide qué términos se enlazan: "cliente", "tecnico" o —cuando aún
+// no se sabe, en el alta de la cuenta— el Centro Legal completo.
+const DESTINO = {
+  cliente: ["documentoLegal", { slug: "terminos-clientes" }, "Términos y Condiciones para Clientes"],
+  tecnico: ["documentoLegal", { slug: "terminos-tecnicos" }, "Términos y Condiciones para Técnicos"],
+};
+
+export default function AceptarTerminos({ nav, valor, onChange, tipo }) {
+  const [pantalla, params, etiqueta] = DESTINO[tipo] || ["legal", {}, "Términos y Condiciones"];
   const link = {
     background:"none", border:"none", padding:0, color:"#F97316",
     fontWeight:700, cursor:"pointer", fontSize:"13px", textDecoration:"underline",
@@ -21,15 +29,19 @@ export default function AceptarTerminos({ nav, valor, onChange }) {
       <span>
         He leído y acepto los{" "}
         <button type="button" style={link}
-          onClick={e => { e.preventDefault(); nav("terminos"); }}>
-          Términos y Condiciones
+          onClick={e => { e.preventDefault(); nav(pantalla, params); }}>
+          {etiqueta}
         </button>{" "}
         y el{" "}
         <button type="button" style={link}
           onClick={e => { e.preventDefault(); nav("privacidad"); }}>
           Aviso de Privacidad
         </button>{" "}
-        de Habilis Tecnology, S.A.P.I. de C.V.
+        de Habilis Tecnology, S.A.P.I. de C.V., y las{" "}
+        <button type="button" style={link}
+          onClick={e => { e.preventDefault(); nav("documentoLegal", { slug: "normas-comunidad" }); }}>
+          Normas de la Comunidad
+        </button>.
       </span>
     </label>
   );

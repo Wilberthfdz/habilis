@@ -13,6 +13,8 @@ import Bienvenida                    from "./pages/Bienvenida.jsx";
 import EditarPerfil                  from "./pages/EditarPerfil.jsx";
 import ElegirTipo                    from "./pages/ElegirTipo.jsx";
 import MisSolicitudes                from "./pages/MisSolicitudes.jsx";
+import Legal                         from "./pages/Legal.jsx";
+import DocumentoLegal                from "./pages/DocumentoLegal.jsx";
 import CompletarPerfil               from "./pages/CompletarPerfil.jsx";
 import HabilisCare                   from "./pages/HabilisCare.jsx";
 import DetalleActivo                 from "./pages/DetalleActivo.jsx";
@@ -23,7 +25,6 @@ import SolicitarServicio             from "./pages/SolicitarServicio.jsx";
 import Chat                          from "./pages/Chat.jsx";
 import MiRed                         from "./pages/MiRed.jsx";
 import Privacidad                    from "./pages/Privacidad.jsx";
-import Terminos                      from "./pages/Terminos.jsx";
 import QuienesSomos                  from "./pages/QuienesSomos.jsx";
 import ComoFunciona                  from "./pages/ComoFunciona.jsx";
 import Soporte                       from "./pages/Soporte.jsx";
@@ -129,6 +130,9 @@ const RUTAS_URL = {
   soporte:         "/soporte",
   suscripcionPro:  "/pro",
   terminos:        "/terminos",
+  legal:           "/legal",
+  // documentoLegal no va aquí: su ruta es /legal/<slug> y la resuelven
+  // rutaDe y pantallaDe. Ponerla como "/legal" pisaba la del índice.
   privacidad:      "/privacidad",
   inversion:       "/inversion",
   admin:           "/admin",
@@ -140,7 +144,11 @@ const PANTALLA_POR_RUTA = Object.fromEntries(
 // Pantallas que necesitan un parámetro para tener sentido (un perfil, un
 // chat, una cotización). No se reflejan en la URL: sin el id la pantalla
 // llegaría vacía, así que al recargar o volver atrás se cae al landing.
-const rutaDe = pantalla => RUTAS_URL[pantalla] || null;
+const rutaDe = (pantalla, params = {}) => {
+  // Cada documento legal tiene su propia URL: /legal/<slug>.
+  if (pantalla === "documentoLegal" && params.slug) return `/legal/${params.slug}`;
+  return RUTAS_URL[pantalla] || null;
+};
 
 // Pantallas que no existen sin sesión. Al abrirlas por URL sin haber
 // iniciado sesión mandamos al login en vez de renderizar una pantalla rota.
@@ -153,7 +161,13 @@ const REQUIEREN_SESION = new Set([
 
 const pantallaDe = path => {
   const limpio = path.replace(/\/+$/, "") || "/";
+  if (limpio.startsWith("/legal/")) return "documentoLegal";
   return PANTALLA_POR_RUTA[limpio] || "landing";
+};
+const paramsDe = path => {
+  const limpio = path.replace(/\/+$/, "") || "/";
+  const m = /^\/legal\/([a-z0-9-]+)$/.exec(limpio);
+  return m ? { slug: m[1] } : {};
 };
 
 // Las cotizaciones se comparten por WhatsApp como `?vista=<id>`. El router
@@ -162,7 +176,7 @@ const pantallaDe = path => {
 const arranqueDesdeURL = () => {
   const vista = new URLSearchParams(window.location.search).get("vista");
   if (vista) return { screen: "vistaCotizacion", params: { token: vista } };
-  return { screen: pantallaDe(window.location.pathname), params: {} };
+  return { screen: pantallaDe(window.location.pathname), params: paramsDe(window.location.pathname) };
 };
 
 export default function App() {
@@ -181,7 +195,7 @@ export default function App() {
   useEffect(() => {
     const alVolver = () => {
       setScreen(pantallaDe(window.location.pathname));
-      setParams({});
+      setParams(paramsDe(window.location.pathname));
       window.scrollTo(0, 0);
     };
     window.addEventListener("popstate", alVolver);
@@ -189,7 +203,7 @@ export default function App() {
   }, []);
 
   const nav = (screen, params = {}) => {
-    const path = rutaDe(screen);
+    const path = rutaDe(screen, params);
     // Las pantallas con parámetro conservan la URL de donde vienen: no se
     // pueden reconstruir desde la barra de direcciones.
     if (path && window.location.pathname !== path) {
@@ -245,7 +259,10 @@ export default function App() {
       case "admin":              return <Admin              {...screenProps} />;
       case "inversion":          return <Inversion          {...screenProps} />;
       case "privacidad":         return <Privacidad         {...screenProps} />;
-      case "terminos":           return <Terminos           {...screenProps} />;
+      // /terminos se conserva por los enlaces antiguos; hoy es el Centro Legal.
+      case "terminos":           return <Legal              {...screenProps} />;
+      case "legal":              return <Legal              {...screenProps} />;
+      case "documentoLegal":     return <DocumentoLegal     {...screenProps} params={params} />;
       case "quienesSomos":       return <QuienesSomos       {...screenProps} params={params} />;
       case "comoFunciona":       return <ComoFunciona       {...screenProps} />;
       case "soporte":            return <Soporte            {...screenProps} />;

@@ -197,7 +197,7 @@ export default function CompletarPerfil({ nav, user, params = {} }) {
                 </div>
               )}
 
-              {!yaAcepto && <AceptarTerminos nav={nav} valor={acepto} onChange={setAcepto} />}
+              {!yaAcepto && <AceptarTerminos nav={nav} valor={acepto} onChange={setAcepto} tipo="tecnico" />}
 
               <button onClick={submit} disabled={loading || !acepto}
                 style={{ width:"100%", background:"#F97316", color:"#fff", border:"none",

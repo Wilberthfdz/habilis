@@ -90,7 +90,7 @@ export default function ElegirTipo({ nav, user, params = {} }) {
                 </p>
               </div>
               {params.aceptoTerminos !== true && (
-                <AceptarTerminos nav={nav} valor={acepto} onChange={setAcepto} />
+                <AceptarTerminos nav={nav} valor={acepto} onChange={setAcepto} tipo="cliente" />
               )}
               {error && (
                 <div style={{ background:"rgba(239,68,68,0.12)", border:"1px solid rgba(239,68,68,0.28)",
