@@ -1,7 +1,7 @@
 import Logo from "../components/Logo.jsx";
 import Nav from "../components/Nav.jsx";
 import Footer from "../components/Footer.jsx";
-import { PLAN_GRATIS as FREE, PLAN_PRO, PRECIO_PRO } from "../lib/planes.js";
+import { PLAN_GRATIS as FREE, PLAN_PRO, PRECIO_PRO, PLAN_EMPRESAS, PRECIO_EMPRESAS } from "../lib/planes.js";
 
 // La lista del Pro se dibuja con el mismo formato que la del gratuito.
 const PRO = PLAN_PRO.map(t => [true, t]);
@@ -27,7 +27,7 @@ export default function Precios({ nav, user }) {
                       background:"radial-gradient(circle,rgba(59,130,246,0.1) 0%,transparent 65%)", pointerEvents:"none" }} />
         <div style={{ maxWidth:"700px", margin:"0 auto", textAlign:"center", position:"relative", zIndex:1 }}>
           <p style={{ fontSize:"11px", fontWeight:700, color:"#F97316", textTransform:"uppercase",
-                      letterSpacing:"0.12em", marginBottom:"10px" }}>Para técnicos</p>
+                      letterSpacing:"0.12em", marginBottom:"10px" }}>Planes</p>
           <h1 style={{ fontSize:"clamp(26px,5vw,52px)", fontWeight:900, color:"#fff", marginBottom:"14px" }}>
             Planes simples y transparentes
           </h1>
@@ -38,8 +38,8 @@ export default function Precios({ nav, user }) {
       </div>
 
       {/* PRICING CARDS */}
-      <div style={{ maxWidth:"880px", margin:"0 auto", padding:"52px 20px" }}>
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))", gap:"24px", alignItems:"start" }}>
+      <div style={{ maxWidth:"1120px", margin:"0 auto", padding:"52px 20px" }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(290px,1fr))", gap:"24px", alignItems:"start" }}>
 
           {/* FREE */}
           <div style={{ background:"#fff", border:"1px solid #E2E8F0", borderRadius:"24px", padding:"36px",
@@ -86,7 +86,7 @@ export default function Precios({ nav, user }) {
               <span style={{ fontSize:"15px", color:"rgba(255,255,255,0.4)", marginBottom:"8px" }}>MXN/mes</span>
             </div>
             <p style={{ color:"rgba(255,255,255,0.45)", fontSize:"13px", marginBottom:"28px" }}>
-              ≈ $3.30 MXN al día · IVA incluido
+              ≈ ${(PRECIO_PRO / 30).toFixed(2)} MXN al día · IVA incluido
             </p>
             <hr style={{ border:"none", borderTop:"1px solid rgba(255,255,255,0.08)", marginBottom:"24px" }} />
             <ul style={{ listStyle:"none", padding:0, marginBottom:"32px" }}>
@@ -104,10 +104,47 @@ export default function Precios({ nav, user }) {
               Obtener Plan Pro ⚡
             </button>
           </div>
+
+          {/* EMPRESAS. Por invitación: la cuenta de empresa todavía no
+              existe en el producto, así que aquí no hay checkout — solo
+              solicitar acceso. No se cobra nada hasta que esté activa. */}
+          <div style={{ background:"#fff", border:"1px solid #E2E8F0", borderRadius:"24px", padding:"36px",
+                        boxShadow:"0 1px 3px rgba(0,0,0,0.06)" }}>
+            <p style={{ fontSize:"11px", fontWeight:700, color:"#94A3B8", textTransform:"uppercase",
+                        letterSpacing:"0.1em", marginBottom:"10px" }}>Plan Empresas</p>
+            <div style={{ display:"flex", alignItems:"flex-end", gap:"4px", marginBottom:"6px" }}>
+              <span style={{ fontSize:"44px", fontWeight:900, color:"#0F172A" }}>${PRECIO_EMPRESAS}</span>
+              <span style={{ fontSize:"15px", color:"#94A3B8", marginBottom:"8px" }}>MXN/mes</span>
+            </div>
+            <p style={{ color:"#64748B", fontSize:"13px", marginBottom:"28px" }}>
+              Para empresas que contratan técnicos de forma recurrente
+            </p>
+            <hr style={{ border:"none", borderTop:"1px solid #F1F5F9", marginBottom:"24px" }} />
+            <ul style={{ listStyle:"none", padding:0, marginBottom:"24px" }}>
+              {PLAN_EMPRESAS.map(text => (
+                <li key={text} style={{ display:"flex", alignItems:"flex-start", gap:"10px",
+                                        marginBottom:"12px", fontSize:"14px" }}>
+                  <span style={{ color:"#10B981", fontWeight:700, flexShrink:0, marginTop:"1px" }}>✓</span>
+                  <span style={{ color:"#374151" }}>{text}</span>
+                </li>
+              ))}
+            </ul>
+            <div style={{ background:"#F8FAFC", border:"1px solid #E2E8F0", borderRadius:"10px",
+                          padding:"10px 14px", fontSize:"12.5px", color:"#64748B", lineHeight:1.55,
+                          marginBottom:"14px" }}>
+              Lanzamiento por invitación. Sin cobro hasta que tu cuenta esté activa.
+            </div>
+            <a href={`mailto:habilisempresa@gmail.com?subject=${encodeURIComponent("Plan Empresas — solicitud de acceso")}`}
+              style={{ display:"block", textAlign:"center", background:"#0F172A", color:"#fff",
+                       borderRadius:"12px", padding:"14px", fontSize:"15px", fontWeight:700,
+                       textDecoration:"none" }}>
+              Solicitar acceso
+            </a>
+          </div>
         </div>
 
         <p style={{ textAlign:"center", color:"#94A3B8", fontSize:"13px", marginTop:"24px" }}>
-          * Cancela en cualquier momento. El precio incluye IVA.
+          * Cancela en cualquier momento. Los precios incluyen IVA.
         </p>
       </div>
 

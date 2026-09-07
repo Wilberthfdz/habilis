@@ -9,6 +9,19 @@
 // el backend bloquea en IA_SOLO_PRO (functions/index.js).
 export const PRECIO_PRO = 149;   // MXN al mes, IVA incluido
 
+// Plan para empresas que contratan técnicos de forma recurrente. Todavía no
+// tiene cuenta de empresa detrás: se anuncia por invitación y NO se cobra
+// hasta que la cuenta exista. Cuando se construya, esta lista es la que
+// tiene que cumplirse.
+export const PRECIO_EMPRESAS = 499;
+export const PLAN_EMPRESAS = [
+  "Cuenta de empresa con varios usuarios",
+  "Búsqueda y contacto con técnicos sin límite",
+  "Historial de contrataciones de la empresa",
+  "Factura mensual (CFDI)",
+  "Atención directa por correo",
+];
+
 export const PLAN_GRATIS = [
   [true,  "Perfil profesional y aparición en búsquedas"],
   [true,  "1 trabajo documentado para empezar"],
