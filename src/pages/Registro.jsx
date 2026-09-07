@@ -24,6 +24,7 @@ export default function Registro({ nav, params = {} }) {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState("");
   const [acepto,  setAcepto]  = useState(false);
+  const [comercial, setComercial] = useState(false);
   const [form, setForm] = useState({ nombre:"", apellido:"", email:"", password:"" });
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
 
@@ -49,8 +50,9 @@ export default function Registro({ nav, params = {} }) {
       // La aceptación viaja a la pantalla que crea el documento del perfil,
       // que es donde queda la constancia; no se pregunta dos veces.
       // Quien viene por el Plan Pro ya sabe que es técnico; el resto elige.
-      if (quierePro) nav("completarPerfil", { aceptoTerminos: true, nombre, plan: "pro" });
-      else nav("elegirTipo", { aceptoTerminos: true, nombre, volverA: params.volverA });
+      const base = { aceptoTerminos: true, aceptoComunicaciones: comercial, nombre };
+      if (quierePro) nav("completarPerfil", { ...base, plan: "pro" });
+      else nav("elegirTipo", { ...base, volverA: params.volverA });
     } catch (e) {
       if (e.code === "auth/email-already-in-use") setError("Ese correo ya está registrado. Inicia sesión.");
       else if (e.code === "auth/weak-password")   setError("La contraseña debe tener al menos 6 caracteres.");
@@ -130,7 +132,8 @@ export default function Registro({ nav, params = {} }) {
                   onKeyDown={onKey} placeholder="••••••••" autoComplete="new-password" />
               </div>
 
-              <AceptarTerminos nav={nav} valor={acepto} onChange={setAcepto} />
+              <AceptarTerminos nav={nav} valor={acepto} onChange={setAcepto}
+                comercial={comercial} onChangeComercial={setComercial} />
 
               {error && (
                 <div style={{ background:"rgba(239,68,68,0.12)", border:"1px solid rgba(239,68,68,0.28)",

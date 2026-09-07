@@ -2,13 +2,17 @@
 // cuando la sociedad quede constituida o cambie el domicilio, se corrige
 // aquí y cambia en los trece documentos a la vez.
 export const TITULAR = {
-  razonSocial: "Habilis Tecnology, S.A.P.I. de C.V.",
+  razonSocial: "Habilis Technology, S.A.P.I. de C.V.",
   estado: "sociedad en proceso de constitución",
   operadorProvisional: "Wilberth Fernández Quen",
-  domicilio: "Cancún, Quintana Roo, México",
+  // Tal como se dictó; confirmar ortografía de la avenida y añadir C.P.
+  domicilio: "Región 236, Manzana 60, Lote 11, Local 4, Avenida Gastón Alero, Cancún, Quintana Roo, México",
   correo: "habilisempresa@gmail.com",
   sitio: "myhabilis.com",
   marca: "Habilis",
+  // Registro de marca ante el IMPI en trámite; el folio se añade cuando el
+  // dueño lo proporcione.
+  marcaEstado: "en trámite de registro ante el Instituto Mexicano de la Propiedad Industrial",
 };
 
 export const FECHA_VIGENCIA = "4 de septiembre de 2026";

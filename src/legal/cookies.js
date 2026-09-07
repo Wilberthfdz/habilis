@@ -19,7 +19,7 @@ export default {
     {
       titulo: "2. Qué no usamos",
       contenido: [
-        "**No usamos cookies de publicidad ni de seguimiento entre sitios, no vendemos datos de navegación y no mostramos anuncios.** Si en el futuro incorporamos herramientas de analítica para entender cómo se usa la plataforma, lo diremos aquí antes de activarlas y ofreceremos la forma de rechazarlas.",
+        "**Hoy no usamos cookies de publicidad ni de seguimiento entre sitios, no vendemos datos de navegación y no mostramos anuncios.** Si en el futuro incorporamos herramientas de analítica propias o de terceros para entender cómo se usa la plataforma, o mostramos publicidad, lo diremos aquí antes de activarlo, pediremos tu consentimiento cuando la ley lo exija y ofreceremos la forma de rechazarlo.",
       ],
     },
     {

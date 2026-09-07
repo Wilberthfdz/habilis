@@ -21,7 +21,7 @@ export default {
       titulo: "2. Qué es Habilis y qué no es",
       contenido: [
         "Habilis es una **plataforma tecnológica de intermediación y reputación profesional**. Permite que los técnicos publiquen su perfil y documenten sus trabajos con evidencia, y que tú los encuentres por oficio, ciudad o cercanía, revises su historial y los contactes directamente.",
-        "**Habilis no presta servicios técnicos.** No somos electricistas, plomeros ni contratistas. Tampoco empleamos a los técnicos, no los supervisamos, no fijamos sus precios y no cobramos comisión por los trabajos que contrates. Cada técnico es un profesional independiente que responde por su propio servicio.",
+        "**Habilis no presta servicios técnicos.** No somos electricistas, plomeros ni contratistas. Tampoco empleamos a los técnicos, no los supervisamos, no fijamos sus precios y no cobramos comisión por los trabajos que contrates a través del directorio. Cada técnico es un profesional independiente que responde por su propio servicio.",
         "**Habilis no es parte del contrato entre tú y el técnico.** El acuerdo sobre qué se hará, cuándo, a qué precio, con qué materiales y con qué garantía lo celebran ustedes dos directamente. Habilis no intermedia el pago del servicio: tú le pagas al técnico por el medio que acuerden entre ustedes.",
         "Lo que sí hacemos: verificar que los perfiles pertenezcan a personas reales que aceptaron nuestras normas, moderar el contenido publicado, mantener el sistema de calificaciones, retirar a quien incumpla las Normas de la Comunidad y ofrecerte herramientas para documentar y organizar lo que contratas.",
       ],
@@ -67,7 +67,7 @@ export default {
         "**Buscar, contactar y contratar técnicos a través de Habilis es gratis para ti y lo seguirá siendo.** No pagas nada a Habilis por usar la plataforma como cliente.",
         "El precio del servicio técnico lo fija el técnico y lo acuerdas con él. Te recomendamos pedir una cotización por escrito antes de que empiece el trabajo; los técnicos pueden generarla desde la plataforma y compartírtela por enlace.",
         "Como Habilis no intermedia el pago, **no podemos emitir factura por el servicio técnico ni gestionar reembolsos** de lo que le pagaste al técnico. Cualquier comprobante fiscal por el servicio debe emitirlo el técnico, si está en posibilidad de hacerlo. Pregúntaselo antes de contratar.",
-        "Si en el futuro ofrecemos a los clientes algún servicio de pago, te lo diremos con claridad, con su precio y condiciones, antes de que lo contrates.",
+        "Si en el futuro ofrecemos a los clientes algún servicio de pago (por ejemplo, planes de mantenimiento programado contratados con Habilis, o una versión sin publicidad si algún día la plataforma la mostrara), te lo diremos con claridad, con su precio y condiciones y con sus propios términos, **antes** de que lo contrates. Usar el directorio para buscar y contactar técnicos seguirá siendo gratis.",
       ],
     },
     {

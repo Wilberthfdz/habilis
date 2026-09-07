@@ -29,8 +29,8 @@ export default function Privacidad({ nav, user }) {
 
           <h2 style={H2}>1. Responsable del tratamiento</h2>
           <p style={P}>
-            Habilis Tecnology, S.A.P.I. de C.V., sociedad en proceso de constitución con
-            domicilio en Cancún, Quintana Roo, México (en adelante "Habilis"), operadora de la
+            Habilis Technology, S.A.P.I. de C.V., sociedad en proceso de constitución con
+            domicilio en Región 236, Manzana 60, Lote 11, Local 4, Avenida Gastón Alero, Cancún, Quintana Roo, México (en adelante "Habilis"), operadora de la
             plataforma <strong>myhabilis.com</strong>, es responsable del tratamiento de tus
             datos personales conforme a la Ley Federal de Protección de Datos Personales en
             Posesión de los Particulares (LFPDPPP). En tanto concluye la constitución de la

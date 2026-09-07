@@ -501,7 +501,7 @@ Cosas que conviene saber que existen, sin urgencia inmediata.
 - **El reporte financiero mezcla periodos:** ingresos de 6 meses menos gastos históricos completos, y el KPI "TOTAL HISTÓRICO" se calcula sobre `limit(500)`. El tipo de cambio a dólares es la constante 18.5. Ese número se exporta como evidencia a terceros.
 - **Accesibilidad:** un solo `aria-*` en el proyecto, cero `htmlFor`, cero `role=`. Formularios sin etiqueta programática, tarjetas de técnico como `<div onClick>` inalcanzables por teclado, modales sin `role="dialog"` ni cierre con Escape.
 - **El expediente creado desde el chat nace con estado `pendiente`** aunque se pase `en_proceso`, porque `crearTrabajo` fija el estado después del spread (`firebase.js:110-111`).
-- **La identidad fiscal del emisor no coincide con el contrato:** los Términos nombran a "Habilis Tecnology, S.A.P.I. de C.V., sociedad en proceso de constitución", así que el CFDI lo emitirá un contribuyente distinto. Aclararlo en Términos y Aviso para que el nombre del CFDI no sorprenda.
+- **La identidad fiscal del emisor no coincide con el contrato:** los Términos nombran a "Habilis Technology, S.A.P.I. de C.V., sociedad en proceso de constitución", así que el CFDI lo emitirá un contribuyente distinto. Aclararlo en Términos y Aviso para que el nombre del CFDI no sorprenda.
 
 ---
 

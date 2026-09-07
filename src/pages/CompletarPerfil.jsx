@@ -40,6 +40,7 @@ export default function CompletarPerfil({ nav, user, params = {} }) {
   const [loading,      setLoading]      = useState(false);
   const [error,        setError]        = useState("");
   const [acepto,       setAcepto]       = useState(yaAcepto);
+  const [comercial,    setComercial]    = useState(params.aceptoComunicaciones === true);
 
   // Lo que dicta el técnico llena los campos; el oficio se resuelve contra
   // la taxonomía y, si no cae en ninguna categoría, se conserva tal cual.
@@ -81,6 +82,7 @@ export default function CompletarPerfil({ nav, user, params = {} }) {
         totalTrabajos: 0,
         disponible:    true,
         aceptoTerminos: true,
+        aceptoComunicaciones: comercial,
       });
       // Quien venía por el Plan Pro sigue al checkout; el resto, a la
       // bienvenida. Antes la intención se perdía aquí.
@@ -197,7 +199,8 @@ export default function CompletarPerfil({ nav, user, params = {} }) {
                 </div>
               )}
 
-              {!yaAcepto && <AceptarTerminos nav={nav} valor={acepto} onChange={setAcepto} tipo="tecnico" />}
+              {!yaAcepto && <AceptarTerminos nav={nav} valor={acepto} onChange={setAcepto} tipo="tecnico"
+                comercial={comercial} onChangeComercial={setComercial} />}
 
               <button onClick={submit} disabled={loading || !acepto}
                 style={{ width:"100%", background:"#F97316", color:"#fff", border:"none",

@@ -52,7 +52,7 @@ export default {
     {
       titulo: "5. Emergencias",
       contenido: [
-        "Ante un riesgo inmediato para la vida o la integridad de alguien, **llama al 911**. Habilis no es un servicio de emergencia y no puede enviar ayuda. Cuando estés a salvo, repórtanos lo ocurrido.",
+        "Ante un riesgo inmediato para la vida o la integridad de alguien, **llama al 911**. Habilis no es un servicio de emergencia y no puede enviar ayuda. Para problemas con la plataforma, el asistente de soporte está disponible a cualquier hora dentro de la aplicación; cuando estés a salvo, repórtanos lo ocurrido.",
       ],
     },
     {
@@ -68,7 +68,7 @@ export default {
     {
       titulo: "7. Delitos y autoridades",
       contenido: [
-        "Si el incidente puede constituir un delito (robo, lesiones, fraude, agresión), te recomendamos denunciarlo ante el Ministerio Público. Habilis conserva la información relevante y la entrega a la autoridad competente cuando lo requiere formalmente, conforme a la ley y al Aviso de Privacidad. Si tú lo pides, te facilitamos copia de la conversación para tu denuncia.",
+        "Si el incidente puede constituir un delito (robo, lesiones, fraude, agresión), te recomendamos denunciarlo ante el Ministerio Público. **Habilis entrega conversaciones y datos de otra persona únicamente ante requerimiento formal de autoridad competente**, conforme a la ley y al Aviso de Privacidad; nunca a petición de la otra parte. Lo que sí puedes obtener siempre es copia de **tu propia** conversación, porque son tus datos, para acompañar tu denuncia.",
       ],
     },
     {

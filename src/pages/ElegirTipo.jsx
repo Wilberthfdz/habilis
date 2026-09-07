@@ -15,12 +15,13 @@ export default function ElegirTipo({ nav, user, params = {} }) {
   const [modo,    setModo]    = useState(null);      // null | "cliente"
   const [ciudad,  setCiudad]  = useState("");
   const [acepto,  setAcepto]  = useState(params.aceptoTerminos === true);
+  const [comercial, setComercial] = useState(params.aceptoComunicaciones === true);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState("");
 
   const nombre = user?.displayName || params.nombre || "";
 
-  const irATecnico = () => nav("completarPerfil", params);
+  const irATecnico = () => nav("completarPerfil", { ...params, aceptoComunicaciones: comercial });
 
   const crearCliente = async () => {
     if (!acepto) { setError("Debes aceptar los Términos y el Aviso de Privacidad."); return; }
@@ -28,6 +29,7 @@ export default function ElegirTipo({ nav, user, params = {} }) {
     try {
       await crearPerfilCliente(user.uid, {
         nombre, email: user?.email || "", ciudad: ciudad.trim(), aceptoTerminos: true,
+        aceptoComunicaciones: comercial,
       });
       // Si venía de un perfil concreto, vuelve a él para pedir el servicio.
       if (params.volverA?.screen) nav(params.volverA.screen, params.volverA.params || {});
@@ -90,7 +92,8 @@ export default function ElegirTipo({ nav, user, params = {} }) {
                 </p>
               </div>
               {params.aceptoTerminos !== true && (
-                <AceptarTerminos nav={nav} valor={acepto} onChange={setAcepto} tipo="cliente" />
+                <AceptarTerminos nav={nav} valor={acepto} onChange={setAcepto} tipo="cliente"
+                  comercial={comercial} onChangeComercial={setComercial} />
               )}
               {error && (
                 <div style={{ background:"rgba(239,68,68,0.12)", border:"1px solid rgba(239,68,68,0.28)",

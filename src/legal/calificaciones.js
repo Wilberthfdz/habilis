@@ -16,7 +16,7 @@ export default {
     {
       titulo: "2. Calificaciones de clientes",
       contenido: [
-        "- Solo puede calificar el cliente de una solicitud que se marcó como completada a través de la plataforma. Una calificación por solicitud.",
+        "- Solo puede calificar el cliente de una solicitud que se marcó como completada a través de la plataforma. Una calificación por solicitud, **dentro de los 15 días naturales siguientes** a marcarla como completada. Pasado ese plazo la solicitud queda sin calificación; las incidencias posteriores se atienden conforme a la garantía que el técnico haya ofrecido, no a través de la calificación.",
         "- Es de 1 a 5 estrellas con un comentario opcional. Es pública en el perfil del técnico.",
         "- El promedio se calcula sobre todas las calificaciones recibidas y se redondea a un decimal. Un técnico sin calificaciones aparece sin calificación, nunca con un valor supuesto.",
         "- El técnico no puede eliminar una calificación ni pedir que se elimine por no gustarle.",

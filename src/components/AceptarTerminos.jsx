@@ -9,13 +9,18 @@ const DESTINO = {
   tecnico: ["documentoLegal", { slug: "terminos-tecnicos" }, "Términos y Condiciones para Técnicos"],
 };
 
-export default function AceptarTerminos({ nav, valor, onChange, tipo }) {
+// La segunda casilla es OPCIONAL y viene desmarcada: es el consentimiento
+// para comunicaciones comerciales (LFPDPPP art. 8). Sin ella, mandar
+// promociones sería una finalidad secundaria a la que hay que oponerse
+// después; con ella, solo se escribe a quien dijo que sí.
+export default function AceptarTerminos({ nav, valor, onChange, tipo, comercial, onChangeComercial }) {
   const [pantalla, params, etiqueta] = DESTINO[tipo] || ["legal", {}, "Términos y Condiciones"];
   const link = {
     background:"none", border:"none", padding:0, color:"#F97316",
     fontWeight:700, cursor:"pointer", fontSize:"13px", textDecoration:"underline",
   };
   return (
+    <>
     <label style={{ display:"flex", alignItems:"flex-start", gap:"10px",
                     fontSize:"13px", color:"rgba(255,255,255,0.6)",
                     lineHeight:1.6, cursor:"pointer" }}>
@@ -37,12 +42,21 @@ export default function AceptarTerminos({ nav, valor, onChange, tipo }) {
           onClick={e => { e.preventDefault(); nav("privacidad"); }}>
           Aviso de Privacidad
         </button>{" "}
-        de Habilis Tecnology, S.A.P.I. de C.V., y las{" "}
+        de Habilis Technology, S.A.P.I. de C.V., y las{" "}
         <button type="button" style={link}
           onClick={e => { e.preventDefault(); nav("documentoLegal", { slug: "normas-comunidad" }); }}>
           Normas de la Comunidad
         </button>.
       </span>
     </label>
+    {onChangeComercial && (
+      <label style={{ display:"flex", alignItems:"flex-start", gap:"10px", marginTop:"10px",
+                      fontSize:"12.5px", color:"rgba(255,255,255,0.45)", lineHeight:1.6, cursor:"pointer" }}>
+        <input type="checkbox" checked={!!comercial} onChange={e => onChangeComercial(e.target.checked)}
+          style={{ width:"16px", height:"16px", accentColor:"#F97316", marginTop:"2px", flexShrink:0 }} />
+        <span>Quiero recibir novedades y promociones de Habilis por correo. Es opcional y puedo cancelarlo cuando quiera.</span>
+      </label>
+    )}
+    </>
   );
 }

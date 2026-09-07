@@ -21,7 +21,8 @@ export default {
       titulo: "2. Naturaleza de la relación: eres independiente",
       contenido: [
         "**No existe relación laboral entre tú y Habilis.** No eres empleado, trabajador, agente ni socio del Titular. No recibes salario, no tienes horario, no estás subordinado a instrucciones nuestras sobre cómo hacer tu trabajo, y decides libremente a qué clientes atender, cuándo, dónde y a qué precio. Nada de lo previsto en la Ley Federal del Trabajo resulta aplicable a la relación entre tú y el Titular.",
-        "Habilis es una **plataforma de intermediación tecnológica y reputación profesional**: te da visibilidad, herramientas y un historial verificable. **No te consigue trabajo, no te garantiza clientes, no fija tus tarifas y no cobra comisión por los trabajos que realices.** El contrato por cada servicio lo celebras tú directamente con el cliente y eres el único responsable de cumplirlo.",
+        "Habilis es una **plataforma de intermediación tecnológica y reputación profesional**: te da visibilidad, herramientas y un historial verificable. **No te consigue trabajo, no te garantiza clientes, no fija tus tarifas y no cobra comisión por los trabajos que acuerdes con clientes a través del directorio.** El contrato por cada servicio lo celebras tú directamente con el cliente y eres el único responsable de cumplirlo.",
+        "**Servicios adicionales.** Habilis puede ofrecer en el futuro servicios distintos del directorio (por ejemplo, planes de mantenimiento programado que el cliente contrate con Habilis y que Habilis asigne a técnicos verificados). Esos servicios tendrán sus propios términos, condiciones económicas y reglas de participación, que se publicarán en el Centro Legal **antes** de que puedas participar en ellos, y tu participación será siempre voluntaria. Nada de lo que hagas en el directorio te obliga a participar en ellos.",
         "Eres responsable de tus obligaciones fiscales (inscripción en el RFC, declaraciones, emisión de comprobantes a tus clientes si están en posibilidad), de seguridad social y de cualquier otra que te imponga la ley como profesional independiente. Habilis no retiene impuestos ni emite comprobantes por los servicios que prestas a tus clientes.",
       ],
     },
@@ -79,7 +80,8 @@ export default {
         "- **Cobro por la web:** suscripción recurrente a través de un procesador de pagos independiente, que tiene sus propios términos. Habilis nunca ve ni guarda los datos de tu tarjeta.",
         "- **Cobro en la app para iPhone o Android:** la suscripción se contrata a través de la tienda de aplicaciones correspondiente, con su propio sistema de cobro, sus precios en tu moneda y sus condiciones. En ese caso el comprobante lo emite la tienda.",
         "- **Renovación automática.** La suscripción se renueva cada mes hasta que la canceles. El cargo se realiza al inicio de cada periodo.",
-        "- **Cambios de precio.** Podemos modificar el precio notificándotelo con al menos 15 días naturales de anticipación; el nuevo precio aplica a partir de la siguiente renovación. Si no estás de acuerdo, cancela antes de que entre en vigor.",
+        "- **Cambios de precio.** Podemos modificar el precio notificándotelo con al menos **30 días naturales** de anticipación, por correo y en tu siguiente comprobante; el nuevo precio aplica a partir de la siguiente renovación. Si no estás de acuerdo, cancela antes de que entre en vigor.",
+        "- **Pago anual.** Si en algún momento ofrecemos pago anual, el precio pagado queda fijo durante todo el año contratado, aunque el precio mensual cambie en ese periodo.",
       ],
     },
     {
@@ -124,7 +126,7 @@ export default {
     {
       titulo: "13. Propiedad intelectual y tu contenido",
       contenido: [
-        "El contenido que publicas (fotos, descripciones, cotizaciones) sigue siendo tuyo. Al publicarlo otorgas al Titular una licencia no exclusiva, gratuita y mundial para alojarlo, reproducirlo y mostrarlo dentro de la plataforma, y para usarlo en materiales que promocionen la plataforma **sin identificarte con nombre y apellido salvo que lo autorices**. Puedes terminarla eliminando el contenido o tu cuenta. La marca, el software y el diseño de Habilis pertenecen al Titular. Los detalles están en la Política de Contenido y Propiedad Intelectual.",
+        "El contenido que publicas (fotos, descripciones, cotizaciones) sigue siendo tuyo. Al publicarlo otorgas al Titular una licencia no exclusiva, gratuita y mundial para alojarlo, reproducirlo y mostrarlo **únicamente dentro de la plataforma**, con el fin de operarla. **Habilis no usará tu contenido ni tu imagen en publicidad sin tu autorización expresa y por escrito.** Puedes terminar la licencia eliminando el contenido o tu cuenta. La marca, el software y el diseño de Habilis pertenecen al Titular. Los detalles están en la Política de Contenido y Propiedad Intelectual.",
       ],
     },
     {

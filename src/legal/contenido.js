@@ -11,7 +11,7 @@ export default {
       titulo: "1. Tu contenido es tuyo",
       contenido: [
         "Las fotos, descripciones, cotizaciones, mensajes y calificaciones que publicas siguen siendo tuyos. Habilis no adquiere su propiedad.",
-        "Al publicarlos otorgas al Titular una **licencia no exclusiva, gratuita, mundial y por el tiempo que el contenido permanezca en la plataforma** para alojarlo, reproducirlo, adaptarlo técnicamente (por ejemplo, comprimir una imagen) y mostrarlo dentro de la plataforma con el fin de operarla, y para usarlo en materiales que promocionen la plataforma **sin identificarte por nombre y apellido salvo que lo autorices expresamente**. La licencia termina cuando eliminas el contenido o tu cuenta, salvo por: copias de respaldo que se eliminan en el ciclo normal; contenido que otras personas ya compartieron dentro de la plataforma (por ejemplo, una cotización enviada a un cliente); y lo que debamos conservar por obligación legal.",
+        "Al publicarlos otorgas al Titular una **licencia no exclusiva, gratuita, mundial y por el tiempo que el contenido permanezca en la plataforma** para alojarlo, reproducirlo, adaptarlo técnicamente (por ejemplo, comprimir una imagen) y mostrarlo **dentro de la plataforma** con el fin de operarla. **Habilis no usa el contenido ni la imagen de sus usuarios en publicidad sin autorización expresa y por escrito**; los materiales promocionales de Habilis usan ilustraciones o personas contratadas para ello. La licencia termina cuando eliminas el contenido o tu cuenta, salvo por: copias de respaldo que se eliminan en el ciclo normal; contenido que otras personas ya compartieron dentro de la plataforma (por ejemplo, una cotización enviada a un cliente); y lo que debamos conservar por obligación legal.",
       ],
     },
     {
@@ -52,7 +52,7 @@ export default {
     {
       titulo: "6. Lo que es de Habilis",
       contenido: [
-        "La marca Habilis, el logotipo, el diseño de la plataforma, el software, la taxonomía de oficios y los textos propios pertenecen al Titular y están protegidos por la Ley Federal de Protección a la Propiedad Industrial y la Ley Federal del Derecho de Autor. Puedes decir que estás en Habilis y compartir el enlace a tu perfil; no puedes usar la marca de forma que sugiera que Habilis te avala, te emplea o garantiza tu trabajo, ni copiar el diseño o el software.",
+        "La marca Habilis (" + TITULAR.marcaEstado + "), el logotipo, el diseño de la plataforma, el software, la taxonomía de oficios y los textos propios pertenecen al Titular y están protegidos por la Ley Federal de Protección a la Propiedad Industrial y la Ley Federal del Derecho de Autor. Puedes decir que estás en Habilis y compartir el enlace a tu perfil; no puedes usar la marca de forma que sugiera que Habilis te avala, te emplea o garantiza tu trabajo, ni copiar el diseño o el software.",
       ],
     },
     {

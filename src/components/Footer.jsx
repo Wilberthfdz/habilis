@@ -77,7 +77,7 @@ export default function Footer({ nav }) {
                       justifyContent:"space-between", alignItems:"center",
                       flexWrap:"wrap", gap:"12px" }}>
           <p style={{ color:"#B5AFA8", fontSize:"12px", lineHeight:1.6 }}>
-            © {new Date().getFullYear()} Habilis Tecnology, S.A.P.I. de C.V. · Todos los derechos reservados
+            © {new Date().getFullYear()} Habilis Technology, S.A.P.I. de C.V. · Todos los derechos reservados
           </p>
           <p style={{ color:"#B5AFA8", fontSize:"12px" }}>Hecho en México</p>
         </div>

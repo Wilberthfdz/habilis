@@ -100,6 +100,7 @@ export async function crearPerfilCliente(uid, datos) {
     ciudad: datos.ciudad || "",
     uid,
     aceptoTerminos: datos.aceptoTerminos === true,
+    aceptoComunicaciones: datos.aceptoComunicaciones === true,
     fechaAceptacionTerminos: serverTimestamp(),
     versionTerminos: VERSION_TERMINOS,
     createdAt: serverTimestamp(),

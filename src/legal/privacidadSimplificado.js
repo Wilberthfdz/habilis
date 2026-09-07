@@ -25,7 +25,7 @@ export default {
     {
       titulo: "Finalidades secundarias",
       contenido: [
-        "Enviarte comunicaciones sobre novedades de la plataforma. Puedes oponerte escribiendo a **" + TITULAR.correo + "** con el asunto \"No enviar comunicaciones\", sin que ello afecte el servicio.",
+        "Enviarte comunicaciones sobre novedades y promociones de la plataforma, **solo si marcaste la casilla correspondiente al crear tu cuenta**. Puedes retirar ese consentimiento cuando quieras escribiendo a **" + TITULAR.correo + "** con el asunto \"No enviar comunicaciones\", sin que ello afecte el servicio.",
       ],
     },
     {

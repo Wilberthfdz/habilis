@@ -13,7 +13,7 @@ actualizo los textos.
 
 ## A. Identidad y estructura (afecta a todos los documentos)
 
-1. **Razón social definitiva.** Hoy: "Habilis Tecnology, S.A.P.I. de C.V., sociedad en proceso de constitución". ¿Se escribe "Tecnology" o "Technology"? ¿Ya está constituida? → `comun.js`, primer párrafo de todos.
+1. **Razón social definitiva.** Hoy: "Habilis Technology, S.A.P.I. de C.V., sociedad en proceso de constitución". ¿Se escribe "Tecnology" o "Technology"? ¿Ya está constituida? → `comun.js`, primer párrafo de todos.
 2. **Domicilio legal.** Hoy: "Cancún, Quintana Roo" sin calle. Un aviso de privacidad debería llevar domicilio completo. ¿Cuál? → Aviso de Privacidad §1, Términos §1.
 3. **Correo de contacto legal.** Hoy: habilisempresa@gmail.com. ¿Habrá legal@myhabilis.com o soporte@myhabilis.com? → todos.
 4. **Jurisdicción.** Hoy: tribunales de Cancún. ¿Es donde estará la sociedad? → Términos clientes §12, técnicos §15, sitio §8.
@@ -101,3 +101,24 @@ actualizo los textos.
 - Borrado de cuenta desde la propia plataforma.
 - Cancelación de la suscripción por el mismo medio de contratación.
 - No discriminación conforme a la LFPED.
+
+---
+
+# Estado de las respuestas (7 de septiembre de 2026)
+
+**Aplicado en los documentos:** 1 (Habilis Technology), 2 (domicilio completo; falta C.P. y confirmar ortografía de la avenida), 4, 5 (marca en trámite ante IMPI; falta folio), 6 y 7 (sin comisión ni intermediación en el directorio; cláusula de "servicios adicionales" que deja la puerta abierta a los planes de mantenimiento con términos propios), 8 (gratis para clientes; posible versión sin anuncios si algún día los hubiera), 10 (30 días de aviso de precio; pago anual conserva precio), 11, 12, 15, 20, 25 (ventana de 15 días para calificar), 30, 31-35, 39, 40, 42, 43 (conversaciones de terceros solo con requerimiento de autoridad), 44 (asistente 24/7, no línea de emergencia), 45, 46, 47, 48 (casilla de consentimiento comercial en el alta, construida), 49 (sin uso promocional del contenido de usuarios), 50.
+
+**Requiere construir antes de cambiar el texto** (el documento no puede prometer lo que no existe):
+- 16. Verificación de identidad obligatoria con INE, CURP, RFC y reconocimiento facial. Ver aviso B abajo.
+- 24. Calificación bidireccional (el técnico califica al cliente).
+- 6/7. Planes de mantenimiento contratados con Habilis. Ver aviso A abajo.
+
+**Pendientes de aclaración:** 3 (correo legal propio), 9 (¿$149 es el nuevo precio mensual del Pro? ¿"Empresas $499" es un plan nuevo?), 13 (subcontratación), 14 (seguro), 17, 18 (antecedentes), 19 (¿tope de 5 o de 20 trabajos?), 21-23, 26 (respuesta pública del técnico = poder contestar públicamente a una calificación en su perfil), 28, 29 (un "destacado de pago" sería cobrar por aparecer primero; si nunca lo habrá, la promesa se queda), 36 (quién confirma una desactivación: ver aviso C), 37 (¿cuántas ausencias sin aviso?), 38 (garantía de devolución = devolver el primer pago del Pro si cancelas en 7 días), 41.
+
+**Aviso A — Reforma laboral de plataformas digitales.** La reforma a la Ley Federal del Trabajo publicada en diciembre de 2024 (Capítulo IX Bis, vigente desde junio de 2025) considera trabajadores subordinados, con IMSS y prestaciones, a quienes trabajan a través de una plataforma que administra el trabajo mediante algoritmos y les genera al menos un salario mínimo mensual neto. El **directorio** de Habilis queda razonablemente fuera: no asigna trabajo, no fija precio, no cobra ni paga. Un **plan de mantenimiento donde Habilis cobra al cliente, asigna al técnico y le paga** se parece mucho a lo que la reforma regula. Antes de construirlo, un abogado laboralista tiene que dictaminar cómo estructurarlo. No es opcional.
+
+**Aviso B — Reconocimiento facial e INE.** Los datos biométricos son **datos personales sensibles** (LFPDPPP art. 3 y 9): exigen consentimiento expreso y por escrito, medidas de seguridad reforzadas y un aviso de privacidad que hoy dice exactamente lo contrario ("no recabamos datos sensibles"). Guardar imágenes de INE, CURP y RFC de miles de personas convierte a Habilis en objetivo y en responsable. Recomendación: contratar un proveedor de verificación de identidad que haga el cotejo y devuelva solo "verificado sí/no", sin que Habilis almacene la INE ni el rostro. Cuando decidas el proveedor, reescribo la sección 10 de los Términos para Técnicos y el Aviso de Privacidad.
+
+**Aviso C — Desactivación decidida por un agente de IA.** Los documentos dicen que un sistema automatizado puede proponer, pero que una persona confirma toda desactivación. Recomiendo mantenerlo así: (1) Apple y Google rechazan apps que expulsan usuarios sin vía de apelación humana; (2) PROFECO trata la cancelación unilateral de un servicio pagado como acto que debe motivarse; (3) una desactivación equivocada por un modelo es indefendible ante una reclamación. El agente puede hacer el 95 % del trabajo; la firma final es de una persona.
+
+**Políticas internas de personal.** Lo que mencionas al final (políticas para los trabajadores de Habilis conforme a la Ley Federal del Trabajo) es el Reglamento Interior de Trabajo y los contratos individuales: documentos distintos del Centro Legal, que se redactan cuando haya empleados y se depositan ante la autoridad laboral. Cuando llegue el momento, los preparo.
