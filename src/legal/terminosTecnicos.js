@@ -45,7 +45,7 @@ export default {
         "- **Cada trabajo debe ser real y realizado por ti.** Publicar trabajos ajenos, fotos tomadas de internet o trabajos inventados es causa de eliminación de la cuenta.",
         "- Las fotos no deben mostrar el rostro de clientes ni de terceros sin su consentimiento, ni datos que permitan identificar un domicilio particular (placas, números exteriores, documentos).",
         "- Cada publicación pasa por **moderación automatizada** antes de aparecer en público. Si no la supera, se te indica el motivo y puedes corregirla o pedir revisión. Si el sistema no puede evaluarla, queda pendiente de revisión manual.",
-        "- El plan gratuito permite documentar hasta 5 trabajos; el Plan Pro no tiene límite.",
+        "- El plan gratuito permite documentar **un trabajo**, para que los clientes vean cómo trabajas; el Plan Pro no tiene límite.",
         "Los clientes pueden marcar un trabajo como \"útil\" o \"bien hecho\". Esas validaciones y tus calificaciones alimentan tu posición en los resultados de búsqueda conforme a la Política de Calificaciones y Reputación.",
       ],
     },
@@ -75,8 +75,8 @@ export default {
     {
       titulo: "7. Plan Pro: precio, cobro y renovación",
       contenido: [
-        "El plan gratuito te permite crear tu perfil, aparecer en búsquedas y documentar hasta 5 trabajos. El **Plan Pro** quita ese tope, te da prioridad en los resultados, la insignia Pro y las herramientas de inteligencia artificial. La lista exacta de beneficios está siempre publicada en la página de Precios y es la que rige.",
-        "- **Precio:** $100.00 MXN al mes, IVA incluido. Cualquier código promocional aplica sobre ese precio y por el tiempo que indique el código.",
+        "El plan gratuito te permite crear tu perfil, aparecer en búsquedas y documentar un trabajo. El **Plan Pro** quita ese tope, te da prioridad en los resultados, la insignia Pro y las herramientas de inteligencia artificial. La lista exacta de beneficios está siempre publicada en la página de Precios y es la que rige.",
+        "- **Precio:** $149.00 MXN al mes, IVA incluido. Cualquier código promocional aplica sobre ese precio y por el tiempo que indique el código.",
         "- **Cobro por la web:** suscripción recurrente a través de un procesador de pagos independiente, que tiene sus propios términos. Habilis nunca ve ni guarda los datos de tu tarjeta.",
         "- **Cobro en la app para iPhone o Android:** la suscripción se contrata a través de la tienda de aplicaciones correspondiente, con su propio sistema de cobro, sus precios en tu moneda y sus condiciones. En ese caso el comprobante lo emite la tienda.",
         "- **Renovación automática.** La suscripción se renueva cada mes hasta que la canceles. El cargo se realiza al inicio de cada periodo.",

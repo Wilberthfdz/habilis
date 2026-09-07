@@ -22,7 +22,7 @@ export default {
       contenido: [
         "- **Cuándo:** cuando quieras. No hay contrato de permanencia.",
         "- **Cómo:** por el mismo medio por el que contrataste. Si pagaste por la web, con el botón \"Cancelar suscripción\" de tu página de suscripción. Si pagaste en la app, desde los ajustes de suscripciones de tu teléfono (Apple o Google); la app te lleva ahí.",
-        "- **Efecto:** no se genera ningún cobro posterior y **conservas los beneficios hasta el fin del periodo ya pagado**. Al vencer, tu cuenta pasa al plan gratuito sin perder tu perfil, tus trabajos ni tus calificaciones; si tienes más de 5 trabajos documentados, todos siguen visibles, pero no podrás publicar nuevos hasta volver a Pro.",
+        "- **Efecto:** no se genera ningún cobro posterior y **conservas los beneficios hasta el fin del periodo ya pagado**. Al vencer, tu cuenta pasa al plan gratuito sin perder tu perfil, tus trabajos ni tus calificaciones; todos tus trabajos documentados siguen visibles, pero no podrás publicar nuevos hasta volver a Pro.",
         "- **Reembolsos:** no hay reembolso por periodos parciales, salvo los casos previstos por la ley aplicable o los descritos en la sección 3.",
       ],
     },

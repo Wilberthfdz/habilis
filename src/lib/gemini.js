@@ -248,7 +248,7 @@ export async function soporteIA(pregunta, historial = []) {
 DATOS DEL PRODUCTO (tu única fuente de verdad):
 - Habilis es una bolsa de trabajo especializada: el técnico crea su perfil, documenta trabajos con fotos, y los clientes lo encuentran y lo contactan directo. Habilis NO cobra comisión por trabajo ni intermedia pagos entre técnico y cliente.
 - Habilis es solo plataforma de intermediación tecnológica: no presta los servicios, no emplea a los técnicos y NO se hace responsable del trabajo realizado — cada técnico independiente responde por su servicio (los detalles están en /terminos).
-- Plan Gratis: perfil, aparecer en búsquedas, hasta 5 trabajos documentados.
+- Plan Gratis: perfil, aparecer en búsquedas, un trabajo documentado.
 - Plan Pro: ${RESUMEN_PRO} Incluye: ${PLAN_PRO.join("; ")}. Se contrata en la página /pro (acepta códigos de descuento) y ahí mismo se cancela, se pide la factura CFDI y queda el historial de las emitidas.
 - NO existe "soporte prioritario": el soporte por correo es igual para todos y responde en un máximo de 2 días hábiles.
 - Funciones: búsqueda de técnicos por oficio y ciudad, feed de trabajos, chat, cotizaciones profesionales, Habilis Care (mantenimiento preventivo de equipos), registro de trabajos por voz, red de colaboradores.

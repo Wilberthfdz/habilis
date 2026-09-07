@@ -6,7 +6,7 @@ export const TITULAR = {
   estado: "sociedad en proceso de constitución",
   operadorProvisional: "Wilberth Fernández Quen",
   // Tal como se dictó; confirmar ortografía de la avenida y añadir C.P.
-  domicilio: "Región 236, Manzana 60, Lote 11, Local 4, Avenida Gastón Alero, Cancún, Quintana Roo, México",
+  domicilio: "Región 236, Manzana 60, Lote 11, Local 4, Avenida Gastón Alero, C.P. 77520, Cancún, Quintana Roo, México",
   correo: "habilisempresa@gmail.com",
   sitio: "myhabilis.com",
   marca: "Habilis",

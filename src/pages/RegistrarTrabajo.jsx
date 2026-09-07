@@ -123,12 +123,12 @@ export default function RegistrarTrabajo({ nav, user }) {
     } catch (e) {
       console.error("Error guardando trabajo:", e);
       const msg = e.message || e.code || String(e);
-      // El tope de 5 trabajos del plan gratuito lo aplican las reglas, y al
+      // El tope de un trabajo del plan gratuito lo aplican las reglas, y al
       // técnico le llegaba como "Sin permiso para guardar. ¿Estás con la
       // sesión iniciada?": un mensaje que no explica nada y culpa al usuario.
       if (msg.includes("permission-denied") || msg.includes("Missing or insufficient") || msg.includes("PERMISSION_DENIED"))
         setError(tope
-          ? "Llegaste al tope de 5 trabajos del plan gratuito. Con el Plan Pro documentas sin límite."
+          ? "El plan gratuito incluye un trabajo documentado. Con el Plan Pro documentas sin límite."
           : "No se pudo guardar el trabajo. Vuelve a iniciar sesión e intenta de nuevo.");
       else if (msg.includes("too large") || msg.includes("payload") || msg.includes("1 MiB") || msg.includes("exceeds"))
         setError("El documento es muy grande. Intenta con fotos de menor resolución o sin fotos.");
@@ -141,7 +141,7 @@ export default function RegistrarTrabajo({ nav, user }) {
 
   // El tope se avisa por adelantado: llenar ocho campos y descubrir al
   // guardar que no cabía es la peor manera de enterarse.
-  const tope = tecnico && tecnico.plan !== "pro" && (tecnico.trabajosCreados || 0) >= 5;
+  const tope = tecnico && tecnico.plan !== "pro" && (tecnico.trabajosCreados || 0) >= 1;
 
   const CARD = { background:"#fff", border:"1px solid #E2E8F0", borderRadius:"16px",
                  padding:"22px", marginBottom:"14px", boxShadow:"0 1px 3px rgba(0,0,0,0.06)" };
@@ -185,7 +185,7 @@ export default function RegistrarTrabajo({ nav, user }) {
               Llegaste al tope del plan gratuito
             </p>
             <p style={{ fontSize:"13px", color:"#7C2D12", lineHeight:1.6, marginBottom:"12px" }}>
-              Ya tienes 5 trabajos documentados, que es el máximo del plan gratuito.
+              Ya documentaste el trabajo que incluye el plan gratuito.
               Con el Plan Pro documentas sin límite y apareces antes en las búsquedas.
             </p>
             <button onClick={() => nav("suscripcionPro")}

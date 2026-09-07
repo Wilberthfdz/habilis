@@ -153,7 +153,7 @@ const tope = env.authenticatedContext("tope").firestore();
 const proSinTope = env.authenticatedContext("proSinTope").firestore();
 probar("plan gratis: el técnico dentro del tope sí puede documentar",
   () => assertSucceeds(addDoc(collection(tec, "trabajos"), { tecnicoId: "tecnico1", titulo: "Nuevo" })));
-probar("plan gratis: al llegar a 5 trabajos ya no puede documentar más",
+probar("plan gratis: con su único trabajo documentado ya no puede publicar más",
   () => assertFails(addDoc(collection(tope, "trabajos"), { tecnicoId: "tope", titulo: "Sexto" })));
 probar("plan Pro: documenta sin tope",
   () => assertSucceeds(addDoc(collection(proSinTope, "trabajos"), { tecnicoId: "proSinTope", titulo: "Cuarenta y uno" })));

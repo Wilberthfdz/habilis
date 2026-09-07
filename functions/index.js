@@ -41,6 +41,9 @@ const db = admin.firestore();
 // una clave ausente en un campo ausente, que sí es recuperable.
 db.settings({ ignoreUndefinedProperties: true });
 const GEMINI_MODEL = "gemini-2.0-flash";
+// Precio mensual del Plan Pro, IVA incluido. Tiene que coincidir con
+// src/lib/planes.js: es lo que se anuncia y lo que se cobra.
+const PRECIO_PRO_MXN = 149;
 
 // Misma normalización que src/lib/indice.js: si las dos no coinciden, un
 // perfil indexado como "cancun" nunca casa con la búsqueda de "Cancún".
@@ -783,7 +786,7 @@ exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
   }
 
   // Código de descuento (colección `promos` del admin de Marketing).
-  let monto = 100;
+  let monto = PRECIO_PRO_MXN;
   let promoId = null;
   if (codigo) {
     if (typeof codigo !== "string" || codigo.length > 30) {
@@ -814,7 +817,7 @@ exports.crearSuscripcion = onCall({ secrets: [MP_TOKEN] }, async (request) => {
 
     // Mercado Pago no acepta suscripciones de $0: el tope de 99% de arriba
     // lo evita (y también protege contra datos mal capturados).
-    monto = Math.round(100 * (1 - pct / 100) * 100) / 100;
+    monto = Math.round(PRECIO_PRO_MXN * (1 - pct / 100) * 100) / 100;
     promoId = promoRef.id;
   }
 

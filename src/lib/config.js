@@ -30,7 +30,7 @@ export const GEMINI_MODEL = "gemini-2.0-flash";
 export const APPCHECK_SITE_KEY = "";
 
 // ── PRECIOS ─────────────────────────────────────────────────────────────────
-export const PRECIO_PRO_MXN = 100;
+export const PRECIO_PRO_MXN = 149;
 
 // Versión del clausulado vigente. Al publicar términos nuevos se sube la
 // fecha: permite saber qué versión aceptó cada usuario y a quién hay que
