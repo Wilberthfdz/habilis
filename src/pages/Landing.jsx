@@ -661,32 +661,38 @@ export default function Landing({ nav, user }) {
             <h2 id="incluyente-titulo"
               style={{ fontSize:"clamp(22px,4vw,40px)", fontWeight:900, color:"#fff",
                        marginBottom:"14px", lineHeight:1.1, letterSpacing:"-0.03em" }}>
-              Técnicos con discapacidad,<br/>contratados por su trabajo
+              ¿Vives con una discapacidad?<br/>
+              <span style={{ color:"#67E8F9" }}>Tú también puedes trabajar en Habilis.</span>
             </h2>
-            <p style={{ color:"rgba(255,255,255,0.6)", fontSize:"15px", lineHeight:1.75, marginBottom:"24px" }}>
-              Un técnico que vive con una discapacidad puede activar su <b style={{ color:"#fff" }}>perfil
-              incluyente</b>: cuenta cómo trabaja y en qué destaca, y aparece cuando una persona o una
-              empresa busca contratar con inclusión. Es voluntario, se muestra solo con su consentimiento
-              y nunca se usa para dejarlo fuera de una búsqueda.
+            <p style={{ color:"rgba(255,255,255,0.7)", fontSize:"15px", lineHeight:1.75, marginBottom:"14px" }}>
+              Si eres electricista, técnico en climas, plomero, soldador o de cualquier otro oficio y vives
+              con una discapacidad motriz, visual, auditiva o de otro tipo, <b style={{ color:"#fff" }}>aquí
+              hay lugar para ti</b>. Crea tu perfil gratis, dicta tus trabajos por voz si escribir te cuesta,
+              y cuenta cómo trabajas y en qué destacas.
+            </p>
+            <p style={{ color:"rgba(255,255,255,0.6)", fontSize:"14px", lineHeight:1.7, marginBottom:"24px" }}>
+              Si quieres, activa tu <b style={{ color:"#fff" }}>perfil incluyente</b> para que las personas y
+              empresas que buscan contratar con inclusión te encuentren. Es voluntario, se muestra solo con tu
+              consentimiento y nunca se usa para dejarte fuera de una búsqueda.
             </p>
             <div style={{ display:"flex", gap:"12px", flexWrap:"wrap" }}>
-              <button onClick={() => nav("buscar", { incluyente:true })}
+              <button onClick={() => nav(user ? "editarPerfil" : "registro")}
                 style={{ background:"#06B6D4", color:"#0A1120", border:"none", borderRadius:"10px",
                          padding:"13px 22px", fontWeight:800, fontSize:"14px", cursor:"pointer" }}>
-                Contratar con inclusión →
+                {user ? "Activar mi perfil incluyente →" : "Crear mi perfil gratis →"}
               </button>
-              <button onClick={() => nav(user ? "editarPerfil" : "registro")}
+              <button onClick={() => nav("buscar", { incluyente:true })}
                 style={{ background:"transparent", color:"#fff", border:"1px solid rgba(255,255,255,0.25)",
                          borderRadius:"10px", padding:"13px 22px", fontWeight:700, fontSize:"14px", cursor:"pointer" }}>
-                Soy técnico: activar mi perfil
+                Quiero contratar con inclusión
               </button>
             </div>
           </div>
           <div style={{ display:"grid", gap:"12px" }}>
             {[
-              [IcoInclusion, "Tú decides", "El técnico elige si lo muestra, qué dice y puede retirarlo con un clic. Es un dato sensible y lo tratamos como tal."],
-              [IcoMic,       "Manos libres", "El perfil y los trabajos se pueden dictar por voz. Escribir no es requisito para trabajar en Habilis."],
-              [IcoBalanza,   "Cero discriminación", "Rechazar o maltratar a alguien por su discapacidad es causa de baja definitiva, sea técnico o cliente."],
+              [IcoInclusion, "Tú decides", "Tú eliges si muestras tu discapacidad, qué dices de ti y puedes retirarlo con un clic. Es un dato sensible y lo tratamos como tal."],
+              [IcoMic,       "Manos libres", "Tu perfil y tus trabajos se pueden dictar por voz. Escribir no es requisito para trabajar en Habilis."],
+              [IcoBalanza,   "Cero discriminación", "Quien te rechace o te trate mal por tu discapacidad se va de la plataforma. Aquí te contratan por tu trabajo."],
             ].map(([Icon, t, d]) => (
               <div key={t} style={{ display:"flex", gap:"14px", background:"rgba(255,255,255,0.04)",
                                     border:"1px solid rgba(255,255,255,0.08)", borderRadius:"14px", padding:"16px 18px" }}>
@@ -824,6 +830,7 @@ export default function Landing({ nav, user }) {
           <p style={{ color:"rgba(255,255,255,0.48)", fontSize:"clamp(14px,2vw,17px)",
                       marginBottom:"40px", lineHeight:1.75, maxWidth:"500px", margin:"0 auto 40px" }}>
             Documenta tus trabajos con fotos, acumula calificaciones reales y aparece en búsquedas. Tu historial vale.
+            Y si vives con una discapacidad, también: Habilis es para cualquier técnico.
           </p>
           <div style={{ display:"flex", gap:"14px", justifyContent:"center", flexWrap:"wrap" }}>
             <button className="hab-btn-primary" onClick={() => nav("registro")}>
