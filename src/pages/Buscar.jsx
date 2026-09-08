@@ -26,15 +26,18 @@ export default function Buscar({ nav, user, params }) {
   const [categoriaId, setCategoriaId] = useState("");
   const [error,    setError]    = useState("");
   const [cerca,    setCerca]    = useState(false);   // búsqueda por cercanía activa
+  // "Habilis Incluyente": muestra solo técnicos que activaron su perfil
+  // incluyente. Es una acción afirmativa: incluye, nunca excluye.
+  const [incluyente, setIncluyente] = useState(params?.incluyente === true);
   const [ubicando, setUbicando] = useState(false);
 
-  const consultar = async ({ texto, ciudadF, catId, cursorPrev = null, acumular = false }) => {
+  const consultar = async ({ texto, ciudadF, catId, incl, cursorPrev = null, acumular = false }) => {
     cursorPrev ? setMasLoading(true) : setLoading(true);
     setError("");
     try {
       const r = await buscarTecnicos({
         texto: texto ?? q, ciudad: ciudadF ?? ciudad,
-        categoriaId: catId ?? categoriaId, cursor: cursorPrev,
+        categoriaId: catId ?? categoriaId, incluyente: incl ?? incluyente, cursor: cursorPrev,
       });
       setTecnicos(prev => acumular ? [...prev, ...r.tecnicos] : r.tecnicos);
       setCursor(r.cursor);
@@ -60,16 +63,21 @@ export default function Buscar({ nav, user, params }) {
     setCategoriaId(catId);
     consultar({ catId });
   };
-  const hayFiltro = !!(q.trim() || ciudad.trim() || categoriaId || cerca);
+  const hayFiltro = !!(q.trim() || ciudad.trim() || categoriaId || cerca || incluyente);
+  const alternarIncluyente = () => {
+    const incl = !incluyente;
+    setIncluyente(incl);
+    if (cerca) buscarCerca(incl); else consultar({ incl });
+  };
 
   // "Cerca de mí". La ubicación del cliente NO se guarda en ninguna parte:
   // se usa para ordenar esta búsqueda y se olvida. Y lo que se ve de cada
   // técnico es una distancia aproximada, nunca un punto ni una dirección.
-  const buscarCerca = async () => {
+  const buscarCerca = async (incl = incluyente) => {
     setUbicando(true); setError("");
     try {
       const centro = await ubicacionDelNavegador();
-      const r = await buscarTecnicosCerca({ centro, radioKm: 25, categoriaId });
+      const r = await buscarTecnicosCerca({ centro, radioKm: 25, categoriaId, incluyente: incl });
       setTecnicos(r);
       setCursor(null);
       setCerca(true);
@@ -85,8 +93,8 @@ export default function Buscar({ nav, user, params }) {
   };
 
   const clearQ  = () => {
-    setQ(""); setCiudad(""); setCategoriaId(""); setCerca(false);
-    consultar({ texto: "", ciudadF: "", catId: "" });
+    setQ(""); setCiudad(""); setCategoriaId(""); setCerca(false); setIncluyente(false);
+    consultar({ texto: "", ciudadF: "", catId: "", incl: false });
   };
 
   return (
@@ -132,7 +140,7 @@ export default function Buscar({ nav, user, params }) {
                        padding:"12px 22px", fontWeight:700, fontSize:"14px", cursor:"pointer", flexShrink:0 }}>
               Buscar
             </button>
-            <button onClick={buscarCerca} disabled={ubicando}
+            <button onClick={() => buscarCerca()} disabled={ubicando}
               style={{ background: cerca ? "#F97316" : "rgba(255,255,255,0.09)",
                        color:"#fff", border:`1px solid ${cerca ? "#F97316" : "rgba(255,255,255,0.14)"}`,
                        borderRadius:"10px", padding:"12px 18px", fontWeight:700, fontSize:"14px",
@@ -140,6 +148,22 @@ export default function Buscar({ nav, user, params }) {
               {ubicando ? "Ubicando…" : "📍 Cerca de mí"}
             </button>
           </div>
+
+          {/* Habilis Incluyente. Solo aparece quien lo activó en su perfil,
+              con su consentimiento; sin el filtro todos aparecen igual. */}
+          <button onClick={alternarIncluyente} aria-pressed={incluyente}
+            style={{ marginTop:"12px", background: incluyente ? "rgba(16,185,129,0.18)" : "rgba(255,255,255,0.06)",
+                     color: incluyente ? "#6EE7B7" : "rgba(255,255,255,0.7)",
+                     border:`1px solid ${incluyente ? "rgba(16,185,129,0.5)" : "rgba(255,255,255,0.14)"}`,
+                     borderRadius:"20px", padding:"7px 14px", fontWeight:700, fontSize:"12.5px", cursor:"pointer" }}>
+            ♿ Habilis Incluyente {incluyente ? "· activo" : ""}
+          </button>
+          {incluyente && (
+            <p style={{ color:"rgba(255,255,255,0.5)", fontSize:"12.5px", marginTop:"8px", maxWidth:"640px", lineHeight:1.55 }}>
+              Mostrando técnicos que viven con una discapacidad y eligieron un perfil incluyente.
+              Contratar a una persona con discapacidad es una decisión que celebramos; discriminarla es causa de baja.
+            </p>
+          )}
         </div>
       </div>
 
@@ -169,7 +193,7 @@ export default function Buscar({ nav, user, params }) {
           <div style={{ textAlign:"center", padding:"72px 20px" }}>
             <div style={{ width:"36px", height:"36px", border:"3px solid #F97316", borderTopColor:"transparent",
                           borderRadius:"50%", animation:"spin 0.8s linear infinite", margin:"0 auto 14px" }} />
-            <p style={{ color:"#64748B" }}>Cargando técnicos...</p>
+            <p style={{ color:"#475569" }}>Cargando técnicos...</p>
           </div>
         ) : tecnicos.length === 0 ? (
           <div style={{ textAlign:"center", padding:"72px 20px", background:"#fff",
@@ -180,7 +204,7 @@ export default function Buscar({ nav, user, params }) {
             </p>
             <p style={{ color:"#64748B", fontSize:"14px", marginBottom:"24px" }}>
               {hayFiltro
-                ? "Prueba con otro oficio o quita el filtro de ciudad."
+                ? (incluyente ? "Aún no hay técnicos con perfil incluyente que cumplan esa búsqueda. Prueba sin ciudad u oficio." : "Prueba con otro oficio o quita el filtro de ciudad.")
                 : "Sé el primero en registrarte gratis"}
             </p>
             {!hayFiltro
@@ -221,9 +245,10 @@ export default function Buscar({ nav, user, params }) {
                         <span style={{ fontWeight:800, fontSize:"15px", color:"#0F172A" }}>{t.nombre || "Técnico"}</span>
                         {t.plan === "pro" && <span style={{ background:"#FFF7ED", color:"#EA580C", fontSize:"10px", fontWeight:700, padding:"2px 7px", borderRadius:"6px" }}>⚡ PRO</span>}
                         {t.verificado && <span style={{ background:"#F0FDF4", color:"#059669", fontSize:"10px", fontWeight:700, padding:"2px 7px", borderRadius:"6px" }}>✅ Verificado</span>}
+                        {t.perfilIncluyente && <span style={{ background:"#ECFEFF", color:"#0E7490", fontSize:"10px", fontWeight:700, padding:"2px 7px", borderRadius:"6px" }}>♿ Perfil incluyente</span>}
                       </div>
                       <p style={{ color:"#F97316", fontSize:"13px", fontWeight:600, marginBottom:"3px" }}>{t.oficio}</p>
-                      <p style={{ color:"#94A3B8", fontSize:"12px" }}>
+                      <p style={{ color:"#64748B", fontSize:"12px" }}>
                         📍 {t.ciudad || "Sin ciudad"}
                         {t.experiencia ? ` · ${t.experiencia} años exp.` : ""}
                         {t.rating > 0 ? ` · ⭐ ${t.rating}` : ""}

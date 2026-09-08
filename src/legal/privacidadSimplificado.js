@@ -29,6 +29,12 @@ export default {
       ],
     },
     {
+      titulo: "Datos sensibles",
+      contenido: [
+        "No pedimos datos sensibles, con una sola excepción voluntaria: si eres técnico y vives con una discapacidad, puedes activar un **perfil incluyente** para que clientes y empresas que quieren contratar con inclusión te encuentren. Es un dato de salud; solo lo tratamos con tu **consentimiento expreso** en una casilla propia, lo usamos únicamente para mostrarlo en tu perfil y en ese filtro, y lo borramos en cuanto lo desactivas.",
+      ],
+    },
+    {
       titulo: "Transferencias",
       contenido: [
         "No vendemos tus datos. Los compartimos únicamente con proveedores que nos prestan servicios (infraestructura, autenticación, pagos, facturación, inteligencia artificial) bajo obligación de confidencialidad, y con autoridades cuando la ley lo exige.",

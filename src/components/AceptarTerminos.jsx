@@ -51,7 +51,7 @@ export default function AceptarTerminos({ nav, valor, onChange, tipo, comercial,
     </label>
     {onChangeComercial && (
       <label style={{ display:"flex", alignItems:"flex-start", gap:"10px", marginTop:"10px",
-                      fontSize:"12.5px", color:"rgba(255,255,255,0.45)", lineHeight:1.6, cursor:"pointer" }}>
+                      fontSize:"12.5px", color:"rgba(255,255,255,0.7)", lineHeight:1.6, cursor:"pointer" }}>
         <input type="checkbox" checked={!!comercial} onChange={e => onChangeComercial(e.target.checked)}
           style={{ width:"16px", height:"16px", accentColor:"#F97316", marginTop:"2px", flexShrink:0 }} />
         <span>Quiero recibir novedades y promociones de Habilis por correo. Es opcional y puedo cancelarlo cuando quiera.</span>

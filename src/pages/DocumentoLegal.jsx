@@ -76,24 +76,24 @@ export default function DocumentoLegal({ nav, user, params = {} }) {
 
       <div style={{ maxWidth:"780px", margin:"0 auto", padding:"32px 20px 72px" }}>
         <button onClick={() => nav("legal")}
-          style={{ background:"none", border:"none", color:"#64748B", fontSize:"13px",
+          style={{ background:"none", border:"none", color:"#475569", fontSize:"13px",
                    cursor:"pointer", padding:0, marginBottom:"16px" }}>
           ← Centro Legal
         </button>
 
         <article style={{ background:"#fff", border:"1px solid #E2E8F0", borderRadius:"16px",
                           padding:"clamp(24px,5vw,48px)" }}>
-          <p style={{ fontSize:"11px", fontWeight:800, color:"#F97316", letterSpacing:"0.1em",
+          <p style={{ fontSize:"11px", fontWeight:800, color:"#C2410C", letterSpacing:"0.1em",
                       textTransform:"uppercase", marginBottom:"8px" }}>Legal</p>
           <h1 style={{ fontSize:"clamp(22px,4vw,28px)", fontWeight:900, color:"#0F172A",
                        marginBottom:"6px", lineHeight:1.2 }}>{doc.titulo}</h1>
-          <p style={{ fontSize:"12px", color:"#94A3B8", marginBottom:"22px" }}>
+          <p style={{ fontSize:"12px", color:"#475569", marginBottom:"22px" }}>
             Vigente desde el {FECHA_VIGENCIA} · Versión {VERSION_TERMINOS}
           </p>
 
           <div style={{ background:"#F8FAFC", border:"1px solid #E2E8F0", borderRadius:"12px",
                         padding:"16px 20px", marginBottom:"8px" }}>
-            <p style={{ fontSize:"12px", fontWeight:800, color:"#64748B", letterSpacing:"0.06em",
+            <p style={{ fontSize:"12px", fontWeight:800, color:"#475569", letterSpacing:"0.06em",
                         textTransform:"uppercase", marginBottom:"8px" }}>Contenido</p>
             {doc.secciones.map(s => (
               <a key={s.titulo} href={`#${encodeURIComponent(s.titulo)}`}
@@ -111,7 +111,7 @@ export default function DocumentoLegal({ nav, user, params = {} }) {
 
           {relacionados.length > 0 && (
             <div style={{ marginTop:"36px", paddingTop:"20px", borderTop:"1px solid #E2E8F0" }}>
-              <p style={{ fontSize:"12px", fontWeight:800, color:"#64748B", letterSpacing:"0.06em",
+              <p style={{ fontSize:"12px", fontWeight:800, color:"#475569", letterSpacing:"0.06em",
                           textTransform:"uppercase", marginBottom:"10px" }}>Documentos relacionados</p>
               <div style={{ display:"flex", flexWrap:"wrap", gap:"8px" }}>
                 {relacionados.map(r => (

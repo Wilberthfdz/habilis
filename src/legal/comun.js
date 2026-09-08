@@ -15,7 +15,7 @@ export const TITULAR = {
   marcaEstado: "en trámite de registro ante el Instituto Mexicano de la Propiedad Industrial",
 };
 
-export const FECHA_VIGENCIA = "4 de septiembre de 2026";
+export const FECHA_VIGENCIA = "8 de septiembre de 2026";
 
 // Párrafo de identificación que abre cada documento.
 export const QUIEN_ES_EL_TITULAR =

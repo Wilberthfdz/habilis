@@ -3,6 +3,8 @@ import Nav from "../components/Nav.jsx";
 import Avatar from "../components/Avatar.jsx";
 import SelectorOficio from "../components/SelectorOficio.jsx";
 import ZonaDeTrabajo from "../components/ZonaDeTrabajo.jsx";
+import PerfilIncluyente from "../components/PerfilIncluyente.jsx";
+import { inclusionDesdePerfil, problemaDeInclusion } from "../lib/inclusion.js";
 import { obtenerTecnico, actualizarTecnico, subirFotoPerfil, cerrarSesion } from "../lib/firebase.js";
 import { eliminarMiCuenta } from "../lib/gemini.js";
 
@@ -52,6 +54,7 @@ export default function EditarPerfil({ nav, user }) {
   });
   // Zona aproximada (privada) y taller (público y opcional). Ver geo.js.
   const [zona, setZona] = useState({ geohash:null, geoPunto:null, radioKm:25, taller:null });
+  const [inclusion, setInclusion] = useState(inclusionDesdePerfil(null));
   const set = k => e => { setOk(false); setForm(f => ({ ...f, [k]: e.target.value })); };
 
   useEffect(() => {
@@ -66,6 +69,7 @@ export default function EditarPerfil({ nav, user }) {
           radioKm:  t.radioKm  || 25,
           taller:   t.taller   || null,
         });
+        setInclusion(inclusionDesdePerfil(t));
         setOficio({
           categoriaId:    t.categoriaId    || "",
           subcategoriaId: t.subcategoriaId || null,
@@ -106,6 +110,8 @@ export default function EditarPerfil({ nav, user }) {
     if (!form.nombre.trim()) { setError("Tu nombre no puede quedar vacío."); return; }
     if (!oficio.oficio?.trim()) { setError("Dinos a qué te dedicas."); return; }
     if (!form.ciudad.trim()) { setError("Ingresa tu ciudad: es lo que usan los clientes para encontrarte."); return; }
+    const faltaInclusion = problemaDeInclusion(inclusion);
+    if (faltaInclusion) { setError(faltaInclusion); return; }
     setError(""); setOk(false); setGuardando(true);
     try {
       const experiencia = Math.max(0, Math.min(60, parseInt(form.experiencia) || 0));
@@ -133,6 +139,7 @@ export default function EditarPerfil({ nav, user }) {
           horario:   (zona.taller.horario   || "").trim().slice(0, 100),
         } : null,
         disponible:  form.disponible,
+        inclusion,
       });
       setOk(true);
     } catch (err) {
@@ -239,6 +246,8 @@ export default function EditarPerfil({ nav, user }) {
                 {form.bio.length}/600 caracteres
               </p>
             </div>
+
+            <PerfilIncluyente valor={inclusion} onChange={o => { setOk(false); setInclusion(o); }} nav={nav} />
 
             <label style={{ display:"flex", alignItems:"center", gap:"10px",
                             fontSize:"14px", color:"#0F172A", cursor:"pointer" }}>

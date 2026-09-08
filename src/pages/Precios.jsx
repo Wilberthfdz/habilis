@@ -44,13 +44,13 @@ export default function Precios({ nav, user }) {
           {/* FREE */}
           <div style={{ background:"#fff", border:"1px solid #E2E8F0", borderRadius:"24px", padding:"36px",
                         boxShadow:"0 1px 3px rgba(0,0,0,0.06)" }}>
-            <p style={{ fontSize:"11px", fontWeight:700, color:"#94A3B8", textTransform:"uppercase",
+            <p style={{ fontSize:"11px", fontWeight:700, color:"#64748B", textTransform:"uppercase",
                         letterSpacing:"0.1em", marginBottom:"10px" }}>Plan Gratuito</p>
             <div style={{ display:"flex", alignItems:"flex-end", gap:"4px", marginBottom:"6px" }}>
               <span style={{ fontSize:"44px", fontWeight:900, color:"#0F172A" }}>$0</span>
-              <span style={{ fontSize:"15px", color:"#94A3B8", marginBottom:"8px" }}>MXN/mes</span>
+              <span style={{ fontSize:"15px", color:"#64748B", marginBottom:"8px" }}>MXN/mes</span>
             </div>
-            <p style={{ color:"#64748B", fontSize:"13px", marginBottom:"28px" }}>Para empezar a construir tu perfil</p>
+            <p style={{ color:"#475569", fontSize:"13px", marginBottom:"28px" }}>Para empezar a construir tu perfil</p>
             <hr style={{ border:"none", borderTop:"1px solid #F1F5F9", marginBottom:"24px" }} />
             <ul style={{ listStyle:"none", padding:0, marginBottom:"32px" }}>
               {FREE.map(([ok, text]) => (
@@ -59,7 +59,7 @@ export default function Precios({ nav, user }) {
                   <span style={{ color: ok ? "#10B981" : "#CBD5E1", fontWeight:700, flexShrink:0, marginTop:"1px" }}>
                     {ok ? "✓" : "✕"}
                   </span>
-                  <span style={{ color: ok ? "#374151" : "#94A3B8" }}>{text}</span>
+                  <span style={{ color: ok ? "#374151" : "#64748B" }}>{text}</span>
                 </li>
               ))}
             </ul>
@@ -79,13 +79,13 @@ export default function Precios({ nav, user }) {
                           whiteSpace:"nowrap" }}>
               ⚡ Más popular
             </div>
-            <p style={{ fontSize:"11px", fontWeight:700, color:"rgba(249,115,22,0.8)", textTransform:"uppercase",
+            <p style={{ fontSize:"11px", fontWeight:700, color:"#FB923C", textTransform:"uppercase",
                         letterSpacing:"0.1em", marginBottom:"10px" }}>Plan Pro</p>
             <div style={{ display:"flex", alignItems:"flex-end", gap:"4px", marginBottom:"6px" }}>
               <span style={{ fontSize:"44px", fontWeight:900, color:"#fff" }}>${PRECIO_PRO}</span>
-              <span style={{ fontSize:"15px", color:"rgba(255,255,255,0.4)", marginBottom:"8px" }}>MXN/mes</span>
+              <span style={{ fontSize:"15px", color:"rgba(255,255,255,0.7)", marginBottom:"8px" }}>MXN/mes</span>
             </div>
-            <p style={{ color:"rgba(255,255,255,0.45)", fontSize:"13px", marginBottom:"28px" }}>
+            <p style={{ color:"rgba(255,255,255,0.7)", fontSize:"13px", marginBottom:"28px" }}>
               ≈ ${(PRECIO_PRO / 30).toFixed(2)} MXN al día · IVA incluido
             </p>
             <hr style={{ border:"none", borderTop:"1px solid rgba(255,255,255,0.08)", marginBottom:"24px" }} />
@@ -110,13 +110,13 @@ export default function Precios({ nav, user }) {
               solicitar acceso. No se cobra nada hasta que esté activa. */}
           <div style={{ background:"#fff", border:"1px solid #E2E8F0", borderRadius:"24px", padding:"36px",
                         boxShadow:"0 1px 3px rgba(0,0,0,0.06)" }}>
-            <p style={{ fontSize:"11px", fontWeight:700, color:"#94A3B8", textTransform:"uppercase",
+            <p style={{ fontSize:"11px", fontWeight:700, color:"#64748B", textTransform:"uppercase",
                         letterSpacing:"0.1em", marginBottom:"10px" }}>Plan Empresas</p>
             <div style={{ display:"flex", alignItems:"flex-end", gap:"4px", marginBottom:"6px" }}>
               <span style={{ fontSize:"44px", fontWeight:900, color:"#0F172A" }}>${PRECIO_EMPRESAS}</span>
-              <span style={{ fontSize:"15px", color:"#94A3B8", marginBottom:"8px" }}>MXN/mes</span>
+              <span style={{ fontSize:"15px", color:"#64748B", marginBottom:"8px" }}>MXN/mes</span>
             </div>
-            <p style={{ color:"#64748B", fontSize:"13px", marginBottom:"28px" }}>
+            <p style={{ color:"#475569", fontSize:"13px", marginBottom:"28px" }}>
               Para empresas que contratan técnicos de forma recurrente
             </p>
             <hr style={{ border:"none", borderTop:"1px solid #F1F5F9", marginBottom:"24px" }} />
@@ -143,7 +143,7 @@ export default function Precios({ nav, user }) {
           </div>
         </div>
 
-        <p style={{ textAlign:"center", color:"#94A3B8", fontSize:"13px", marginTop:"24px" }}>
+        <p style={{ textAlign:"center", color:"#475569", fontSize:"13px", marginTop:"24px" }}>
           * Cancela en cualquier momento. Los precios incluyen IVA.
         </p>
       </div>

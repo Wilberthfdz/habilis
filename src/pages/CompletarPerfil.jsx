@@ -4,6 +4,8 @@ import Avatar from "../components/Avatar.jsx";
 import AceptarTerminos from "../components/AceptarTerminos.jsx";
 import RegistroPorVoz from "../components/RegistroPorVoz.jsx";
 import SelectorOficio from "../components/SelectorOficio.jsx";
+import PerfilIncluyente from "../components/PerfilIncluyente.jsx";
+import { problemaDeInclusion } from "../lib/inclusion.js";
 import { resolverOficioLibre } from "../lib/oficios.js";
 import { crearPerfilTecnico, cerrarSesion } from "../lib/firebase.js";
 import { TAXONOMIA } from "../lib/taxonomia.js";
@@ -12,7 +14,7 @@ const inp = { width:"100%", border:"1px solid #E2E8F0", borderRadius:"10px",
               padding:"11px 14px", fontSize:"14px", outline:"none",
               background:"#F8FAFC", color:"#0F172A", boxSizing:"border-box" };
 
-const lbl = { fontSize:"11px", fontWeight:700, color:"rgba(255,255,255,0.45)",
+const lbl = { fontSize:"11px", fontWeight:700, color:"rgba(255,255,255,0.65)",
               textTransform:"uppercase", letterSpacing:"0.06em",
               display:"block", marginBottom:"5px" };
 
@@ -41,6 +43,7 @@ export default function CompletarPerfil({ nav, user, params = {} }) {
   const [error,        setError]        = useState("");
   const [acepto,       setAcepto]       = useState(yaAcepto);
   const [comercial,    setComercial]    = useState(params.aceptoComunicaciones === true);
+  const [inclusion,    setInclusion]    = useState({ activo:false, consentimiento:false, tipos:[], comoTrabajo:"" });
 
   // Lo que dicta el técnico llena los campos; el oficio se resuelve contra
   // la taxonomía y, si no cae en ninguna categoría, se conserva tal cual.
@@ -58,6 +61,8 @@ export default function CompletarPerfil({ nav, user, params = {} }) {
     if (!oficio.oficio?.trim()) { setError("Dinos a qué te dedicas para continuar."); return; }
     if (!ciudad.trim()) { setError("Ingresa tu ciudad para continuar."); return; }
     if (!acepto) { setError("Debes aceptar los Términos y el Aviso de Privacidad para continuar."); return; }
+    const faltaInclusion = problemaDeInclusion(inclusion);
+    if (faltaInclusion) { setError(faltaInclusion); return; }
     setError(""); setLoading(true);
     try {
       await crearPerfilTecnico(user.uid, {
@@ -83,6 +88,7 @@ export default function CompletarPerfil({ nav, user, params = {} }) {
         disponible:    true,
         aceptoTerminos: true,
         aceptoComunicaciones: comercial,
+        inclusion,
       });
       // Quien venía por el Plan Pro sigue al checkout; el resto, a la
       // bienvenida. Antes la intención se perdía aquí.
@@ -108,7 +114,7 @@ export default function CompletarPerfil({ nav, user, params = {} }) {
                     alignItems:"center", position:"relative", zIndex:1 }}>
         <Logo size={30} onClick={() => nav("landing")} />
         <button onClick={logout}
-          style={{ background:"none", border:"none", color:"rgba(255,255,255,0.35)",
+          style={{ background:"none", border:"none", color:"rgba(255,255,255,0.65)",
                    fontSize:"13px", cursor:"pointer" }}>
           Salir
         </button>
@@ -137,14 +143,14 @@ export default function CompletarPerfil({ nav, user, params = {} }) {
                 <p style={{ fontWeight:700, fontSize:"14px", color:"#fff", marginBottom:"2px" }}>
                   {nombreCuenta || "Tu cuenta"}
                 </p>
-                <p style={{ fontSize:"12px", color:"rgba(255,255,255,0.4)" }}>{correoCuenta}</p>
+                <p style={{ fontSize:"12px", color:"rgba(255,255,255,0.65)" }}>{correoCuenta}</p>
               </div>
             </div>
 
-            <h2 style={{ fontSize:"22px", fontWeight:900, color:"#fff", marginBottom:"6px" }}>
+            <h1 style={{ fontSize:"22px", fontWeight:900, color:"#fff", marginBottom:"6px" }}>
               ¡Un paso más!
-            </h2>
-            <p style={{ color:"rgba(255,255,255,0.45)", fontSize:"14px", marginBottom:"20px", lineHeight:1.5 }}>
+            </h1>
+            <p style={{ color:"rgba(255,255,255,0.65)", fontSize:"14px", marginBottom:"20px", lineHeight:1.5 }}>
               Cuéntanos a qué te dedicas para que los clientes te encuentren.
               Cualquier oficio cabe aquí.
             </p>
@@ -179,7 +185,7 @@ export default function CompletarPerfil({ nav, user, params = {} }) {
                   style={{ ...inp, resize:"vertical", minHeight:"90px" }}
                   value={descripcion} onChange={e => setDescripcion(e.target.value)}
                   placeholder="Soy electricista con 10 años de experiencia, hago instalaciones en casas y negocios..." />
-                <p style={{ fontSize:"11px", color:"rgba(255,255,255,0.25)", marginTop:"4px" }}>
+                <p style={{ fontSize:"11px", color:"rgba(255,255,255,0.6)", marginTop:"4px" }}>
                   La IA de Habilis la mejora automáticamente al crear tu perfil.
                 </p>
               </div>
@@ -191,6 +197,8 @@ export default function CompletarPerfil({ nav, user, params = {} }) {
                   style={{ width:"16px", height:"16px", accentColor:"#F97316" }} />
                 Cuento con herramienta propia
               </label>
+
+              <PerfilIncluyente valor={inclusion} onChange={setInclusion} oscuro nav={nav} />
 
               {error && (
                 <div style={{ background:"rgba(239,68,68,0.12)", border:"1px solid rgba(239,68,68,0.28)",

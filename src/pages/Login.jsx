@@ -166,7 +166,7 @@ export default function Login({ nav, user, params = {} }) {
                      cursor:"pointer", marginBottom:"20px", opacity: busy ? 0.7 : 1,
                      boxShadow:"0 1px 4px rgba(0,0,0,0.12)", transition:"box-shadow 0.15s" }}>
             {loadingApple
-              ? <div style={{ width:"18px", height:"18px", border:"2px solid rgba(255,255,255,0.3)",
+              ? <div style={{ width:"18px", height:"18px", border:"2px solid rgba(255,255,255,0.65)",
                                borderTopColor:"#fff", borderRadius:"50%", animation:"spin 0.75s linear infinite" }} />
               : <AppleIcon />
             }
@@ -176,13 +176,13 @@ export default function Login({ nav, user, params = {} }) {
           {/* Divider */}
           <div style={{ display:"flex", alignItems:"center", gap:"12px", marginBottom:"20px" }}>
             <div style={{ flex:1, height:"1px", background:"rgba(255,255,255,0.1)" }} />
-            <span style={{ color:"rgba(255,255,255,0.3)", fontSize:"12px", fontWeight:600 }}>O con correo</span>
+            <span style={{ color:"rgba(255,255,255,0.65)", fontSize:"12px", fontWeight:600 }}>O con correo</span>
             <div style={{ flex:1, height:"1px", background:"rgba(255,255,255,0.1)" }} />
           </div>
 
           {/* ── EMAIL FORM ──────────────────────────────────────────────── */}
           <form onSubmit={submit} noValidate style={{ display:"flex", flexDirection:"column", gap:"4px" }}>
-            <label style={{ fontSize:"11px", fontWeight:700, color:"rgba(255,255,255,0.45)",
+            <label style={{ fontSize:"11px", fontWeight:700, color:"rgba(255,255,255,0.65)",
                             textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:"5px", display:"block" }}>
               Correo electrónico
             </label>
@@ -191,7 +191,7 @@ export default function Login({ nav, user, params = {} }) {
 
             <div style={{ height:"12px" }} />
 
-            <label style={{ fontSize:"11px", fontWeight:700, color:"rgba(255,255,255,0.45)",
+            <label style={{ fontSize:"11px", fontWeight:700, color:"rgba(255,255,255,0.65)",
                             textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:"5px", display:"block" }}>
               Contraseña
             </label>
@@ -233,7 +233,7 @@ export default function Login({ nav, user, params = {} }) {
                            : "No se pudo enviar el correo. Intenta de nuevo.");
                   }
                 }}
-                style={{ background:"none", border:"none", color:"rgba(255,255,255,0.35)",
+                style={{ background:"none", border:"none", color:"rgba(255,255,255,0.65)",
                          fontSize:"12px", cursor:"pointer" }}>
                 ¿Olvidaste tu contraseña?
               </button>
@@ -241,7 +241,7 @@ export default function Login({ nav, user, params = {} }) {
           </div>
 
           <div style={{ borderTop:"1px solid rgba(255,255,255,0.07)", marginTop:"22px", paddingTop:"18px",
-                        textAlign:"center", fontSize:"14px", color:"rgba(255,255,255,0.4)" }}>
+                        textAlign:"center", fontSize:"14px", color:"rgba(255,255,255,0.65)" }}>
             ¿Sin cuenta?{" "}
             <button onClick={() => nav("registro", quierePro ? { plan:"pro" } : {})}
               style={{ background:"none", border:"none", color:"#F97316",

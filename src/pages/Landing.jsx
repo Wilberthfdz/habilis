@@ -6,6 +6,21 @@ import Footer from "../components/Footer.jsx";
 import { buscarTecnicos } from "../lib/firebase.js";
 
 /* ─── SVG Icons (reemplazan emojis) ──────────────────────────────────── */
+const IcoInclusion = () => (
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="4.5" r="2"/><path d="M5 9.5l7 1.5 7-1.5"/><path d="M12 11v4l-3 6"/><path d="M12 15l3 6"/>
+  </svg>
+);
+const IcoMic = () => (
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/><path d="M8 21h8"/>
+  </svg>
+);
+const IcoBalanza = () => (
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 3v18"/><path d="M8 21h8"/><path d="M4 7h16"/><path d="M6 7l-3 7a3 3 0 0 0 6 0L6 7z"/><path d="M18 7l-3 7a3 3 0 0 0 6 0l-3-7z"/>
+  </svg>
+);
 const IcoBolt = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
     <path d="M13 2L4.09 12.97H11L10 22l8.91-10.97H13L14 2z"/>
@@ -92,7 +107,7 @@ const CATS = [
   { Icon:IcoBrush,     name:"Pintura",       bg:"#FDF4FF", color:"#86198F" },
   { Icon:IcoCog,       name:"Motores",       bg:"#F1F2F3", color:"#374151" },
   { Icon:IcoThermo,    name:"Refrigeración", bg:"#EBF4FF", color:"#1D4ED8" },
-  { Icon:IcoHardHat,   name:"Albañilería",   bg:"#FFF5EB", color:"#B45309" },
+  { Icon:IcoHardHat,   name:"Albañilería",   bg:"#FFF5EB", color:"#92400E" },
   { Icon:IcoWifi,      name:"Redes",         bg:"#EDFDF5", color:"#047857" },
 ];
 
@@ -347,7 +362,7 @@ export default function Landing({ nav, user }) {
         .hab-btn-secondary:active { transform:translateY(4px); box-shadow:none; }
 
         .hab-btn-ghost {
-          background:transparent; color:#F07020; border:1.5px solid #F07020;
+          background:transparent; color:#C2410C; border:1.5px solid #F07020;
           border-radius:8px; padding:9px 20px;
           font-weight:700; font-size:13px; cursor:pointer;
           transition:background 0.18s;
@@ -494,7 +509,7 @@ export default function Landing({ nav, user }) {
       <section style={{ padding:"72px clamp(20px,5vw,64px)", background:"#F5F0EA" }}>
         <div style={{ maxWidth:"1100px", margin:"0 auto" }}>
           <div style={{ textAlign:"center", marginBottom:"44px" }}>
-            <p style={{ fontSize:"11px", fontWeight:700, color:"#F07020", textTransform:"uppercase",
+            <p style={{ fontSize:"11px", fontWeight:700, color:"#C2410C", textTransform:"uppercase",
                         letterSpacing:"0.12em", marginBottom:"8px" }}>Servicios disponibles</p>
             <h2 style={{ fontSize:"clamp(22px,4vw,40px)", fontWeight:900, color:"#0A1120",
                          letterSpacing:"-0.03em", lineHeight:1.1 }}>
@@ -522,7 +537,7 @@ export default function Landing({ nav, user }) {
       <section style={{ padding:"72px clamp(20px,5vw,64px)", background:"#fff", borderTop:"1px solid #EDE8E1" }}>
         <div style={{ maxWidth:"1000px", margin:"0 auto" }}>
           <div style={{ textAlign:"center", marginBottom:"56px" }}>
-            <p style={{ fontSize:"11px", fontWeight:700, color:"#F07020", textTransform:"uppercase",
+            <p style={{ fontSize:"11px", fontWeight:700, color:"#C2410C", textTransform:"uppercase",
                         letterSpacing:"0.12em", marginBottom:"8px" }}>Proceso simple</p>
             <h2 style={{ fontSize:"clamp(22px,4vw,40px)", fontWeight:900, color:"#0A1120",
                          letterSpacing:"-0.03em" }}>¿Cómo funciona?</h2>
@@ -555,7 +570,7 @@ export default function Landing({ nav, user }) {
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end",
                         flexWrap:"wrap", gap:"12px", marginBottom:"32px" }}>
             <div>
-              <p style={{ fontSize:"11px", fontWeight:700, color:"#F07020", textTransform:"uppercase",
+              <p style={{ fontSize:"11px", fontWeight:700, color:"#C2410C", textTransform:"uppercase",
                           letterSpacing:"0.12em", marginBottom:"8px" }}>Técnicos destacados</p>
               <h2 style={{ fontSize:"clamp(20px,3.5vw,36px)", fontWeight:900, color:"#0A1120", letterSpacing:"-0.03em" }}>
                 Técnicos con trabajos documentados
@@ -626,6 +641,70 @@ export default function Landing({ nav, user }) {
         </div>
       </section>
 
+      {/* ── HABILIS INCLUYENTE ───────────────────────────────────── */}
+      {/* Nada de esto es promesa: el perfil incluyente existe, el filtro
+          existe y la política de no discriminación existe. */}
+      <section aria-labelledby="incluyente-titulo"
+        style={{ padding:"72px clamp(20px,5vw,64px)", background:"#0A1120", borderTop:"1px solid #1E293B" }}>
+        <div style={{ maxWidth:"1100px", margin:"0 auto",
+                      display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",
+                      gap:"48px", alignItems:"center" }}>
+          <div>
+            <div style={{ display:"inline-flex", alignItems:"center", gap:"8px",
+                          background:"rgba(6,182,212,0.12)", border:"1px solid rgba(6,182,212,0.35)",
+                          borderRadius:"6px", padding:"5px 12px", marginBottom:"20px" }}>
+              <span style={{ fontSize:"11px", fontWeight:700, color:"#67E8F9",
+                             textTransform:"uppercase", letterSpacing:"0.1em" }}>
+                Habilis Incluyente
+              </span>
+            </div>
+            <h2 id="incluyente-titulo"
+              style={{ fontSize:"clamp(22px,4vw,40px)", fontWeight:900, color:"#fff",
+                       marginBottom:"14px", lineHeight:1.1, letterSpacing:"-0.03em" }}>
+              Técnicos con discapacidad,<br/>contratados por su trabajo
+            </h2>
+            <p style={{ color:"rgba(255,255,255,0.6)", fontSize:"15px", lineHeight:1.75, marginBottom:"24px" }}>
+              Un técnico que vive con una discapacidad puede activar su <b style={{ color:"#fff" }}>perfil
+              incluyente</b>: cuenta cómo trabaja y en qué destaca, y aparece cuando una persona o una
+              empresa busca contratar con inclusión. Es voluntario, se muestra solo con su consentimiento
+              y nunca se usa para dejarlo fuera de una búsqueda.
+            </p>
+            <div style={{ display:"flex", gap:"12px", flexWrap:"wrap" }}>
+              <button onClick={() => nav("buscar", { incluyente:true })}
+                style={{ background:"#06B6D4", color:"#0A1120", border:"none", borderRadius:"10px",
+                         padding:"13px 22px", fontWeight:800, fontSize:"14px", cursor:"pointer" }}>
+                Contratar con inclusión →
+              </button>
+              <button onClick={() => nav(user ? "editarPerfil" : "registro")}
+                style={{ background:"transparent", color:"#fff", border:"1px solid rgba(255,255,255,0.25)",
+                         borderRadius:"10px", padding:"13px 22px", fontWeight:700, fontSize:"14px", cursor:"pointer" }}>
+                Soy técnico: activar mi perfil
+              </button>
+            </div>
+          </div>
+          <div style={{ display:"grid", gap:"12px" }}>
+            {[
+              [IcoInclusion, "Tú decides", "El técnico elige si lo muestra, qué dice y puede retirarlo con un clic. Es un dato sensible y lo tratamos como tal."],
+              [IcoMic,       "Manos libres", "El perfil y los trabajos se pueden dictar por voz. Escribir no es requisito para trabajar en Habilis."],
+              [IcoBalanza,   "Cero discriminación", "Rechazar o maltratar a alguien por su discapacidad es causa de baja definitiva, sea técnico o cliente."],
+            ].map(([Icon, t, d]) => (
+              <div key={t} style={{ display:"flex", gap:"14px", background:"rgba(255,255,255,0.04)",
+                                    border:"1px solid rgba(255,255,255,0.08)", borderRadius:"14px", padding:"16px 18px" }}>
+                <div aria-hidden="true" style={{ width:"36px", height:"36px", borderRadius:"9px", flexShrink:0,
+                                                 background:"rgba(6,182,212,0.14)", color:"#67E8F9",
+                                                 display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <Icon/>
+                </div>
+                <div>
+                  <p style={{ fontWeight:800, fontSize:"14px", color:"#fff", marginBottom:"4px" }}>{t}</p>
+                  <p style={{ fontSize:"13px", color:"rgba(255,255,255,0.6)", lineHeight:1.6 }}>{d}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── HABILIS CARE ─────────────────────────────────────────── */}
       <section style={{ padding:"72px clamp(20px,5vw,64px)", background:"#fff", borderTop:"1px solid #EDE8E1" }}>
         <div style={{ maxWidth:"1100px", margin:"0 auto" }}>
@@ -674,7 +753,7 @@ export default function Landing({ nav, user }) {
                 vencido hace 12d"— para enseñar cómo se ve Care, no datos de
                 nadie. La etiqueta lo dice, como en la tarjeta del hero. */}
             <div>
-            <p style={{ fontSize:"10.5px", fontWeight:800, color:"#B5AFA8", letterSpacing:"0.08em",
+            <p style={{ fontSize:"10.5px", fontWeight:800, color:"#6B6560", letterSpacing:"0.08em",
                         textTransform:"uppercase", marginBottom:"8px" }}>
               Así se ve · ejemplo
             </p>
@@ -685,7 +764,7 @@ export default function Landing({ nav, user }) {
                 { Icon:IcoCog,       name:"Vehículo",           salud:67, dias:14 },
                 { Icon:IcoThermo,    name:"UPS servidores",     salud:91, dias:60 },
               ].map(({ Icon, name, salud, dias }) => {
-                const clr = salud > 80 ? "#059669" : salud > 50 ? "#D97706" : "#DC2626";
+                const clr = salud > 80 ? "#047857" : salud > 50 ? "#92400E" : "#B91C1C";
                 const bg  = salud > 80 ? "#F0FDF4" : salud > 50 ? "#FFFBEB" : "#FEF2F2";
                 return (
                   <div key={name} style={{

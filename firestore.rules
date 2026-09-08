@@ -22,6 +22,25 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).affectedKeys();
     }
 
+    // Perfil incluyente: dato sensible (LFPDPPP art. 3 fr. VI). Solo puede
+    // existir con consentimiento expreso, y la marca que consulta la
+    // búsqueda solo puede ser verdadera si el bloque existe y está activo.
+    // Lo contrario —marca sin bloque, o bloque sin consentimiento— no entra.
+    function inclusionValida() {
+      let d = request.resource.data;
+      let marca = d.get("perfilIncluyente", false);
+      let inc = d.get("inclusion", null);
+      return (marca == false && inc == null)
+        || (marca == true && inc != null
+            && inc.get("activo", false) == true
+            && inc.get("consentimiento", false) == true
+            && inc.get("consentimientoFecha", null) is timestamp
+            && inc.get("comoTrabajo", "") is string
+            && inc.get("comoTrabajo", "").size() <= 500
+            && inc.get("tipos", []) is list
+            && inc.get("tipos", []).size() <= 7);
+    }
+
     match /tecnicos/{uid} {
       allow read:   if true;
       // Sin esto, el propio documento de alta podía nacer con plan:"pro",
@@ -42,6 +61,7 @@ service cloud.firestore {
         // exige en el cliente; aquí se vuelve infranqueable, para que no
         // exista un solo perfil sin constancia de aceptación.
         && request.resource.data.get("aceptoTerminos", false) == true
+        && inclusionValida()
       );
       // El dueño solo puede tocar campos de perfil "seguros" — plan, verificado,
       // rating, rankScore, etc. son SOLO backend (agentes / webhook de pago).
@@ -51,7 +71,9 @@ service cloud.firestore {
         request.auth != null && request.auth.uid == uid &&
         request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['nombre','oficio','categoriaId','subcategoriaId','oficioLibre','ciudad','ciudadNorm','busqueda','experiencia','bio','fotoUrl','alcance','zona',
-           'geohash','geoPunto','radioKm','taller','disponible','updatedAt'])
+           'geohash','geoPunto','radioKm','taller','disponible','updatedAt',
+           'inclusion','perfilIncluyente'])
+        && inclusionValida()
       );
       allow delete: if isAdmin();
     }

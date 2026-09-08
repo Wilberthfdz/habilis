@@ -295,6 +295,238 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "tecnicos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "disponible",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "perfilIncluyente",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "rankScore",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "tecnicos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "disponible",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "perfilIncluyente",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "categoriaId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "rankScore",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "tecnicos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "disponible",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "perfilIncluyente",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ciudadNorm",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "rankScore",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "tecnicos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "disponible",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "perfilIncluyente",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "categoriaId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ciudadNorm",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "rankScore",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "tecnicos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "disponible",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "perfilIncluyente",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "busqueda",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "rankScore",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "tecnicos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "disponible",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "perfilIncluyente",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ciudadNorm",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "busqueda",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "rankScore",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "tecnicos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "disponible",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "perfilIncluyente",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "categoriaId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "busqueda",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "rankScore",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "tecnicos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "disponible",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "perfilIncluyente",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "categoriaId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ciudadNorm",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "busqueda",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "rankScore",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "tecnicos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "disponible",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "perfilIncluyente",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "geohash",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "tecnicos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "disponible",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "perfilIncluyente",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "categoriaId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "geohash",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

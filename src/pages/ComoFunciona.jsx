@@ -27,15 +27,16 @@ const HERRAMIENTAS = [
 
 const SEC = { maxWidth:"1000px", margin:"0 auto", padding:"0 20px" };
 
-function Paso({ n, titulo, texto }) {
+function Paso({ n, titulo, texto, nivel = "h3" }) {
+  const H = nivel;
   return (
     <div style={{ display:"flex", gap:"16px", alignItems:"flex-start" }}>
       <div style={{ width:"36px", height:"36px", borderRadius:"50%", background:"#F07020",
                     color:"#fff", fontWeight:900, fontSize:"15px", display:"flex",
                     alignItems:"center", justifyContent:"center", flexShrink:0 }}>{n}</div>
       <div>
-        <h3 style={{ fontSize:"15px", fontWeight:800, color:"#0F172A", marginBottom:"6px" }}>{titulo}</h3>
-        <p style={{ fontSize:"14px", color:"#64748B", lineHeight:1.7 }}>{texto}</p>
+        <H style={{ fontSize:"15px", fontWeight:800, color:"#0F172A", marginBottom:"6px" }}>{titulo}</H>
+        <p style={{ fontSize:"14px", color:"#475569", lineHeight:1.7 }}>{texto}</p>
       </div>
     </div>
   );
@@ -63,17 +64,17 @@ export default function ComoFunciona({ nav, user }) {
       <div style={{ ...SEC, marginTop:"-36px", marginBottom:"56px" }}>
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))", gap:"18px" }}>
           <div className="h-card" style={{ padding:"clamp(24px,4vw,36px)" }}>
-            <p style={{ fontSize:"12px", fontWeight:800, color:"#F07020", letterSpacing:"0.08em",
+            <p style={{ fontSize:"12px", fontWeight:800, color:"#C2410C", letterSpacing:"0.08em",
                         textTransform:"uppercase", marginBottom:"18px" }}>Si eres técnico</p>
             <div style={{ display:"flex", flexDirection:"column", gap:"22px" }}>
-              {PASOS_TECNICO.map(([n, t, x]) => <Paso key={n} n={n} titulo={t} texto={x} />)}
+              {PASOS_TECNICO.map(([n, t, x]) => <Paso key={n} n={n} titulo={t} texto={x} nivel="h2" />)}
             </div>
           </div>
           <div className="h-card" style={{ padding:"clamp(24px,4vw,36px)" }}>
-            <p style={{ fontSize:"12px", fontWeight:800, color:"#0EA5E9", letterSpacing:"0.08em",
+            <p style={{ fontSize:"12px", fontWeight:800, color:"#0369A1", letterSpacing:"0.08em",
                         textTransform:"uppercase", marginBottom:"18px" }}>Si buscas un técnico</p>
             <div style={{ display:"flex", flexDirection:"column", gap:"22px" }}>
-              {PASOS_CLIENTE.map(([n, t, x]) => <Paso key={n} n={n} titulo={t} texto={x} />)}
+              {PASOS_CLIENTE.map(([n, t, x]) => <Paso key={n} n={n} titulo={t} texto={x} nivel="h2" />)}
             </div>
           </div>
         </div>
@@ -82,7 +83,7 @@ export default function ComoFunciona({ nav, user }) {
       <div style={{ ...SEC, marginBottom:"72px" }}>
         <h2 style={{ fontSize:"clamp(22px,3.5vw,30px)", fontWeight:900, color:"#0F172A",
                      textAlign:"center", marginBottom:"8px" }}>Las herramientas dentro de la app</h2>
-        <p style={{ fontSize:"14px", color:"#64748B", textAlign:"center", marginBottom:"30px" }}>
+        <p style={{ fontSize:"14px", color:"#475569", textAlign:"center", marginBottom:"30px" }}>
           Todo lo que la plataforma hace por ti mientras tú trabajas.
         </p>
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))", gap:"16px" }}>
@@ -90,7 +91,7 @@ export default function ComoFunciona({ nav, user }) {
             <div key={titulo} className="h-card" style={{ padding:"22px" }}>
               <div style={{ fontSize:"26px", marginBottom:"10px" }}>{emoji}</div>
               <h3 style={{ fontSize:"15px", fontWeight:800, color:"#0F172A", marginBottom:"6px" }}>{titulo}</h3>
-              <p style={{ fontSize:"13.5px", color:"#64748B", lineHeight:1.65 }}>{texto}</p>
+              <p style={{ fontSize:"13.5px", color:"#475569", lineHeight:1.65 }}>{texto}</p>
             </div>
           ))}
         </div>
@@ -102,7 +103,7 @@ export default function ComoFunciona({ nav, user }) {
                        marginBottom:"10px" }}>
             Qué significa cada distintivo
           </h2>
-          <p style={{ fontSize:"14px", color:"#64748B", lineHeight:1.7, marginBottom:"22px" }}>
+          <p style={{ fontSize:"14px", color:"#475569", lineHeight:1.7, marginBottom:"22px" }}>
             Preferimos decirte exactamente qué respalda cada etiqueta, en vez de
             que supongas.
           </p>
@@ -121,7 +122,7 @@ export default function ComoFunciona({ nav, user }) {
               <span style={{ background:bg, color, fontSize:"12px", fontWeight:800,
                              padding:"4px 10px", borderRadius:"7px", whiteSpace:"nowrap",
                              flexShrink:0 }}>{titulo}</span>
-              <p style={{ fontSize:"13.5px", color:"#64748B", lineHeight:1.7 }}>{texto}</p>
+              <p style={{ fontSize:"13.5px", color:"#475569", lineHeight:1.7 }}>{texto}</p>
             </div>
           ))}
         </div>

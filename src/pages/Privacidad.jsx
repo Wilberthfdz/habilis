@@ -18,12 +18,12 @@ export default function Privacidad({ nav, user }) {
       <div style={{ maxWidth:"760px", margin:"0 auto", padding:"40px 20px 80px" }}>
         <div style={{ background:"#fff", border:"1px solid #E2E8F0", borderRadius:"16px",
                       padding:"clamp(24px,5vw,48px)" }}>
-          <p style={{ fontSize:"11px", fontWeight:800, color:"#F97316", letterSpacing:"0.1em",
+          <p style={{ fontSize:"11px", fontWeight:800, color:"#C2410C", letterSpacing:"0.1em",
                       textTransform:"uppercase", marginBottom:"8px" }}>Legal</p>
           <h1 style={{ fontSize:"26px", fontWeight:900, color:"#0F172A", marginBottom:"4px" }}>
             Aviso de Privacidad
           </h1>
-          <p style={{ fontSize:"12px", color:"#94A3B8", marginBottom:"24px" }}>
+          <p style={{ fontSize:"12px", color:"#64748B", marginBottom:"24px" }}>
             Última actualización: {ACTUALIZADO}
           </p>
 
@@ -115,11 +115,25 @@ export default function Privacidad({ nav, user }) {
 
           <h2 style={H2}>9. Datos personales sensibles</h2>
           <p style={P}>
-            <strong>No recabamos datos personales sensibles</strong> —origen racial o étnico, estado
-            de salud, creencias religiosas, opiniones políticas, afiliación sindical o preferencia
-            sexual—. Te pedimos no incluirlos en tu perfil, en las descripciones de tus trabajos ni
-            en las fotografías que subas. Si detectamos datos sensibles o datos de terceros
-            publicados sin su consentimiento, retiramos el contenido.
+            <strong>Por regla general no recabamos datos personales sensibles</strong> —origen
+            racial o étnico, estado de salud, creencias religiosas, opiniones políticas, afiliación
+            sindical o preferencia sexual—. Te pedimos no incluirlos en tu perfil, en las
+            descripciones de tus trabajos ni en las fotografías que subas. Si detectamos datos
+            sensibles o datos de terceros publicados sin su consentimiento, retiramos el contenido.
+          </p>
+          <p style={P}>
+            <strong>La única excepción es el perfil incluyente</strong>, que es voluntario. Si eres
+            técnico y vives con una discapacidad, puedes indicarlo en tu perfil, señalar
+            opcionalmente el tipo de discapacidad y describir cómo trabajas. Es un dato de salud y
+            por tanto sensible, así que solo lo tratamos con tu <strong>consentimiento expreso</strong>,
+            que das marcando una casilla específica, distinta de la aceptación de los términos.
+            Su única finalidad es mostrar en tu perfil público la insignia "Perfil incluyente" y lo
+            que escribiste, y permitir que clientes y empresas que quieren contratar con inclusión te
+            encuentren mediante un filtro. Nunca se usa para excluirte de una búsqueda, para ordenar
+            resultados ni para ninguna otra finalidad. No lo compartimos con terceros. Puedes
+            revocar el consentimiento en cualquier momento desmarcando la casilla en "Editar
+            perfil": el dato se elimina de inmediato. No pedimos ni conservamos certificados,
+            diagnósticos ni ningún documento médico.
           </p>
 
           <h2 style={H2}>10. Conservación y seguridad</h2>

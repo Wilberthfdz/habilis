@@ -35,7 +35,7 @@ export const PRECIO_PRO_MXN = 149;
 // Versión del clausulado vigente. Al publicar términos nuevos se sube la
 // fecha: permite saber qué versión aceptó cada usuario y a quién hay que
 // pedirle que vuelva a aceptar.
-export const VERSION_TERMINOS = "2026-09-04";
+export const VERSION_TERMINOS = "2026-09-08";
 
 // ── COBRO DENTRO DE LA APP ────────────────────────────────────────────────
 // Claves públicas de RevenueCat (son de cliente: van en el paquete a

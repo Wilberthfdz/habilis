@@ -12,7 +12,7 @@ const inp = { width:"100%", border:"1px solid #E2E8F0", borderRadius:"10px",
               padding:"11px 14px", fontSize:"14px", outline:"none",
               background:"#F8FAFC", color:"#0F172A", boxSizing:"border-box" };
 
-const lbl = { fontSize:"11px", fontWeight:700, color:"rgba(255,255,255,0.4)",
+const lbl = { fontSize:"11px", fontWeight:700, color:"rgba(255,255,255,0.65)",
               textTransform:"uppercase", letterSpacing:"0.06em",
               display:"block", marginBottom:"5px" };
 
@@ -75,7 +75,7 @@ export default function Registro({ nav, params = {} }) {
       <div style={{ padding:"18px 24px", display:"flex", alignItems:"center", gap:"20px",
                     position:"relative", zIndex:1 }}>
         <Logo size={30} onClick={() => nav("landing")} />
-        <span style={{ color:"rgba(255,255,255,0.4)", fontSize:"13px" }}>Crear cuenta</span>
+        <span style={{ color:"rgba(255,255,255,0.65)", fontSize:"13px" }}>Crear cuenta</span>
       </div>
 
       <div style={{ flex:1, display:"flex", alignItems:"flex-start", justifyContent:"center",
@@ -98,10 +98,10 @@ export default function Registro({ nav, params = {} }) {
                         borderRadius:"20px", padding:"32px 28px", backdropFilter:"blur(16px)" }}>
             <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
               <div>
-                <h2 style={{ fontSize:"22px", fontWeight:900, color:"#fff", marginBottom:"4px" }}>
+                <h1 style={{ fontSize:"22px", fontWeight:900, color:"#fff", marginBottom:"4px" }}>
                   Crea tu cuenta
-                </h2>
-                <p style={{ color:"rgba(255,255,255,0.45)", fontSize:"14px", lineHeight:1.55 }}>
+                </h1>
+                <p style={{ color:"rgba(255,255,255,0.65)", fontSize:"14px", lineHeight:1.55 }}>
                   Para trabajar como técnico o para encontrar uno. Es gratis y en el
                   siguiente paso nos dices a qué vienes.
                 </p>
@@ -150,7 +150,7 @@ export default function Registro({ nav, params = {} }) {
                 {loading ? "Creando cuenta..." : "Continuar →"}
               </button>
 
-              <p style={{ textAlign:"center", fontSize:"13px", color:"rgba(255,255,255,0.35)" }}>
+              <p style={{ textAlign:"center", fontSize:"13px", color:"rgba(255,255,255,0.65)" }}>
                 ¿Ya tienes cuenta?{" "}
                 <button onClick={() => nav("login", quierePro ? { plan:"pro" } : {})}
                   style={{ background:"none", border:"none", color:"#F97316", fontWeight:700,

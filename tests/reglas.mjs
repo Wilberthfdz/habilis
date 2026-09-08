@@ -7,7 +7,7 @@ import {
 } from "@firebase/rules-unit-testing";
 import {
   doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, addDoc,
-  query, where,
+  query, where, serverTimestamp,
 } from "firebase/firestore";
 
 const env = await initializeTestEnvironment({
@@ -137,6 +137,40 @@ probar("perfil: el técnico sí puede editar su bio",
 probar("perfil: el técnico sí puede cambiar su oficio y su categoría",
   () => assertSucceeds(updateDoc(doc(tec, "tecnicos/tecnico1"),
     { oficio: "Jardinero", categoriaId: "otro", subcategoriaId: null, oficioLibre: "Jardinero" })));
+// ── Perfil incluyente: dato sensible con consentimiento expreso ─────────
+probar("incluyente: con consentimiento y fecha de servidor sí se guarda",
+  () => assertSucceeds(updateDoc(doc(tec, "tecnicos/tecnico1"), {
+    perfilIncluyente: true,
+    inclusion: { activo: true, consentimiento: true, consentimientoFecha: serverTimestamp(), tipos: ["motriz"], comoTrabajo: "Diagnóstico en taller" },
+  })));
+probar("incluyente: desactivar borra el bloque y apaga la marca",
+  () => assertSucceeds(updateDoc(doc(tec, "tecnicos/tecnico1"), { perfilIncluyente: false, inclusion: null })));
+probar("incluyente: la marca sin bloque NO entra",
+  () => assertFails(updateDoc(doc(tec, "tecnicos/tecnico1"), { perfilIncluyente: true, inclusion: null })));
+probar("incluyente: el bloque sin consentimiento NO entra",
+  () => assertFails(updateDoc(doc(tec, "tecnicos/tecnico1"), {
+    perfilIncluyente: true,
+    inclusion: { activo: true, consentimiento: false, consentimientoFecha: serverTimestamp(), tipos: [], comoTrabajo: "" },
+  })));
+probar("incluyente: el bloque sin fecha de consentimiento NO entra",
+  () => assertFails(updateDoc(doc(tec, "tecnicos/tecnico1"), {
+    perfilIncluyente: true,
+    inclusion: { activo: true, consentimiento: true, tipos: [], comoTrabajo: "" },
+  })));
+probar("incluyente: un tercero NO puede activarlo en un perfil ajeno",
+  () => assertFails(updateDoc(doc(otro, "tecnicos/tecnico1"), {
+    perfilIncluyente: true,
+    inclusion: { activo: true, consentimiento: true, consentimientoFecha: serverTimestamp(), tipos: [], comoTrabajo: "" },
+  })));
+probar("incluyente: en el alta también exige consentimiento",
+  () => assertFails(setDoc(doc(env.authenticatedContext("nuevoInc").firestore(), "tecnicos/nuevoInc"), {
+    nombre: "X", plan: "gratis", aceptoTerminos: true, perfilIncluyente: true,
+    inclusion: { activo: true, consentimiento: false, consentimientoFecha: serverTimestamp(), tipos: [], comoTrabajo: "" },
+  })));
+probar("incluyente: el alta sin la sección sigue funcionando",
+  () => assertSucceeds(setDoc(doc(env.authenticatedContext("nuevoInc2").firestore(), "tecnicos/nuevoInc2"), {
+    nombre: "X", plan: "gratis", aceptoTerminos: true, perfilIncluyente: false, inclusion: null,
+  })));
 probar("perfil: cambiar el oficio NO abre la puerta a tocar el rango",
   () => assertFails(updateDoc(doc(tec, "tecnicos/tecnico1"), { oficio: "Jardinero", rankScore: 999 })));
 

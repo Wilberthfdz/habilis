@@ -30,13 +30,13 @@ export default function Legal({ nav, user }) {
         </p>
       </div>
 
-      <div style={{ maxWidth:"880px", margin:"-28px auto 0", padding:"0 20px 64px" }}>
+      <div style={{ maxWidth:"880px", margin:"0 auto", padding:"28px 20px 64px" }}>
         {ORDEN.map(aud => {
           const docs = DOCUMENTOS.filter(d => d.audiencia === aud);
           if (docs.length === 0) return null;
           return (
             <section key={aud} style={{ marginBottom:"28px" }}>
-              <p style={{ fontSize:"11px", fontWeight:800, color:"#64748B", letterSpacing:"0.1em",
+              <p style={{ fontSize:"11px", fontWeight:800, color:"#475569", letterSpacing:"0.1em",
                           textTransform:"uppercase", margin:"0 0 10px 4px" }}>{AUDIENCIAS[aud]}</p>
               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:"12px" }}>
                 {docs.map(d => (
@@ -45,7 +45,7 @@ export default function Legal({ nav, user }) {
                     <p style={{ fontWeight:800, fontSize:"15px", color:"#0F172A", marginBottom:"6px", lineHeight:1.3 }}>
                       {d.titulo}
                     </p>
-                    <p style={{ fontSize:"13px", color:"#64748B", lineHeight:1.6 }}>{d.resumen}</p>
+                    <p style={{ fontSize:"13px", color:"#475569", lineHeight:1.6 }}>{d.resumen}</p>
                   </button>
                 ))}
               </div>

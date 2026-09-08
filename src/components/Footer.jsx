@@ -47,7 +47,7 @@ export default function Footer({ nav }) {
             <p style={{ color:"#6B6560", fontSize:"13px", marginTop:"12px", lineHeight:1.65 }}>
               Infraestructura de confianza para trabajadores técnicos en México.
             </p>
-            <p style={{ color:"#B5AFA8", fontSize:"12px", marginTop:"8px", fontWeight:700,
+            <p style={{ color:"#6B6560", fontSize:"12px", marginTop:"8px", fontWeight:700,
                         letterSpacing:"0.04em" }}>myhabilis.com</p>
             <a href="mailto:habilisempresa@gmail.com"
               style={{ color:"#6B6560", fontSize:"12px", marginTop:"10px",
@@ -76,10 +76,10 @@ export default function Footer({ nav }) {
         <div style={{ borderTop:"1px solid #EDE8E1", paddingTop:"20px", display:"flex",
                       justifyContent:"space-between", alignItems:"center",
                       flexWrap:"wrap", gap:"12px" }}>
-          <p style={{ color:"#B5AFA8", fontSize:"12px", lineHeight:1.6 }}>
+          <p style={{ color:"#6B6560", fontSize:"12px", lineHeight:1.6 }}>
             © {new Date().getFullYear()} Habilis Technology, S.A.P.I. de C.V. · Todos los derechos reservados
           </p>
-          <p style={{ color:"#B5AFA8", fontSize:"12px" }}>Hecho en México</p>
+          <p style={{ color:"#6B6560", fontSize:"12px" }}>Hecho en México</p>
         </div>
       </div>
     </footer>

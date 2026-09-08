@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { etiquetaInclusion } from "../lib/inclusion.js";
 import Logo from "../components/Logo.jsx";
 import Nav from "../components/Nav.jsx";
 import Avatar from "../components/Avatar.jsx";
@@ -99,6 +100,7 @@ export default function Perfil({ nav, params, user }) {
                 <h1 style={{ fontSize:"clamp(20px,3.5vw,28px)", fontWeight:900, color:"#fff" }}>{tecnico.nombre}</h1>
                 {tecnico.plan==="pro" && <span style={{ background:"rgba(249,115,22,0.2)", border:"1px solid rgba(249,115,22,0.4)", color:"#F97316", fontSize:"11px", fontWeight:800, padding:"2px 8px", borderRadius:"6px" }}>⚡ PRO</span>}
                 {tecnico.verificado && <span style={{ background:"rgba(16,185,129,0.15)", border:"1px solid rgba(16,185,129,0.3)", color:"#10B981", fontSize:"11px", fontWeight:800, padding:"2px 8px", borderRadius:"6px" }}>✅ Verificado</span>}
+                {tecnico.perfilIncluyente && <span style={{ background:"rgba(6,182,212,0.15)", border:"1px solid rgba(6,182,212,0.35)", color:"#67E8F9", fontSize:"11px", fontWeight:800, padding:"2px 8px", borderRadius:"6px" }}>♿ Perfil incluyente</span>}
               </div>
               <p style={{ color:"#F97316", fontWeight:600, fontSize:"15px" }}>{tecnico.oficio}</p>
               <p style={{ color:"rgba(255,255,255,0.45)", fontSize:"13px", marginTop:"3px" }}>
@@ -120,6 +122,23 @@ export default function Perfil({ nav, params, user }) {
               {tecnico.bio}
             </p>
           )}
+          {/* Perfil incluyente. Solo se muestra lo que el técnico decidió
+              publicar con su consentimiento expreso (ver src/lib/inclusion.js). */}
+          {tecnico.perfilIncluyente && tecnico.inclusion?.activo && (
+            <div style={{ background:"#ECFEFF", border:"1px solid #A5F3FC", borderRadius:"12px",
+                          padding:"14px 16px", marginBottom:"14px" }}>
+              <p style={{ fontSize:"11px", fontWeight:800, color:"#0E7490",
+                          textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:"5px" }}>
+                ♿ Perfil incluyente{tecnico.inclusion.tipos?.length
+                  ? ` · ${tecnico.inclusion.tipos.map(etiquetaInclusion).filter(Boolean).join(", ")}` : ""}
+              </p>
+              <p style={{ fontSize:"13.5px", color:"#0F172A", lineHeight:1.65 }}>
+                {tecnico.inclusion.comoTrabajo
+                  || "Este técnico vive con una discapacidad y eligió mostrarlo. Contrátalo por su trabajo, como a cualquier otro."}
+              </p>
+            </div>
+          )}
+
           {/* El taller solo aparece si el técnico marcó que tiene local y
               quiere publicarlo. Su zona de trabajo NO se muestra jamás: es
               un punto aproximado que solo sirve para ordenar búsquedas, y

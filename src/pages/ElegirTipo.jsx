@@ -55,7 +55,7 @@ export default function ElegirTipo({ nav, user, params = {} }) {
       <div style={{ padding:"18px 24px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
         <Logo size={30} onClick={() => nav("landing")} />
         <button onClick={async () => { await cerrarSesion(); nav("landing"); }}
-          style={{ background:"none", border:"none", color:"rgba(255,255,255,0.35)", fontSize:"13px", cursor:"pointer" }}>
+          style={{ background:"none", border:"none", color:"rgba(255,255,255,0.65)", fontSize:"13px", cursor:"pointer" }}>
           Salir
         </button>
       </div>
@@ -65,7 +65,7 @@ export default function ElegirTipo({ nav, user, params = {} }) {
           <h2 style={{ fontSize:"24px", fontWeight:900, color:"#fff", marginBottom:"6px" }}>
             {nombre ? `Hola, ${nombre.split(" ")[0]}.` : "Hola."} ¿A qué vienes a Habilis?
           </h2>
-          <p style={{ color:"rgba(255,255,255,0.45)", fontSize:"14px", marginBottom:"24px", lineHeight:1.6 }}>
+          <p style={{ color:"rgba(255,255,255,0.65)", fontSize:"14px", marginBottom:"24px", lineHeight:1.6 }}>
             Las dos cuentas son gratis. Puedes cambiar después.
           </p>
 
@@ -84,10 +84,10 @@ export default function ElegirTipo({ nav, user, params = {} }) {
             <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.09)",
                           borderRadius:"20px", padding:"28px 24px", display:"flex", flexDirection:"column", gap:"16px" }}>
               <div>
-                <label style={{ fontSize:"11px", fontWeight:700, color:"rgba(255,255,255,0.4)", textTransform:"uppercase",
+                <label style={{ fontSize:"11px", fontWeight:700, color:"rgba(255,255,255,0.65)", textTransform:"uppercase",
                                 letterSpacing:"0.06em", display:"block", marginBottom:"5px" }}>Tu ciudad (opcional)</label>
                 <input style={inp} value={ciudad} onChange={e => setCiudad(e.target.value)} placeholder="Cancún, CDMX…" />
-                <p style={{ fontSize:"11.5px", color:"rgba(255,255,255,0.3)", marginTop:"5px" }}>
+                <p style={{ fontSize:"11.5px", color:"rgba(255,255,255,0.65)", marginTop:"5px" }}>
                   Solo para sugerirte técnicos cercanos. No se muestra a nadie.
                 </p>
               </div>

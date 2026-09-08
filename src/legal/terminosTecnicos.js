@@ -35,6 +35,7 @@ export default {
         "- Eres responsable de la actividad de tu cuenta y de la confidencialidad de tu contraseña.",
         "- Puedes editar tu perfil, marcarte como no disponible o eliminar tu cuenta en cualquier momento desde la plataforma.",
         "**Zona de trabajo.** Si configuras tu zona para aparecer en búsquedas por cercanía, guardamos un punto **aproximado, redondeado a un área de un kilómetro**, nunca tu domicilio, y a los clientes solo les mostramos una distancia. La única dirección que se publica es la de un taller o local comercial, y solo si tú lo activas expresamente.",
+        "**Perfil incluyente.** Si vives con una discapacidad puedes activar, de forma voluntaria y con consentimiento expreso aparte, la sección Perfil incluyente, para que clientes y empresas que buscan contratar con inclusión te encuentren. Lo que escribas ahí es público. Puedes desactivarla cuando quieras y el dato se borra. Las reglas están en la Política de No Discriminación y Accesibilidad y en el Aviso de Privacidad.",
         "**Alta con inteligencia artificial.** Puedes dictar tu perfil y tus trabajos por voz; un sistema automatizado los transcribe y redacta. Ese texto es una propuesta: **revísalo antes de guardarlo**, porque es tuyo y respondes por él.",
       ],
     },

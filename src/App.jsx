@@ -48,6 +48,32 @@ img { max-width: 100%; }
 @keyframes blob2 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(-35px,15px) scale(1.08)} 66%{transform:translate(20px,-28px) scale(0.93)} }
 input::placeholder { color: rgba(148,163,184,0.7); }
 input:focus, textarea:focus, select:focus { outline: 2px solid #F97316; outline-offset: -1px; }
+
+/* ── ACCESIBILIDAD ──
+   Foco visible para quien navega con teclado o con un conmutador; solo se
+   pinta cuando el foco viene del teclado, para no ensuciar el clic. */
+:focus-visible { outline: 3px solid #F97316; outline-offset: 2px; border-radius: 6px; }
+button:focus:not(:focus-visible) { outline: none; }
+/* Enlace "Saltar al contenido": invisible hasta que recibe el foco. */
+.saltar { position: absolute; left: -9999px; top: 8px; z-index: 9999; background: #0F172A; color: #fff;
+          padding: 10px 16px; border-radius: 8px; font-weight: 700; }
+.saltar:focus { left: 8px; }
+/* Quien pidió menos movimiento en su sistema no recibe animaciones. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important;
+                           transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+/* Quien pidió más contraste: texto claro sobre naranja pasa a texto oscuro
+   y los grises tenues suben. Los estilos van en línea, por eso se apunta al
+   atributo tal como lo serializa el navegador. */
+@media (prefers-contrast: more) {
+  button[style*="background: rgb(249, 115, 22)"], .h-btn-orange, .nav-btn-cta, .hab-btn-primary, .hab-btn-card
+    { color: #0F172A !important; }
+  [style*="color: rgba(255, 255, 255, 0.3"], [style*="color: rgba(255, 255, 255, 0.4"],
+  [style*="color: rgba(255, 255, 255, 0.5"], [style*="color: rgba(255, 255, 255, 0.6"]
+    { color: rgba(255, 255, 255, 0.92) !important; }
+  [style*="color: rgb(148, 163, 184)"], [style*="color: rgb(100, 116, 139)"] { color: #1E293B !important; }
+}
 .h-btn-orange { background:#F97316; color:#fff; border:none; border-radius:10px; font-weight:700; cursor:pointer; transition:background 0.15s,transform 0.1s; }
 .h-btn-orange:hover { background:#EA580C; }
 .h-btn-orange:active { transform:scale(0.98); }
@@ -147,6 +173,8 @@ const PANTALLA_POR_RUTA = Object.fromEntries(
 const rutaDe = (pantalla, params = {}) => {
   // Cada documento legal tiene su propia URL: /legal/<slug>.
   if (pantalla === "documentoLegal" && params.slug) return `/legal/${params.slug}`;
+  // La búsqueda "Habilis Incluyente" tiene URL propia para poder compartirla.
+  if (pantalla === "buscar" && params.incluyente === true) return "/incluyente";
   return RUTAS_URL[pantalla] || null;
 };
 
@@ -162,10 +190,12 @@ const REQUIEREN_SESION = new Set([
 const pantallaDe = path => {
   const limpio = path.replace(/\/+$/, "") || "/";
   if (limpio.startsWith("/legal/")) return "documentoLegal";
+  if (limpio === "/incluyente") return "buscar";
   return PANTALLA_POR_RUTA[limpio] || "landing";
 };
 const paramsDe = path => {
   const limpio = path.replace(/\/+$/, "") || "/";
+  if (limpio === "/incluyente") return { incluyente: true };
   const m = /^\/legal\/([a-z0-9-]+)$/.exec(limpio);
   return m ? { slug: m[1] } : {};
 };
@@ -274,13 +304,14 @@ export default function App() {
   return (
     <ErrorBoundary>
       <style>{globalCSS}</style>
+      <a href="#contenido" className="saltar">Saltar al contenido</a>
       <Suspense fallback={
         <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center" }}>
           <div style={{ width:"40px", height:"40px", border:"3px solid #D97706", borderTopColor:"transparent",
                         borderRadius:"50%", animation:"spin 0.8s linear infinite" }} />
         </div>
       }>
-        {renderScreen()}
+        <main id="contenido">{renderScreen()}</main>
       </Suspense>
     </ErrorBoundary>
   );

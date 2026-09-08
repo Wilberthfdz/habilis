@@ -6,6 +6,7 @@ import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, where,
 import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 import { firebaseConfig, APPCHECK_SITE_KEY, VERSION_TERMINOS } from "./config.js";
 import { camposDeIndice, palabrasBusqueda, normalizarCiudad } from "./indice.js";
+import { camposDeInclusion } from "./inclusion.js";
 import { rangosCercanos, distanciaKm, puntoDeBusqueda } from "./geo.js";
 
 // Inicializar Firebase (Google Cloud — satisface requisito de competencia)
@@ -64,11 +65,15 @@ export async function ponerNombreDeCuenta(usuario, nombre) {
 }
 
 export async function crearPerfilTecnico(uid, datos) {
+  // `inclusion` llega como lo capturó el formulario; lo que se guarda es lo
+  // que decide src/lib/inclusion.js (y nada, si no hubo consentimiento).
+  const { inclusion, ...resto } = datos;
   await setDoc(doc(db, "tecnicos", uid), {
-    ...datos,
+    ...resto,
+    ...camposDeInclusion(inclusion, serverTimestamp()),
     // Sin estos campos el perfil no es encontrable en el servidor y la
     // búsqueda tiene que descargar la colección entera.
-    ...camposDeIndice(datos),
+    ...camposDeIndice(resto),
     uid,
     plan: "gratis",         // gratis | pro
     verificado: false,
@@ -152,15 +157,17 @@ export async function actualizarTecnico(uid, datos) {
   const reindexa = ["nombre", "oficio", "ciudad", "categoriaId", "subcategoriaId"]
     .some(campo => campo in datos);
   const actual = reindexa ? (await getDoc(doc(db, "tecnicos", uid))).data() || {} : null;
+  const { inclusion, ...resto } = datos;
   await updateDoc(doc(db, "tecnicos", uid), {
-    ...datos,
-    ...(reindexa ? camposDeIndice({ ...actual, ...datos }) : {}),
+    ...resto,
+    ...("inclusion" in datos ? camposDeInclusion(inclusion, serverTimestamp()) : {}),
+    ...(reindexa ? camposDeIndice({ ...actual, ...resto }) : {}),
     updatedAt: serverTimestamp(),
   });
 }
 
 export async function buscarTecnicos({
-  texto = "", ciudad = "", categoriaId = "", limite = 24, cursor = null,
+  texto = "", ciudad = "", categoriaId = "", incluyente = false, limite = 24, cursor = null,
 } = {}) {
   // Antes esto descargaba 100 técnicos CUALESQUIERA y filtraba en el
   // navegador. Con cien perfiles se notaba poco; con cien mil, un plomero
@@ -170,6 +177,9 @@ export async function buscarTecnicos({
   // Ahora filtra el servidor y devuelve páginas. `cursor` es el último
   // documento de la página anterior.
   const conds = [where("disponible", "==", true)];
+  // "Habilis Incluyente": solo técnicos que activaron su perfil incluyente.
+  // El filtro INCLUYE, nunca excluye: sin él, todos aparecen por igual.
+  if (incluyente)  conds.push(where("perfilIncluyente", "==", true));
   if (categoriaId) conds.push(where("categoriaId", "==", categoriaId));
   if (ciudad)      conds.push(where("ciudadNorm", "==", normalizarCiudad(ciudad)));
 
@@ -204,7 +214,7 @@ export async function buscarTecnicos({
 // El punto de cada técnico ya viene redondeado a ~1 km desde que se guardó
 // (ver geo.js): ni la consulta ni el resultado manejan nunca su domicilio.
 export async function buscarTecnicosCerca({
-  centro, radioKm = 25, categoriaId = "", limite = 24,
+  centro, radioKm = 25, categoriaId = "", incluyente = false, limite = 24,
 }) {
   const rangos = rangosCercanos(centro, radioKm);
 
@@ -212,6 +222,7 @@ export async function buscarTecnicosCerca({
   // todos. Son consultas pequeñas y van en paralelo.
   const consultas = rangos.map(([desde, hasta]) => {
     const conds = [where("disponible", "==", true)];
+    if (incluyente)  conds.push(where("perfilIncluyente", "==", true));
     if (categoriaId) conds.push(where("categoriaId", "==", categoriaId));
     return getDocs(query(
       collection(db, "tecnicos"), ...conds,
